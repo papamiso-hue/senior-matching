@@ -4,12 +4,12 @@ import re
 from supabase import create_client, Client
 
 st.set_page_config(
-    page_title="5060 프리미엄 가치관·신용 매칭",
+    page_title="5060 프리미엄 가치관·신용 맞춤 만남",
     page_icon="💍",
     layout="centered"
 )
 
-# 보안 강화 및 고대비 반응형 스타일 (헤더 및 소개 박스 프리미엄 업그레이드)
+# 보안 강화 및 고대비 반응형 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -51,7 +51,7 @@ st.markdown("""
         line-height: 1.45;
     }
     .highlight-score {
-        color: #FDE047 !important; /* 선명한 황금빛 옐로우 강조 */
+        color: #FDE047 !important;
         font-size: 1.15rem;
         font-weight: 900;
         text-decoration: underline;
@@ -65,7 +65,7 @@ st.markdown("""
         border-left: 5px solid #D97706;
         padding: 16px 18px;
         border-radius: 10px;
-        margin-bottom: 1.3rem;
+        margin-bottom: 0.8rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
     .hero-line1 {
@@ -90,6 +90,29 @@ st.markdown("""
     }
     .highlight-blue {
         color: #0369A1 !important;
+        font-weight: 900;
+    }
+
+    /* 네트워크 효과 프리미엄 안내 배너 */
+    .network-accent-box {
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+        border: 1px solid #FCD34D;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 1.3rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 2px 6px rgba(217, 119, 6, 0.08);
+    }
+    .network-text {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #78350F !important;
+        line-height: 1.45;
+    }
+    .network-bold {
+        color: #B45309 !important;
         font-weight: 900;
     }
 
@@ -188,7 +211,7 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
-    st.markdown('<div class="main-title">💍 5060 프리미엄 가치관·신용 매칭</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">💍 5060 프리미엄 가치관·신용 맞춤 만남</div>', unsafe_allow_html=True)
     st.markdown("""
         <div class="badge-box">
             <span class="badge-tag">엄격한 입회 기준</span>
@@ -205,12 +228,17 @@ if not st.session_state.user_id:
                 <span>💬</span> <span class="highlight-blue">75가지 가치관 문답</span>으로 깊이가 통하는 진짜 인연을 찾습니다.
             </div>
         </div>
+        <div class="network-accent-box">
+            <span style="font-size: 1.25rem;">✨</span>
+            <div class="network-text">
+                <span class="network-bold">검증된 인연이 모일수록,</span> 내 기준에 꼭 맞는 단 한 사람과의 만남은 더욱 완벽해집니다.
+            </div>
+        </div>
     """, unsafe_allow_html=True)
 
     tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
     with tab_login:
-        # 안내 문구 전면 삭제 후 깔끔한 입력 폼으로 시작
         login_name = st.text_input("가입하신 성함", value=saved_name_val, key="login_name")
         login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", value=saved_phone_val, placeholder="01012345678", key="login_phone")
         login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", placeholder="비밀번호 입력", key="login_pwd")
@@ -341,7 +369,6 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
-    # --- 탭 1: 이성 추천 피드 ---
     with tab_feed:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
@@ -415,7 +442,6 @@ else:
 
                     st.divider()
 
-    # --- 탭 2: 75문항 문답 이어하기 ---
     with tab_survey:
         answered_qnums = list(my_answers.keys())
         st.progress(len(answered_qnums) / 75, text=f"전체 75문항 중 {len(answered_qnums)}개 답변 완료")
@@ -450,7 +476,6 @@ else:
         else:
             st.success("🎉 모든 문항 답변을 완료하셨습니다.")
 
-    # --- 탭 3: 대화 신청 보관함 ---
     with tab_inbox:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
