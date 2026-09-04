@@ -8,7 +8,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 탭/버튼/입력창 테두리 강화 및 반응형 스타일
+# 탭/버튼/입력창 UI 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -57,7 +57,6 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* 탭 디자인: 도톰한 테두리와 뚜렷한 반전 */
     div[data-baseweb="tab-list"] {
         gap: 10px;
         background-color: transparent;
@@ -218,7 +217,7 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
-    # --- 탭 1: 이성 추천 피드 & 가치관 대조표 ---
+    # --- 탭 1: 이성 추천 피드 ---
     with tab_feed:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
@@ -352,10 +351,49 @@ else:
                 st.caption("도착한 대화 신청이 없습니다.")
             else:
                 for req in received_list:
-                    snd_user = supabase.table("users").select("name, age, region, credit_score, phone").eq("id", req["sender_id"]).execute().data
+                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone").eq("id", req["sender_id"]).execute().data
                     if snd_user:
                         u = snd_user[0]
-                        st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']} / 신용 {u['credit_score']}점)")
+                        # 🎯 신청자의 가치관 답변 조회 및 일치율 산출
+                        u_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", u["id"]).execute().data
+                        u_answers = {item["question_num"]: item["answer_value"] for item in u_ans_data}
+
+                        common_keys = set(my_answers.keys()).intersection(set(u_answers.keys()))
+                        score = int((sum(1 for k in common_keys if my_answers[k] == u_answers[k]) / len(common_keys)) * 100) if common_keys else 0
+
+                        col_info, col_score = st.columns([3, 1])
+                        with col_info:
+                            st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']} / 신용 {u['credit_score']}점)")
+                        with col_score:
+                            st.metric("일치율", f"{score}%")
+
+                        # 핵심 가치관 일치 배지
+                        tags = []
+                        if my_answers.get(1) == u_answers.get(1): tags.append("💍 혼인관 일치")
+                        if my_answers.get(38) == u_answers.get(38): tags.append("🚭 흡연관 일치")
+                        if my_answers.get(56) == u_answers.get(56): tags.append("🙏 종교관 일치")
+                        if tags:
+                            st.write(" ".join([f"`{t}`" for t in tags]))
+
+                        # 🔍 상대방 가치관 문답 대조표 펼치기
+                        with st.expander(f"🔍 {u['name']} 님의 가치관 문답 대조표 확인하기"):
+                            if not common_keys:
+                                st.caption("공통으로 응답한 문항이 아직 없습니다.")
+                            else:
+                                for q_num in sorted(list(common_keys)):
+                                    q_info = q_map.get(q_num, {})
+                                    q_title = q_info.get("question_text", f"문항 Q{q_num}")
+                                    my_val = my_answers[q_num]
+                                    u_val = u_answers[q_num]
+                                    is_same = (my_val == u_val)
+
+                                    match_icon = "🟢 일치" if is_same else "⚪ 상이"
+                                    st.markdown(f"**[{match_icon}] {q_title}**")
+                                    st.markdown(f"- **나의 답변:** {my_val}")
+                                    st.markdown(f"- **상대방({u['name']}) 답변:** {u_val}")
+                                    st.write("")
+
+                        # 수락/거절 상태 분기
                         if req['status'] == 'ACCEPTED':
                             st.success(f"대화 성사 완료! 📞 연락처: **{u.get('phone', '미등록')}**")
                         elif req['status'] == 'REJECTED':
