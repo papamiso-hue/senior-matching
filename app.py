@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 다크/라이트 모드 모두에서 글씨가 또렷하게 보이도록 강제 고정
+# 다크/화이트 모드 자동 반응형 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -15,27 +15,36 @@ st.markdown("""
         padding-bottom: 3rem !important; 
         max-width: 580px; 
     }
+    /* 타이틀: 테마 변수(var(--text-color))를 따라 화이트에선 검정, 다크에선 흰색 자동 전환 */
     .main-title {
-        font-size: 1.55rem;
+        font-size: 1.6rem;
         font-weight: 800;
-        color: #F8FAFC !important; /* 다크 모드에서도 선명한 화이트 */
+        color: var(--text-color) !important;
         margin-bottom: 0.8rem;
         line-height: 1.35;
         letter-spacing: -0.5px;
     }
+    /* 설명문: 테마 기본 글자색에 살짝 투명도 적용 */
+    .sub-desc {
+        font-size: 0.95rem;
+        color: var(--text-color) !important;
+        opacity: 0.85;
+        margin-bottom: 1.3rem;
+        line-height: 1.6;
+    }
+    /* 배지 박스: 자체 다크 배경이므로 글자색은 고정 */
     .badge-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        color: #F8FAFC;
         padding: 16px;
         border-radius: 12px;
         margin-bottom: 1rem;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
         border: 1px solid #334155;
     }
     .badge-tag {
         display: inline-block;
         background-color: #E11D48;
-        color: white;
+        color: #FFFFFF !important;
         font-size: 0.75rem;
         font-weight: 700;
         padding: 3px 8px;
@@ -46,14 +55,8 @@ st.markdown("""
     .badge-text {
         font-size: 1.05rem;
         font-weight: 700;
-        color: #38BDF8 !important; /* 시선 집중용 하늘색 포인트 */
+        color: #38BDF8 !important;
         line-height: 1.4;
-    }
-    .sub-desc {
-        font-size: 0.92rem;
-        color: #CBD5E1 !important; /* 가독성 좋은 밝은 회색 */
-        margin-bottom: 1.3rem;
-        line-height: 1.6;
     }
     .stButton>button { 
         width: 100%; 
@@ -301,17 +304,3 @@ else:
         st.session_state.user_id = None
         st.session_state.user_info = None
         st.rerun()
-
-# 하단 관리자 바 및 Streamlit 기본 크롬 요소 완벽 숨김
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .viewerBadge_container__1QSob {display: none !important;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
-    .stAppDeployButton {display: none !important;}
-    [data-testid="manage-app-button"] {display: none !important;}
-    iframe[title="streamlit_app"] ~ div {display: none !important;}
-    </style>
-""", unsafe_allow_html=True)
