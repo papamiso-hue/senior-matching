@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import re
 import uuid
+import pandas as pd
 from supabase import create_client, Client
 
 st.set_page_config(
@@ -16,7 +17,7 @@ st.markdown("""
     .block-container { 
         padding-top: 3.2rem !important; 
         padding-bottom: 3rem !important; 
-        max-width: 580px; 
+        max-width: 620px; 
     }
     .main-title {
         font-size: 1.65rem;
@@ -108,7 +109,6 @@ st.markdown("""
         font-size: 0.96rem;
         font-weight: 800;
         color: #B45309 !important;
-        letter-spacing: -0.3px;
         margin-bottom: 4px;
     }
     .network-row-2 {
@@ -116,7 +116,6 @@ st.markdown("""
         font-size: 0.98rem;
         font-weight: 800;
         color: #0F172A !important;
-        letter-spacing: -0.3px;
         line-height: 1.4;
     }
     .network-highlight {
@@ -178,7 +177,6 @@ st.markdown("""
         border-color: #E11D48 !important;
     }
 
-    /* 프로필 아바타 이미지 스타일 */
     .profile-avatar {
         width: 76px;
         height: 76px;
@@ -197,6 +195,15 @@ st.markdown("""
         align-items: center;
         font-size: 2.2rem;
         border: 2.5px solid #CBD5E1;
+    }
+
+    /* 관리자 전용 스타일 */
+    .admin-card {
+        background-color: #F8FAFC;
+        border: 2px solid #3B82F6;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 1rem;
     }
 
     #MainMenu {visibility: hidden !important;}
@@ -373,7 +380,8 @@ if not st.session_state.user_id:
                             "age": int(age),
                             "region": region,
                             "credit_score": int(credit_score),
-                            "is_verified": True
+                            "is_verified": False,
+                            "credit_status": "PENDING"
                         }).execute().data[0]
                         
                         uid = new_u["id"]
@@ -391,7 +399,7 @@ if not st.session_state.user_id:
 else:
     me = st.session_state.user_info
 
-    # 📸 상단 내 프로필 & 사진 관리 영역
+    # 📸 상단 내 프로필 & 신용 인증 상태 뱃지
     top_col1, top_col2 = st.columns([1, 3])
     with top_col1:
         if me.get("photo_url"):
@@ -401,34 +409,66 @@ else:
             st.markdown(f'<div class="profile-placeholder">{default_icon}</div>', unsafe_allow_html=True)
     with top_col2:
         st.markdown(f"#### **{me['name']}** 님 ({me['gender']}·{me['age']}세)")
-        st.caption(f"📍 {me['region']} | 🛡️ 신용 안심 인증 통과 ({me['credit_score']}점)")
+        
+        # 신용 인증 상태별 배지 노출
+        c_status = me.get("credit_status", "PENDING")
+        if c_status == "APPROVED":
+            st.markdown(f"🛡️ **<span style='color:#0284C7;'>공인 신용 인증 완료</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
+        elif c_status == "REJECTED":
+            st.markdown(f"⚠️ **<span style='color:#EF4444;'>신용 증빙 서류 반려 (재제출 필요)</span>**", unsafe_allow_html=True)
+        else:
+            st.markdown(f"⏳ **<span style='color:#D97706;'>신용 증빙 심사 대기 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
+        st.caption(f"📍 희망 활동 지역: {me['region']}")
 
-    # 사진 등록/변경 펼침 메뉴
-    with st.expander("📷 내 프로필 사진 등록/변경"):
-        uploaded_file = st.file_uploader("사진을 선택해 주세요 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="profile_pic_uploader")
-        if uploaded_file is not None:
-            if st.button("사진 저장하기"):
-                file_bytes = uploaded_file.read()
-                file_ext = uploaded_file.name.split(".")[-1].lower()
-                unique_filename = f"user_{me['id']}_{uuid.uuid4().hex[:8]}.{file_ext}"
-                
+    # 프로필 사진 및 신용 증빙서류 업로드 창
+    with st.expander("📷 프로필 사진 및 신용 증빙서류 등록"):
+        tab_p_pic, tab_p_doc = st.tabs(["내 얼굴/일상 사진", "📄 토스/카카오페이 신용점수 캡처"])
+        
+        with tab_p_pic:
+            up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
+            if up_pic and st.button("프로필 사진 저장"):
+                ext = up_pic.name.split(".")[-1].lower()
+                fname = f"user_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
                 try:
-                    # Supabase Storage(avatars 버킷)에 업로드
-                    supabase.storage.from_("avatars").upload(unique_filename, file_bytes, {"content-type": f"image/{file_ext}"})
-                    public_url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{unique_filename}"
-                    
-                    # users 테이블 photo_url 갱신
-                    supabase.table("users").update({"photo_url": public_url}).eq("id", me["id"]).execute()
-                    me["photo_url"] = public_url
+                    supabase.storage.from_("avatars").upload(fname, up_pic.read(), {"content-type": f"image/{ext}"})
+                    url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{fname}"
+                    supabase.table("users").update({"photo_url": url}).eq("id", me["id"]).execute()
+                    me["photo_url"] = url
                     st.session_state.user_info = me
-                    st.success("프로필 사진이 안전하게 등록되었습니다!")
+                    st.success("프로필 사진이 저장되었습니다!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"사진 저장 실패: avatars 버킷이 'Public'으로 생성되었는지 확인해 주세요. ({e})")
+                    st.error(f"사진 저장 실패: {e}")
+
+        with tab_p_doc:
+            st.caption("카카오페이, 토스, 나이스, 올크레딧 등에서 조회한 신용점수 캡처본을 첨부하시면 관리자 확인 후 '공인 인증' 마크가 부여됩니다.")
+            up_doc = st.file_uploader("신용점수 캡처 이미지 선택", type=["jpg", "jpeg", "png"], key="user_credit_doc_up")
+            if up_doc and st.button("증빙 서류 제출하기"):
+                ext = up_doc.name.split(".")[-1].lower()
+                fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
+                try:
+                    supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": f"image/{ext}"})
+                    url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
+                    supabase.table("users").update({
+                        "credit_doc_url": url,
+                        "credit_status": "PENDING"
+                    }).execute()
+                    me["credit_doc_url"] = url
+                    me["credit_status"] = "PENDING"
+                    st.session_state.user_info = me
+                    st.success("증빙 서류가 정상 제출되었습니다. 관리자 심사 후 승인 배지가 부여됩니다!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"서류 제출 실패: credit-docs 버킷 생성을 확인해 주세요. ({e})")
 
     st.divider()
 
-    tab_feed, tab_survey, tab_inbox = st.tabs(["💖 추천 피드", "📝 가치관 문답 이어하기", "📬 매칭 보관함"])
+    # 탭 구성 (관리자일 경우 👑 관리자 콘솔 탭 추가 노출)
+    tabs_list = ["💖 추천 피드", "📝 가치관 문답 이어하기", "📬 매칭 보관함"]
+    if me.get("is_admin"):
+        tabs_list.append("👑 관리자 콘솔")
+
+    tabs = st.tabs(tabs_list)
 
     all_questions_raw = supabase.table("question_master").select("question_num, question_text, category, options").execute().data
     q_map = {q["question_num"]: q for q in all_questions_raw}
@@ -437,7 +477,7 @@ else:
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
     # --- 탭 1: 이성 추천 피드 ---
-    with tab_feed:
+    with tabs[0]:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
         candidates = supabase.table("users").select("*").eq("gender", target_gender).execute().data
@@ -471,7 +511,10 @@ else:
                     
                     with c_col_info:
                         st.markdown(f"**{cand['name']}** ({cand['age']}세 / {cand['region']})")
-                        st.caption(f"🛡️ 신용 안심 인증 ({cand['credit_score']}점)")
+                        if cand.get("credit_status") == "APPROVED":
+                            st.caption(f"🛡️ **공인 신용 인증 통과** ({cand['credit_score']}점)")
+                        else:
+                            st.caption(f"⏳ 신용점수 검증 대기 ({cand['credit_score']}점)")
                     with c_col_score:
                         st.metric("일치율", f"{score}%")
 
@@ -518,7 +561,7 @@ else:
                     st.divider()
 
     # --- 탭 2: 75문항 문답 이어하기 ---
-    with tab_survey:
+    with tabs[1]:
         answered_qnums = list(my_answers.keys())
         st.progress(len(answered_qnums) / 75, text=f"전체 75문항 중 {len(answered_qnums)}개 답변 완료")
 
@@ -553,7 +596,7 @@ else:
             st.success("🎉 모든 문항 답변을 완료하셨습니다.")
 
     # --- 탭 3: 대화 신청 보관함 ---
-    with tab_inbox:
+    with tabs[2]:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
 
@@ -563,7 +606,7 @@ else:
                 st.caption("아직 보낸 대화 신청이 없습니다.")
             else:
                 for req in sent_list:
-                    rcv_user = supabase.table("users").select("name, age, region, phone, photo_url").eq("id", req["receiver_id"]).execute().data
+                    rcv_user = supabase.table("users").select("name, age, region, phone, photo_url, credit_status").eq("id", req["receiver_id"]).execute().data
                     if rcv_user:
                         rcv = rcv_user[0]
                         if req['status'] == 'ACCEPTED':
@@ -577,7 +620,7 @@ else:
                 st.caption("도착한 대화 신청이 없습니다.")
             else:
                 for req in received_list:
-                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone, photo_url").eq("id", req["sender_id"]).execute().data
+                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone, photo_url, credit_status").eq("id", req["sender_id"]).execute().data
                     if snd_user:
                         u = snd_user[0]
                         u_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", u["id"]).execute().data
@@ -595,7 +638,11 @@ else:
                                 st.markdown(f'<div class="profile-placeholder">{snd_icon}</div>', unsafe_allow_html=True)
 
                         with rcv_c_info:
-                            st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']} / 신용 {u['credit_score']}점)")
+                            st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']})")
+                            if u.get("credit_status") == "APPROVED":
+                                st.caption(f"🛡️ **공인 신용 인증 통과** ({u['credit_score']}점)")
+                            else:
+                                st.caption(f"⏳ 신용점수 검증 대기 ({u['credit_score']}점)")
                         with rcv_c_score:
                             st.metric("일치율", f"{score}%")
 
@@ -638,6 +685,57 @@ else:
                                     supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
                                     st.rerun()
                         st.divider()
+
+    # --- 탭 4: 👑 관리자 콘솔 (운영자 계정만 접근 가능) ---
+    if me.get("is_admin"):
+        with tabs[3]:
+            st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
+            st.caption("신용 증빙 서류 심사 및 전체 고객 데이터를 실시간 관리합니다.")
+            
+            adm_sub1, adm_sub2 = st.tabs(["📑 신용 증빙 서류 심사 대기열", "👥 전체 고객 데이터 명부"])
+            
+            # [1] 신용 심사 대기열
+            with adm_sub1:
+                pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
+                
+                if not pending_users:
+                    st.info("현재 심사 대기 중인 증빙 서류가 없습니다.")
+                else:
+                    st.write(f"총 **{len(pending_users)}명**의 회원이 신용 승인을 기다리고 있습니다.")
+                    for pu in pending_users:
+                        with st.container():
+                            st.markdown(f"##### **{pu['name']}** 회원 ({pu['gender']} / {pu['age']}세 / {pu['region']})")
+                            st.write(f"• 입력 신용점수: **{pu['credit_score']}점** | 📞 연락처: `{pu['phone']}`")
+                            st.write("• 제출된 증빙 서류 원본:")
+                            st.image(pu['credit_doc_url'], caption=f"{pu['name']} 님의 제출 서류", use_container_width=True)
+                            
+                            bcol1, bcol2 = st.columns(2)
+                            with bcol1:
+                                if st.button(f"✅ 공인 인증 승인 ({pu['name']})", key=f"adm_app_{pu['id']}"):
+                                    supabase.table("users").update({"credit_status": "APPROVED", "is_verified": True}).eq("id", pu["id"]).execute()
+                                    st.success(f"{pu['name']} 님의 신용 공인 인증이 승인되었습니다!")
+                                    st.rerun()
+                            with bcol2:
+                                if st.button(f"❌ 서류 반려 ({pu['name']})", key=f"adm_rej_{pu['id']}"):
+                                    supabase.table("users").update({"credit_status": "REJECTED"}).eq("id", pu["id"]).execute()
+                                    st.warning(f"{pu['name']} 님의 서류를 반려 처리했습니다.")
+                                    st.rerun()
+                            st.divider()
+
+            # [2] 전체 고객 데이터 명부
+            with adm_sub2:
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, created_at").order("created_at", desc=True).execute().data
+                if all_users:
+                    df = pd.DataFrame(all_users)
+                    df = df.rename(columns={
+                        "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
+                        "credit_score": "신용점수", "credit_status": "심사상태",
+                        "phone": "연락처", "created_at": "가입일시"
+                    })
+                    st.dataframe(df[["성명", "성별", "나이", "지역", "신용점수", "심사상태", "연락처", "가입일시"]], use_container_width=True)
+                    st.caption(f"총 등록 회원 수: **{len(all_users)}명**")
+                else:
+                    st.caption("등록된 회원이 없습니다.")
 
     st.markdown("---")
     if st.button("로그아웃"):
