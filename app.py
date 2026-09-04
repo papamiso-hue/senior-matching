@@ -215,6 +215,31 @@ st.markdown("""
         background-color: #F1F5F9;
     }
 
+    /* 한 줄 소개 및 프로필 세부 배너 */
+    .intro-quote-box {
+        background: #F8FAFC;
+        border-left: 3.5px solid #3B82F6;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.92rem;
+        color: #1E293B;
+        font-weight: 600;
+        margin: 6px 0 8px 0;
+        font-style: italic;
+    }
+    .detail-tag {
+        display: inline-block;
+        background: #F1F5F9;
+        color: #334155;
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        border: 1px solid #E2E8F0;
+    }
+
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -358,6 +383,11 @@ if not st.session_state.user_id:
             region = st.selectbox("활동 희망 지역", ["서울 강남/서초", "서울 강북/도심", "서울 서남/영등포", "경기 분당/판교", "경기 일산", "인천/부천", "기타"])
             credit_score = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820)
             
+            st.markdown("##### 💼 나의 라이프스타일 (선택)")
+            job = st.text_input("현재 하시는 일 / 전문 분야", placeholder="예: 개인사업체 운영, 전문직, 은퇴 후 자문 등")
+            hobbies = st.text_input("주말 취미 / 여가 활동", placeholder="예: 골프, 등산, 여행, 음악감상 등")
+            intro = st.text_input("인생 2막을 여는 한 줄 소개", placeholder="예: 따뜻하고 성실한 마음으로 편안한 여생을 함께할 분을 찾습니다.")
+
             st.markdown("##### 🎯 3대 필수 가치관 문답")
             q1 = st.radio("1. 관계의 최종 형태?", ["법률혼 (서류상 정식 재혼 희망)", "사실혼 (합가 동거하되 서류 정리는 신중)", "LAT 동반자 (각자 주거를 유지하며 여행과 일상 공유)", "상황에 맞추어 유연하게 협의"])
             q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"])
@@ -389,6 +419,9 @@ if not st.session_state.user_id:
                             "age": int(age),
                             "region": region,
                             "credit_score": int(credit_score),
+                            "job": job.strip() if job else None,
+                            "hobbies": hobbies.strip() if hobbies else None,
+                            "intro": intro.strip() if intro else None,
                             "is_verified": False,
                             "credit_status": "PENDING",
                             "is_admin": False
@@ -426,11 +459,38 @@ else:
             st.markdown(f"⚠️ **<span style='color:#EF4444;'>신용 증빙 서류 반려 (재제출 필요)</span>**", unsafe_allow_html=True)
         else:
             st.markdown(f"⏳ **<span style='color:#D97706;'>신용 증빙 심사 대기 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
-        st.caption(f"📍 희망 활동 지역: {me['region']}")
-
-    with st.expander("📷 프로필 사진 및 신용 증빙서류 등록"):
-        tab_p_pic, tab_p_doc = st.tabs(["내 얼굴/일상 사진", "📄 신용점수 캡처 또는 공식 PDF"])
         
+        sub_info = f"📍 {me['region']}"
+        if me.get("job"):
+            sub_info += f" | 💼 {me['job']}"
+        st.caption(sub_info)
+
+    if me.get("intro"):
+        st.markdown(f'<div class="intro-quote-box">“{me["intro"]}”</div>', unsafe_allow_html=True)
+
+    # 프로필 정보 관리 펼침 메뉴
+    with st.expander("✏️ 프로필 사진 · 상세소개 · 신용 서류 관리"):
+        tab_p_edit, tab_p_pic, tab_p_doc = st.tabs(["📝 소개 및 취미 수정", "📸 프로필 사진 등록", "📄 신용 증빙 서류"])
+        
+        with tab_p_edit:
+            new_job = st.text_input("현재 하시는 일 / 전문 분야", value=me.get("job") or "", placeholder="예: 개인사업체 운영, 전문직 등")
+            new_hobbies = st.text_input("주말 취미 / 여가 활동", value=me.get("hobbies") or "", placeholder="예: 골프, 등산, 여행, 음악감상 등")
+            new_intro = st.text_area("인생 2막을 여는 한 줄 소개", value=me.get("intro") or "", placeholder="상대방에게 나를 어필하는 따뜻한 소개글을 남겨보세요.", height=80)
+            
+            if st.button("내 프로필 정보 저장"):
+                supabase.table("users").update({
+                    "job": new_job.strip() if new_job else None,
+                    "hobbies": new_hobbies.strip() if new_hobbies else None,
+                    "intro": new_intro.strip() if new_intro else None
+                }).eq("id", me["id"]).execute()
+                
+                me["job"] = new_job.strip() if new_job else None
+                me["hobbies"] = new_hobbies.strip() if new_hobbies else None
+                me["intro"] = new_intro.strip() if new_intro else None
+                st.session_state.user_info = me
+                st.success("프로필 정보가 성공적으로 변경되었습니다!")
+                st.rerun()
+
         with tab_p_pic:
             up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
             if up_pic and st.button("프로필 사진 저장"):
@@ -449,7 +509,6 @@ else:
 
         with tab_p_doc:
             st.caption("토스/카카오페이 신용점수 캡처 이미지(JPG, PNG) 또는 나이스/KCB 공식 신용조회서(PDF)를 등록해 주세요.")
-            # PDF 및 이미지 확장자 모두 허용
             up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
             if up_doc and st.button("증빙 서류 제출하기"):
                 ext = up_doc.name.split(".")[-1].lower()
@@ -526,6 +585,19 @@ else:
                     with c_col_score:
                         st.metric("일치율", f"{score}%")
 
+                    # 직업/취미 태그 표시
+                    tags_lifestyle = []
+                    if cand.get("job"): tags_lifestyle.append(f"💼 {cand['job']}")
+                    if cand.get("hobbies"): tags_lifestyle.append(f"⛳ {cand['hobbies']}")
+                    if tags_lifestyle:
+                        tags_html = " ".join([f'<span class="detail-tag">{t}</span>' for t in tags_lifestyle])
+                        st.markdown(tags_html, unsafe_allow_html=True)
+
+                    # 한 줄 소개 표시
+                    if cand.get("intro"):
+                        st.markdown(f'<div class="intro-quote-box">“{cand["intro"]}”</div>', unsafe_allow_html=True)
+
+                    # 가치관 일치 태그
                     tags = []
                     if my_answers.get(1) == cand_answers.get(1): tags.append("💍 혼인관 일치")
                     if my_answers.get(38) == cand_answers.get(38): tags.append("🚭 흡연관 일치")
@@ -614,7 +686,7 @@ else:
                 st.caption("아직 보낸 대화 신청이 없습니다.")
             else:
                 for req in sent_list:
-                    rcv_user = supabase.table("users").select("name, age, region, phone, photo_url, credit_status").eq("id", req["receiver_id"]).execute().data
+                    rcv_user = supabase.table("users").select("name, age, region, phone, photo_url, credit_status, job, intro").eq("id", req["receiver_id"]).execute().data
                     if rcv_user:
                         rcv = rcv_user[0]
                         if req['status'] == 'ACCEPTED':
@@ -628,7 +700,7 @@ else:
                 st.caption("도착한 대화 신청이 없습니다.")
             else:
                 for req in received_list:
-                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone, photo_url, credit_status").eq("id", req["sender_id"]).execute().data
+                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone, photo_url, credit_status, job, hobbies, intro").eq("id", req["sender_id"]).execute().data
                     if snd_user:
                         u = snd_user[0]
                         u_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", u["id"]).execute().data
@@ -653,6 +725,17 @@ else:
                                 st.caption(f"⏳ 신용점수 검증 대기 ({u['credit_score']}점)")
                         with rcv_c_score:
                             st.metric("일치율", f"{score}%")
+
+                        # 직업/취미 태그
+                        tags_lifestyle = []
+                        if u.get("job"): tags_lifestyle.append(f"💼 {u['job']}")
+                        if u.get("hobbies"): tags_lifestyle.append(f"⛳ {u['hobbies']}")
+                        if tags_lifestyle:
+                            tags_html = " ".join([f'<span class="detail-tag">{t}</span>' for t in tags_lifestyle])
+                            st.markdown(tags_html, unsafe_allow_html=True)
+
+                        if u.get("intro"):
+                            st.markdown(f'<div class="intro-quote-box">“{u["intro"]}”</div>', unsafe_allow_html=True)
 
                         tags = []
                         if my_answers.get(1) == u_answers.get(1): tags.append("💍 혼인관 일치")
@@ -702,7 +785,7 @@ else:
             
             adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 관리자 권한 관리"])
             
-            # [1] 신용 심사 대기열 (이미지 및 PDF 뷰어 동시 지원)
+            # [1] 신용 심사 대기열
             with adm_sub1:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
@@ -720,7 +803,6 @@ else:
                             
                             st.write("• 제출된 증빙 서류:")
                             if is_pdf:
-                                # PDF 뷰어 및 새 창 열기 지원
                                 st.markdown(f"""
                                     <div class="pdf-preview-box">
                                         <iframe src="{doc_url}" width="100%" height="450px" style="border:none;"></iframe>
@@ -728,7 +810,6 @@ else:
                                 """, unsafe_allow_html=True)
                                 st.markdown(f'<a href="{doc_url}" target="_blank" style="display:inline-block; margin-bottom:12px; font-weight:800; color:#0284C7; text-decoration:none;">📄 PDF 새 창에서 크게 보기 & 다운로드</a>', unsafe_allow_html=True)
                             else:
-                                # 이미지 원본 렌더링
                                 st.image(doc_url, caption=f"{pu['name']} 님의 제출 이미지", use_container_width=True)
                             
                             bcol1, bcol2 = st.columns(2)
@@ -744,7 +825,7 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부 (검색, 정렬, 페이지네이션)
+            # [2] 전체 고객 데이터 명부 (직업 컬럼 추가)
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
                 
@@ -762,11 +843,12 @@ else:
                         )
                     st.markdown('</div>', unsafe_allow_html=True)
 
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, is_admin, created_at").execute().data
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, is_admin, created_at").execute().data
                 
                 if all_users:
                     df = pd.DataFrame(all_users)
                     df["phone"] = df["phone"].fillna("-").astype(str)
+                    df["job"] = df["job"].fillna("-").astype(str)
                     df["credit_score"] = df["credit_score"].fillna(0).astype(int)
                     df["age"] = df["age"].fillna(0).astype(int)
                     df["created_at"] = df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
@@ -817,9 +899,9 @@ else:
                         )
 
                         display_df = page_df[[
-                            "name", "gender", "age", "region", "credit_score", "심사상태", "phone", "권한", "created_at"
+                            "name", "gender", "age", "region", "job", "credit_score", "심사상태", "phone", "권한", "created_at"
                         ]].rename(columns={
-                            "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
+                            "name": "성명", "gender": "성별", "age": "나이", "region": "지역", "job": "직업/전문분야",
                             "credit_score": "신용점수", "phone": "휴대폰 번호", "created_at": "가입일"
                         })
 
@@ -833,7 +915,8 @@ else:
                                 "성명": st.column_config.TextColumn("성명", width="small"),
                                 "성별": st.column_config.TextColumn("성별", width="small"),
                                 "나이": st.column_config.NumberColumn("나이", width="small"),
-                                "지역": st.column_config.TextColumn("지역", width="medium"),
+                                "지역": st.column_config.TextColumn("지역", width="small"),
+                                "직업/전문분야": st.column_config.TextColumn("직업/전문분야", width="medium"),
                                 "신용점수": st.column_config.NumberColumn("신용점수", width="small"),
                                 "심사상태": st.column_config.TextColumn("심사상태", width="small"),
                                 "휴대폰 번호": st.column_config.TextColumn("휴대폰 번호", width="medium"),
