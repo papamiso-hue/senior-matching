@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import re
 from supabase import create_client, Client
 
@@ -131,8 +132,29 @@ if "user_id" not in st.session_state:
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
 
+# Query param 기반 자동 채움 확인 (localStorage 복원 연동)
+qp = st.query_params
+saved_name_val = qp.get("saved_name", "")
+saved_phone_val = qp.get("saved_phone", "")
+
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
+    # 브라우저 로컬 저장소에서 저장된 성함/전화번호를 읽어와 URL 파라미터로 주입하는 스크립트
+    components.html("""
+    <script>
+    const savedName = localStorage.getItem('senior_match_name') || '';
+    const savedPhone = localStorage.getItem('senior_match_phone') || '';
+    const isRemembered = localStorage.getItem('senior_match_remember') === 'true';
+
+    const urlParams = new URLSearchParams(window.parent.location.search);
+    if (isRemembered && savedName && (!urlParams.get('saved_name') || !urlParams.get('saved_phone'))) {
+        urlParams.set('saved_name', savedName);
+        urlParams.set('saved_phone', savedPhone);
+        window.parent.location.search = urlParams.toString();
+    }
+    </script>
+    """, height=0)
+
     st.markdown('<div class="main-title">💍 5060 프리미엄 가치관·신용 매칭</div>', unsafe_allow_html=True)
     st.markdown("""
         <div class="badge-box">
@@ -147,16 +169,20 @@ if not st.session_state.user_id:
 
     with tab_login:
         st.caption("🛡️ 지인 도용 방지를 위해 성함, 휴대폰 번호, 간편 비밀번호로 안전하게 인증합니다.")
-        login_name = st.text_input("가입하신 성함", key="login_name")
-        login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", placeholder="01012345678", key="login_phone")
+        
+        # 저장된 값이 있으면 기본값으로 노출
+        login_name = st.text_input("가입하신 성함", value=saved_name_val, key="login_name")
+        login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", value=saved_phone_val, placeholder="01012345678", key="login_phone")
         login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", placeholder="비밀번호 입력", key="login_pwd")
         
+        # 체크박스 기본값: 저장된 값이 있으면 기본 체크
+        remember_me = st.checkbox("성함 및 휴대폰 번호 기억하기", value=bool(saved_name_val and saved_phone_val))
+
         if st.button("안심 본인인증 로그인"):
             clean_lphone = re.sub(r'[^0-9]', '', login_phone.strip())
             if not login_name.strip() or not clean_lphone or not login_pwd.strip():
                 st.error("성함, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
             else:
-                # 3중 대조 (성함 + 휴대폰 번호 + 본인 설정 비밀번호)
                 res = supabase.table("users").select("*")\
                     .eq("name", login_name.strip())\
                     .eq("phone", clean_lphone)\
@@ -165,6 +191,25 @@ if not st.session_state.user_id:
                 if res.data:
                     st.session_state.user_id = res.data[0]["id"]
                     st.session_state.user_info = res.data[0]
+
+                    # 기억하기 체크 여부에 따라 브라우저 로컬 저장소 업데이트
+                    if remember_me:
+                        components.html(f"""
+                        <script>
+                        localStorage.setItem('senior_match_name', '{login_name.strip()}');
+                        localStorage.setItem('senior_match_phone', '{clean_lphone}');
+                        localStorage.setItem('senior_match_remember', 'true');
+                        </script>
+                        """, height=0)
+                    else:
+                        components.html("""
+                        <script>
+                        localStorage.removeItem('senior_match_name');
+                        localStorage.removeItem('senior_match_phone');
+                        localStorage.setItem('senior_match_remember', 'false');
+                        </script>
+                        """, height=0)
+
                     st.rerun()
                 else:
                     st.error("회원 정보 또는 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
