@@ -45,10 +45,17 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
     .badge-text {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 800;
         color: #38BDF8 !important;
-        line-height: 1.4;
+        line-height: 1.45;
+    }
+    .highlight-score {
+        color: #FDE047 !important; /* 선명한 황금빛 옐로우 강조 */
+        font-size: 1.15rem;
+        font-weight: 900;
+        text-decoration: underline;
+        text-underline-offset: 4px;
     }
 
     /* 프리미엄 안내 박스 */
@@ -185,7 +192,7 @@ if not st.session_state.user_id:
     st.markdown("""
         <div class="badge-box">
             <span class="badge-tag">엄격한 입회 기준</span>
-            <div class="badge-text">남성 800점 이상 · 여성 600점 이상 신용 인증 필수</div>
+            <div class="badge-text">남성 800점 이상 · 여성 600점 이상 <span class="highlight-score">신용점수</span> 인증 필수</div>
         </div>
     """, unsafe_allow_html=True)
     
@@ -203,9 +210,7 @@ if not st.session_state.user_id:
     tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
     with tab_login:
-        # 요청하신 문구 수정 반영 (도용 방지 문구 제거)
-        st.caption("🛡️ 성함, 휴대폰 번호, 간편 비밀번호로 안전하게 인증합니다.")
-        
+        # 안내 문구 전면 삭제 후 깔끔한 입력 폼으로 시작
         login_name = st.text_input("가입하신 성함", value=saved_name_val, key="login_name")
         login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", value=saved_phone_val, placeholder="01012345678", key="login_phone")
         login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", placeholder="비밀번호 입력", key="login_pwd")
