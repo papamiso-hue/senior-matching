@@ -1,13 +1,34 @@
 import streamlit as st
 from supabase import create_client, Client
 
-st.set_page_config(page_title="5060 프리미엄 안심 매칭", page_icon="💍", layout="centered")
+st.set_page_config(page_title="5060 안심 매칭", page_icon="💍", layout="centered")
 
+# 상단 여백(padding-top) 확보 및 모바일 최적화 CSS
 st.markdown("""
     <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; max-width: 580px; }
-    .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
-    .match-box { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; padding: 14px; margin-bottom: 15px; }
+    .block-container { 
+        padding-top: 4.5rem !important; 
+        padding-bottom: 3rem !important; 
+        max-width: 580px; 
+    }
+    .main-title {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #1a1a1a;
+        margin-bottom: 0.3rem;
+        line-height: 1.4;
+    }
+    .sub-title {
+        font-size: 0.95rem;
+        color: #666;
+        margin-bottom: 1.2rem;
+    }
+    .stButton>button { 
+        width: 100%; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        height: 3rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -27,8 +48,8 @@ if "user_info" not in st.session_state:
 
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
-    st.markdown("### 💍 5060 프리미엄 안심 가치관 매칭")
-    st.caption("신용 인증과 가치관 문답 기반의 품격 있는 만남")
+    st.markdown('<div class="main-title">💍 5060 프리미엄 안심 가치관 매칭</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-title">신용 인증과 가치관 문답 기반의 품격 있는 만남</div>', unsafe_allow_html=True)
     st.divider()
 
     tab_login, tab_join = st.tabs(["기존 회원 로그인", "신규 회원가입"])
@@ -87,21 +108,18 @@ else:
 
     tab_feed, tab_survey, tab_inbox = st.tabs(["💖 추천 피드", "📝 가치관 문답 이어하기", "📬 매칭 보관함"])
 
-    # 질문 마스터 캐싱 로드
     all_questions_raw = supabase.table("question_master").select("question_num, question_text, category, options").execute().data
     q_map = {q["question_num"]: q for q in all_questions_raw}
 
-    # 내 답변 로드
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
-    # --- 탭 1: 이성 추천 피드 & 가치관 비교 상세 뷰 ---
+    # --- 탭 1: 이성 추천 피드 & 가치관 대조표 ---
     with tab_feed:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
         candidates = supabase.table("users").select("*").eq("gender", target_gender).execute().data
 
-        # 내가 이미 보낸 신청 상태 조회
         sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
         sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
 
@@ -128,7 +146,6 @@ else:
                     with col2:
                         st.metric("일치율", f"{score}%")
 
-                    # 핵심 하드필터 태그
                     tags = []
                     if my_answers.get(1) == cand_answers.get(1): tags.append("💍 혼인관 일치")
                     if my_answers.get(38) == cand_answers.get(38): tags.append("🚭 흡연관 일치")
@@ -136,7 +153,6 @@ else:
                     if tags:
                         st.write(" ".join([f"`{t}`" for t in tags]))
 
-                    # 🔍 [가치관 비교 상세 보기 접이식 뷰]
                     with st.expander(f"🔍 {cand['name']} 님과의 가치관 문답 대조표 보기"):
                         if not common_keys:
                             st.caption("공통으로 응답한 문항이 아직 없습니다.")
@@ -154,7 +170,6 @@ else:
                                 st.markdown(f"- **상대방 답변:** {cand_val}")
                                 st.write("")
 
-                    # 대화 신청 버튼 상태 분기
                     req_status = sent_dict.get(cand["id"])
                     if req_status == "PENDING":
                         st.button(f"⏳ 대화 수락 대기 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
@@ -207,7 +222,7 @@ else:
         else:
             st.success("🎉 모든 문항 답변을 완료하셨습니다.")
 
-    # --- 탭 3: 대화 신청 보관함 (받은 신청 / 보낸 신청) ---
+    # --- 탭 3: 대화 신청 보관함 ---
     with tab_inbox:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
