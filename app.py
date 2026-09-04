@@ -10,6 +10,10 @@ from supabase import create_client, Client
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON"
 BRAND_SLOGAN = "신용과 품격이 통하는 5060 프리미엄 맞춤 인연"
+BRAND_DESC = "엄격한 신용 검증과 75가지 가치관 대조를 통한 고품격 안심 만남"
+SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
+# 카카오톡 공유 시 노출될 대표 썸네일 이미지 URL (고품격 골드 & 네이비 콘셉트)
+OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
 st.set_page_config(
@@ -17,6 +21,42 @@ st.set_page_config(
     page_icon="👑",
     layout="centered"
 )
+
+# 카카오톡, 네이버 밴드, 페이스북 등 소셜 공유(Open Graph) 메타태그 주입
+components.html(f"""
+<script>
+function setMetaTag(property, content) {{
+    let element = document.querySelector(`meta[property="${{property}}"]`);
+    if (!element) {{
+        element = document.createElement('meta');
+        element.setAttribute('property', property);
+        window.parent.document.head.appendChild(element);
+    }}
+    element.setAttribute('content', content);
+}}
+
+function setNameMetaTag(name, content) {{
+    let element = document.querySelector(`meta[name="${{name}}"]`);
+    if (!element) {{
+        element = document.createElement('meta');
+        element.setAttribute('name', name);
+        window.parent.document.head.appendChild(element);
+    }}
+    element.setAttribute('content', content);
+}}
+
+// Open Graph 태그
+setMetaTag('og:type', 'website');
+setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 5060 프리미엄 맞춤 인연');
+setMetaTag('og:description', '{BRAND_DESC}');
+setMetaTag('og:image', '{OG_IMAGE_URL}');
+setMetaTag('og:url', '{SITE_URL}');
+
+// 기본 메타태그
+setNameMetaTag('description', '{BRAND_DESC}');
+window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프리미엄 맞춤 인연';
+</script>
+""", height=0)
 
 # 반응형 고대비 및 프리미엄 브랜드 전면 스타일
 st.markdown(f"""
@@ -342,12 +382,10 @@ qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
 
-# 스토리지 파일 영구 파기 도우미 함수
 def delete_file_from_storage(bucket_name, file_url):
     if not file_url:
         return
     try:
-        # URL에서 파일명 추출 (storage/v1/object/public/{bucket_name}/filename)
         fname = file_url.split(f"/{bucket_name}/")[-1]
         if fname:
             supabase.storage.from_(bucket_name).remove([fname])
@@ -615,7 +653,6 @@ else:
     with st.expander("✏️ 프로필 설정 및 계정 관리"):
         tab_p_edit, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs(["📝 소개 및 취미", "📸 프로필 사진", "📄 신용 증빙 서류", "⚠️ 회원 탈퇴"])
         
-        # 1) 프로필 정보 수정
         with tab_p_edit:
             new_job = st.text_input("현재 하시는 일 / 전문 분야", value=me.get("job") or "", placeholder="예: 개인사업체 운영, 전문직 등")
             new_hobbies = st.text_input("주말 취미 / 여가 활동", value=me.get("hobbies") or "", placeholder="예: 골프, 등산, 여행 등")
@@ -635,7 +672,6 @@ else:
                 st.success("프로필 정보가 저장되었습니다!")
                 st.rerun()
 
-        # 2) 프로필 사진
         with tab_p_pic:
             up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
             if up_pic and st.button("프로필 사진 저장"):
@@ -652,7 +688,6 @@ else:
                 except Exception as e:
                     st.error(f"사진 저장 실패: {e}")
 
-        # 3) 신용 증빙 서류 제출
         with tab_p_doc:
             if me.get("credit_status") == "APPROVED":
                 st.info("🛡️ 이미 신용 공인 인증이 완료되었습니다. (개인정보 보호 원칙에 따라 제출 서류는 안전 파기되었습니다.)")
@@ -678,7 +713,6 @@ else:
                     except Exception as e:
                         st.error(f"서류 제출 실패: {e}")
 
-        # 4) ⚠️ 회원 자진 탈퇴
         with tab_p_delete:
             st.error("🚨 회원 탈퇴 시 모든 프로필 정보, 가치관 문답 답변, 매칭 대화 내역이 즉시 영구 파기되며 복구할 수 없습니다.")
             delete_confirm_pwd = st.text_input("탈퇴 확인을 위해 간편 비밀번호를 입력해 주세요.", type="password", key="delete_pwd_confirm")
@@ -688,16 +722,13 @@ else:
                     st.error("비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
                 else:
                     try:
-                        # 1. 스토리지 파일 파기 (프로필 사진 & 신용 서류)
                         if me.get("photo_url"):
                             delete_file_from_storage("avatars", me["photo_url"])
                         if me.get("credit_doc_url"):
                             delete_file_from_storage("credit-docs", me["credit_doc_url"])
                         
-                        # 2. DB 사용자 데이터 삭제 (Cascade로 연관 데이터 자동 파기)
                         supabase.table("users").delete().eq("id", me["id"]).execute()
                         
-                        # 3. 로컬 스토리지 정리 스크립트 실행
                         components.html("""
                         <script>
                         localStorage.removeItem('senior_match_name');
@@ -975,7 +1006,6 @@ else:
             
             adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 회원 제재 및 관리자 권한"])
             
-            # [1] 신용 심사 대기열 (승인/반려 시 원본 파일 영구 파기)
             with adm_sub1:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
@@ -1005,9 +1035,7 @@ else:
                             bcol1, bcol2 = st.columns(2)
                             with bcol1:
                                 if st.button(f"✅ 공인 인증 승인 및 서류 영구 파기 ({pu['name']})", key=f"adm_app_{pu['id']}"):
-                                    # 1. 스토리지에서 원본 파일 영구 삭제
                                     delete_file_from_storage("credit-docs", pu['credit_doc_url'])
-                                    # 2. DB 업데이트 (승인 완료 + 파일 URL NULL 처리)
                                     supabase.table("users").update({
                                         "credit_status": "APPROVED",
                                         "is_verified": True,
@@ -1018,9 +1046,7 @@ else:
 
                             with bcol2:
                                 if st.button(f"❌ 서류 반려 및 영구 파기 ({pu['name']})", key=f"adm_rej_{pu['id']}"):
-                                    # 1. 스토리지에서 원본 파일 영구 삭제
                                     delete_file_from_storage("credit-docs", pu['credit_doc_url'])
-                                    # 2. DB 업데이트 (반려 + 파일 URL NULL 처리)
                                     supabase.table("users").update({
                                         "credit_status": "REJECTED",
                                         "credit_doc_url": None
@@ -1029,7 +1055,6 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
 
@@ -1161,7 +1186,6 @@ else:
                 else:
                     st.caption("등록된 회원이 없습니다.")
 
-            # [3] 🔑 회원 제재 및 관리자 권한 관리
             with adm_sub3:
                 st.markdown("##### 👥 회원 계정 제재(블랙리스트) 및 관리자 권한 설정")
                 st.caption("불량 회원을 즉시 차단하거나, 신뢰할 수 있는 회원을 공동 관리자로 임명합니다.")
