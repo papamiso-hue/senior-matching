@@ -7,7 +7,6 @@ from datetime import datetime
 import pandas as pd
 from supabase import create_client, Client
 
-# 브랜드 기본 정보 및 카카오 오픈채팅 공식 연동
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON"
 BRAND_SLOGAN = "신용과 품격이 통하는 5060 프리미엄 맞춤 인연"
@@ -28,7 +27,6 @@ st.markdown(f"""
         max-width: 780px; 
     }}
     
-    /* 브랜드 헤더 전면 배너 */
     .brand-hero-header {{
         text-align: center;
         padding: 22px 16px 18px 16px;
@@ -344,6 +342,18 @@ qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
 
+# 스토리지 파일 영구 파기 도우미 함수
+def delete_file_from_storage(bucket_name, file_url):
+    if not file_url:
+        return
+    try:
+        # URL에서 파일명 추출 (storage/v1/object/public/{bucket_name}/filename)
+        fname = file_url.split(f"/{bucket_name}/")[-1]
+        if fname:
+            supabase.storage.from_(bucket_name).remove([fname])
+    except Exception as e:
+        print(f"File deletion error: {e}")
+
 def render_support_footer():
     st.markdown(f"""
         <div class="support-footer-card">
@@ -507,7 +517,7 @@ if not st.session_state.user_id:
             st.markdown("""
                 <div class="terms-box">
                     <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 연락처 제공.<br>
-                    <b>2. 신용 증빙 서류 100% 안전 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 안전하게 비공개 처리되며 타인에게 절대 노출되지 않습니다.<br>
+                    <b>2. 신용 증빙 서류 100% 안전 파기 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 스토리지 및 데이터베이스에서 영구 삭제 처리되며 절대 보관되지 않습니다.<br>
                     <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처가 공개됩니다.<br>
                     <b>4. 부적격 회원 조치:</b> 허위 서류 제출 및 불량 매너 회원은 사전 통보 없이 영구 이용 정지 처리됩니다.
                 </div>
@@ -602,13 +612,14 @@ else:
     if me.get("intro"):
         st.markdown(f'<div class="intro-quote-box">“{me["intro"]}”</div>', unsafe_allow_html=True)
 
-    with st.expander("✏️ 프로필 사진 · 상세소개 · 신용 서류 관리"):
-        tab_p_edit, tab_p_pic, tab_p_doc = st.tabs(["📝 소개 및 취미 수정", "📸 프로필 사진 등록", "📄 신용 증빙 서류"])
+    with st.expander("✏️ 프로필 설정 및 계정 관리"):
+        tab_p_edit, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs(["📝 소개 및 취미", "📸 프로필 사진", "📄 신용 증빙 서류", "⚠️ 회원 탈퇴"])
         
+        # 1) 프로필 정보 수정
         with tab_p_edit:
             new_job = st.text_input("현재 하시는 일 / 전문 분야", value=me.get("job") or "", placeholder="예: 개인사업체 운영, 전문직 등")
-            new_hobbies = st.text_input("주말 취미 / 여가 활동", value=me.get("hobbies") or "", placeholder="예: 골프, 등산, 여행, 음악감상 등")
-            new_intro = st.text_area("인생 2막을 여는 한 줄 소개", value=me.get("intro") or "", placeholder="상대방에게 나를 어필하는 따뜻한 소개글을 남겨보세요.", height=80)
+            new_hobbies = st.text_input("주말 취미 / 여가 활동", value=me.get("hobbies") or "", placeholder="예: 골프, 등산, 여행 등")
+            new_intro = st.text_area("인생 2막을 여는 한 줄 소개", value=me.get("intro") or "", placeholder="상대방에게 나를 어필하는 소개글", height=80)
             
             if st.button("내 프로필 정보 저장"):
                 supabase.table("users").update({
@@ -621,9 +632,10 @@ else:
                 me["hobbies"] = new_hobbies.strip() if new_hobbies else None
                 me["intro"] = new_intro.strip() if new_intro else None
                 st.session_state.user_info = me
-                st.success("프로필 정보가 성공적으로 변경되었습니다!")
+                st.success("프로필 정보가 저장되었습니다!")
                 st.rerun()
 
+        # 2) 프로필 사진
         with tab_p_pic:
             up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
             if up_pic and st.button("프로필 사진 저장"):
@@ -640,27 +652,66 @@ else:
                 except Exception as e:
                     st.error(f"사진 저장 실패: {e}")
 
+        # 3) 신용 증빙 서류 제출
         with tab_p_doc:
-            st.caption("토스/카카오페이 신용점수 캡처 이미지(JPG, PNG) 또는 나이스/KCB 공식 신용조회서(PDF)를 등록해 주세요.")
-            up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
-            if up_doc and st.button("증빙 서류 제출하기"):
-                ext = up_doc.name.split(".")[-1].lower()
-                fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
-                content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
-                try:
-                    supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": content_type})
-                    url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
-                    supabase.table("users").update({
-                        "credit_doc_url": url,
-                        "credit_status": "PENDING"
-                    }).execute()
-                    me["credit_doc_url"] = url
-                    me["credit_status"] = "PENDING"
-                    st.session_state.user_info = me
-                    st.success("증빙 서류가 정상 제출되었습니다. 관리자 심사 후 공인 인증 마크가 부여됩니다!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"서류 제출 실패: {e}")
+            if me.get("credit_status") == "APPROVED":
+                st.info("🛡️ 이미 신용 공인 인증이 완료되었습니다. (개인정보 보호 원칙에 따라 제출 서류는 안전 파기되었습니다.)")
+            else:
+                st.caption("토스/카카오페이 캡처(JPG, PNG) 또는 공식 신용보고서(PDF)를 등록해 주세요. 확인 완료 즉시 안전 파기됩니다.")
+                up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
+                if up_doc and st.button("증빙 서류 제출하기"):
+                    ext = up_doc.name.split(".")[-1].lower()
+                    fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
+                    content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
+                    try:
+                        supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": content_type})
+                        url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
+                        supabase.table("users").update({
+                            "credit_doc_url": url,
+                            "credit_status": "PENDING"
+                        }).execute()
+                        me["credit_doc_url"] = url
+                        me["credit_status"] = "PENDING"
+                        st.session_state.user_info = me
+                        st.success("증빙 서류가 제출되었습니다. 심사 완료 즉시 안전하게 파기됩니다!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"서류 제출 실패: {e}")
+
+        # 4) ⚠️ 회원 자진 탈퇴
+        with tab_p_delete:
+            st.error("🚨 회원 탈퇴 시 모든 프로필 정보, 가치관 문답 답변, 매칭 대화 내역이 즉시 영구 파기되며 복구할 수 없습니다.")
+            delete_confirm_pwd = st.text_input("탈퇴 확인을 위해 간편 비밀번호를 입력해 주세요.", type="password", key="delete_pwd_confirm")
+            
+            if st.button("계정 영구 삭제 및 즉시 탈퇴", type="secondary"):
+                if delete_confirm_pwd.strip() != me.get("password"):
+                    st.error("비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
+                else:
+                    try:
+                        # 1. 스토리지 파일 파기 (프로필 사진 & 신용 서류)
+                        if me.get("photo_url"):
+                            delete_file_from_storage("avatars", me["photo_url"])
+                        if me.get("credit_doc_url"):
+                            delete_file_from_storage("credit-docs", me["credit_doc_url"])
+                        
+                        # 2. DB 사용자 데이터 삭제 (Cascade로 연관 데이터 자동 파기)
+                        supabase.table("users").delete().eq("id", me["id"]).execute()
+                        
+                        # 3. 로컬 스토리지 정리 스크립트 실행
+                        components.html("""
+                        <script>
+                        localStorage.removeItem('senior_match_name');
+                        localStorage.removeItem('senior_match_phone');
+                        localStorage.removeItem('senior_match_remember');
+                        </script>
+                        """, height=0)
+
+                        st.session_state.user_id = None
+                        st.session_state.user_info = None
+                        st.success("그동안 노블레스 라온을 이용해 주셔서 감사합니다. 모든 개인정보가 안전하게 영구 파기되었습니다.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"탈퇴 처리 중 오류가 발생했습니다: {e}")
 
     st.divider()
 
@@ -847,7 +898,7 @@ else:
                         u_answers = {item["question_num"]: item["answer_value"] for item in u_ans_data}
 
                         common_keys = set(my_answers.keys()).intersection(set(u_answers.keys()))
-                        score = int((sum(1 for k in common_keys if my_answers[k] == cand_answers[k]) / len(common_keys)) * 100) if common_keys else 0
+                        score = int((sum(1 for k in common_keys if my_answers[k] == u_answers[k]) / len(common_keys)) * 100) if common_keys else 0
 
                         rcv_c_img, rcv_c_info, rcv_c_score = st.columns([1, 2.5, 1])
                         with rcv_c_img:
@@ -924,7 +975,7 @@ else:
             
             adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 회원 제재 및 관리자 권한"])
             
-            # [1] 신용 심사 대기열
+            # [1] 신용 심사 대기열 (승인/반려 시 원본 파일 영구 파기)
             with adm_sub1:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
@@ -953,14 +1004,28 @@ else:
                             
                             bcol1, bcol2 = st.columns(2)
                             with bcol1:
-                                if st.button(f"✅ 공인 인증 승인 ({pu['name']})", key=f"adm_app_{pu['id']}"):
-                                    supabase.table("users").update({"credit_status": "APPROVED", "is_verified": True}).eq("id", pu["id"]).execute()
-                                    st.success(f"{pu['name']} 님의 신용 공인 인증이 승인되었습니다!")
+                                if st.button(f"✅ 공인 인증 승인 및 서류 영구 파기 ({pu['name']})", key=f"adm_app_{pu['id']}"):
+                                    # 1. 스토리지에서 원본 파일 영구 삭제
+                                    delete_file_from_storage("credit-docs", pu['credit_doc_url'])
+                                    # 2. DB 업데이트 (승인 완료 + 파일 URL NULL 처리)
+                                    supabase.table("users").update({
+                                        "credit_status": "APPROVED",
+                                        "is_verified": True,
+                                        "credit_doc_url": None
+                                    }).eq("id", pu["id"]).execute()
+                                    st.success(f"{pu['name']} 님의 인증이 완료되었으며, 증빙 서류 원본이 스토리지에서 영구 파기되었습니다.")
                                     st.rerun()
+
                             with bcol2:
-                                if st.button(f"❌ 서류 반려 ({pu['name']})", key=f"adm_rej_{pu['id']}"):
-                                    supabase.table("users").update({"credit_status": "REJECTED"}).eq("id", pu["id"]).execute()
-                                    st.warning(f"{pu['name']} 님의 서류를 반려 처리했습니다.")
+                                if st.button(f"❌ 서류 반려 및 영구 파기 ({pu['name']})", key=f"adm_rej_{pu['id']}"):
+                                    # 1. 스토리지에서 원본 파일 영구 삭제
+                                    delete_file_from_storage("credit-docs", pu['credit_doc_url'])
+                                    # 2. DB 업데이트 (반려 + 파일 URL NULL 처리)
+                                    supabase.table("users").update({
+                                        "credit_status": "REJECTED",
+                                        "credit_doc_url": None
+                                    }).eq("id", pu["id"]).execute()
+                                    st.warning(f"{pu['name']} 님의 서류가 반려 처리되고 파일이 영구 파기되었습니다.")
                                     st.rerun()
                             st.divider()
 
