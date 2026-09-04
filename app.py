@@ -9,53 +9,83 @@ st.set_page_config(
     layout="centered"
 )
 
-# 보안 강화 및 고대비 반응형 스타일
+# 보안 강화 및 고대비 반응형 스타일 (헤더 및 소개 박스 프리미엄 업그레이드)
 st.markdown("""
     <style>
     .block-container { 
-        padding-top: 3.5rem !important; 
+        padding-top: 3.2rem !important; 
         padding-bottom: 3rem !important; 
         max-width: 580px; 
     }
     .main-title {
-        font-size: 1.6rem;
-        font-weight: 800;
+        font-size: 1.65rem;
+        font-weight: 900;
         color: var(--text-color) !important;
-        margin-bottom: 0.8rem;
+        margin-bottom: 0.9rem;
         line-height: 1.35;
         letter-spacing: -0.5px;
-    }
-    .sub-desc {
-        font-size: 0.95rem;
-        color: var(--text-color) !important;
-        opacity: 0.85;
-        margin-bottom: 1.3rem;
-        line-height: 1.6;
     }
     .badge-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         padding: 16px;
         border-radius: 12px;
-        margin-bottom: 1rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        margin-bottom: 0.9rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         border: 2px solid #334155;
     }
     .badge-tag {
         display: inline-block;
         background-color: #E11D48;
         color: #FFFFFF !important;
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 4px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 4px 9px;
+        border-radius: 5px;
         margin-bottom: 8px;
         letter-spacing: 0.5px;
     }
     .badge-text {
-        font-size: 1.05rem;
-        font-weight: 700;
+        font-size: 1.1rem;
+        font-weight: 800;
         color: #38BDF8 !important;
         line-height: 1.4;
+    }
+
+    /* ✨ 눈에 확 띄는 프리미엄 안내 박스 */
+    .premium-hero-box {
+        background: #F8FAFC;
+        border-left: 5px solid #D97706; /* 딥 골드 액센트 */
+        border: 2px solid #E2E8F0;
+        border-left-width: 5px;
+        border-left-color: #D97706;
+        padding: 16px 18px;
+        border-radius: 10px;
+        margin-bottom: 1.3rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .hero-line1 {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0F172A !important;
+        margin-bottom: 6px;
+        line-height: 1.4;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .hero-line2 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #475569 !important;
+        line-height: 1.5;
+    }
+    .highlight-gold {
+        color: #B45309 !important;
+        font-weight: 900;
+    }
+    .highlight-blue {
+        color: #0369A1 !important;
+        font-weight: 900;
     }
 
     div[data-baseweb="tab-list"] {
@@ -160,8 +190,18 @@ if not st.session_state.user_id:
             <div class="badge-text">남성 800점 이상 · 여성 600점 이상 신용 인증 필수</div>
         </div>
     """, unsafe_allow_html=True)
-    st.markdown('<div class="sub-desc">신용이 검증된 분들만 모시는 고품격 만남.<br>75가지 가치관 문답으로 깊이가 통하는 인연을 찾습니다.</div>', unsafe_allow_html=True)
-    st.divider()
+    
+    # 눈에 확 들어오는 프리미엄 소개 박스
+    st.markdown("""
+        <div class="premium-hero-box">
+            <div class="hero-line1">
+                <span>🏆</span> <span><span class="highlight-gold">신용이 검증된 분들</span>만 모시는 고품격 만남</span>
+            </div>
+            <div class="hero-line2">
+                <span>💬</span> <span class="highlight-blue">75가지 가치관 문답</span>으로 깊이가 통하는 진짜 인연을 찾습니다.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
     tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
@@ -209,7 +249,6 @@ if not st.session_state.user_id:
                 else:
                     st.error("회원 정보 또는 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
 
-        # 🔑 비밀번호 재설정 섹션
         with st.expander("❓ 비밀번호를 잊으셨나요? (비밀번호 재설정)"):
             st.caption("가입 시 등록하신 본인 정보(성함, 휴대폰 번호, 나이)를 확인 후 즉시 새 비밀번호로 변경합니다.")
             reset_name = st.text_input("성함 확인", key="reset_name")
@@ -222,7 +261,6 @@ if not st.session_state.user_id:
                 if not reset_name.strip() or not clean_rphone or len(new_pwd.strip()) < 4:
                     st.error("모든 항목을 올바르게 입력해 주세요. (비밀번호는 최소 4자리 이상)")
                 else:
-                    # 성함 + 휴대폰 번호 + 등록 나이 3중 본인 확인
                     match_u = supabase.table("users").select("id").eq("name", reset_name.strip()).eq("phone", clean_rphone).eq("age", int(reset_age)).execute().data
                     if match_u:
                         user_target_id = match_u[0]["id"]
