@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 import re
 import uuid
 import math
+from datetime import datetime
 import pandas as pd
 from supabase import create_client, Client
 
@@ -17,7 +18,7 @@ st.markdown("""
     <style>
     .block-container { 
         padding-top: 3.2rem !important; 
-        padding-bottom: 3rem !important; 
+        padding-bottom: 3.5rem !important; 
         max-width: 780px; 
     }
     .main-title {
@@ -251,6 +252,42 @@ st.markdown("""
         margin-bottom: 12px;
     }
 
+    /* 하단 고객센터 배너 */
+    .support-footer-card {
+        background-color: #F8FAFC;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+    .support-header {
+        font-size: 0.98rem;
+        font-weight: 800;
+        color: #0F172A;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .support-desc {
+        font-size: 0.86rem;
+        color: #64748B;
+        line-height: 1.5;
+        margin-bottom: 10px;
+    }
+    .support-kakao-btn {
+        display: inline-block;
+        background-color: #FEE500;
+        color: #191919 !important;
+        font-weight: 800;
+        font-size: 0.88rem;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        border: 1px solid #E6CF00;
+    }
+
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -274,6 +311,21 @@ if "user_info" not in st.session_state:
 qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
+
+def render_support_footer():
+    st.markdown("""
+        <div class="support-footer-card">
+            <div class="support-header">
+                <span>💬</span> <span>5060 안심 전담 고객지원센터</span>
+            </div>
+            <div class="support-desc">
+                서류 심사 문의, 비밀번호 변경 지원, 불량 매너 회원 신고 등 불편하신 점은 언제든 1:1 상담창구로 말씀해 주세요.
+            </div>
+            <a href="https://open.kakao.com" target="_blank" class="support-kakao-btn">
+                💬 카카오톡 1:1 상담문의 열기
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
@@ -341,7 +393,6 @@ if not st.session_state.user_id:
                     .execute()
                 if res.data:
                     user_data = res.data[0]
-                    # 🚫 계정 정지(블랙리스트) 체크
                     if user_data.get("is_suspended"):
                         st.error("🚫 운영 정책 위반 또는 이용 제한 조치된 계정입니다. 고객센터에 문의해 주세요.")
                     else:
@@ -412,7 +463,6 @@ if not st.session_state.user_id:
             q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"])
             q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"])
 
-            # 📜 개인정보 처리방침 및 신용 서류 안전 보장 약관
             st.markdown("---")
             st.markdown("##### 🛡️ 안심 개인정보 및 신용 서류 파기 원칙")
             st.markdown("""
@@ -473,6 +523,8 @@ if not st.session_state.user_id:
                         st.session_state.user_id = uid
                         st.session_state.user_info = new_u
                         st.rerun()
+
+    render_support_footer()
 
 # [2. 메인 대시보드]
 else:
@@ -582,7 +634,6 @@ else:
     with tabs[0]:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
-        # 🚫 정지된 회원은 추천 피드에서 제외
         candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
 
         sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
@@ -867,34 +918,66 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부 (계정 상태 추가)
+            # [2] 전체 고객 데이터 명부 (엑셀 다운로드 추가)
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
-                
-                with st.container():
-                    st.markdown('<div class="filter-card">', unsafe_allow_html=True)
-                    f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
-                    with f_col1:
-                        search_name = st.text_input("🔍 성명 검색", placeholder="이름 입력 (예: 김진호)")
-                    with f_col2:
-                        search_phone4 = st.text_input("📱 전화번호 뒷 4자리", placeholder="뒷 4자리 (예: 2222)")
-                    with f_col3:
-                        sort_option = st.selectbox(
-                            "📊 정렬 기준",
-                            ["가입일시 최신순", "가입일시 과거순", "신용점수 높은순", "신용점수 낮은순", "나이 많은순", "나이 적은순", "성명 가나다순"]
-                        )
-                    st.markdown('</div>', unsafe_allow_html=True)
 
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, is_admin, is_suspended, created_at").execute().data
-                
+                # DB에서 전체 회원 조회
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
+
                 if all_users:
-                    df = pd.DataFrame(all_users)
-                    df["phone"] = df["phone"].fillna("-").astype(str)
-                    df["job"] = df["job"].fillna("-").astype(str)
-                    df["credit_score"] = df["credit_score"].fillna(0).astype(int)
-                    df["age"] = df["age"].fillna(0).astype(int)
-                    df["created_at"] = df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
+                    raw_df = pd.DataFrame(all_users)
+                    raw_df["phone"] = raw_df["phone"].fillna("-").astype(str)
+                    raw_df["job"] = raw_df["job"].fillna("-").astype(str)
+                    raw_df["hobbies"] = raw_df["hobbies"].fillna("-").astype(str)
+                    raw_df["intro"] = raw_df["intro"].fillna("-").astype(str)
+                    raw_df["credit_score"] = raw_df["credit_score"].fillna(0).astype(int)
+                    raw_df["age"] = raw_df["age"].fillna(0).astype(int)
+                    raw_df["created_at"] = raw_df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
 
+                    # 📥 엑셀(CSV) 다운로드 버튼 배치
+                    excel_export_df = raw_df.copy()
+                    excel_export_df["권한"] = excel_export_df["is_admin"].apply(lambda x: "관리자" if x else "일반회원")
+                    excel_export_df["계정상태"] = excel_export_df["is_suspended"].apply(lambda s: "이용정지" if s else "정상")
+                    excel_export_df["신용심사상태"] = excel_export_df["credit_status"].apply(
+                        lambda s: "공인인증완료" if s == "APPROVED" else ("서류반려" if s == "REJECTED" else "검토대기중")
+                    )
+
+                    export_cols = excel_export_df[[
+                        "name", "gender", "age", "region", "job", "hobbies", "intro",
+                        "credit_score", "신용심사상태", "계정상태", "phone", "권한", "created_at"
+                    ]].rename(columns={
+                        "name": "성명", "gender": "성별", "age": "나이", "region": "활동지역",
+                        "job": "직업_전문분야", "hobbies": "취미_여가", "intro": "한줄소개",
+                        "credit_score": "신용점수", "phone": "연락처", "created_at": "가입일자"
+                    })
+
+                    csv_data = export_cols.to_csv(index=False, encoding="utf-8-sig")
+                    today_str = datetime.now().strftime("%Y%m%d")
+                    st.download_button(
+                        label="📥 전체 회원 명부 엑셀(CSV) 다운로드",
+                        data=csv_data,
+                        file_name=f"5060_회원명부_{today_str}.csv",
+                        mime="text/csv",
+                        help="클릭 시 엑셀에서 바로 열 수 있는 CSV 파일로 즉시 저장됩니다."
+                    )
+
+                    # 검색 및 정렬 제어판
+                    with st.container():
+                        st.markdown('<div class="filter-card">', unsafe_allow_html=True)
+                        f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
+                        with f_col1:
+                            search_name = st.text_input("🔍 성명 검색", placeholder="이름 입력 (예: 김진호)")
+                        with f_col2:
+                            search_phone4 = st.text_input("📱 전화번호 뒷 4자리", placeholder="뒷 4자리 (예: 2222)")
+                        with f_col3:
+                            sort_option = st.selectbox(
+                                "📊 정렬 기준",
+                                ["가입일시 최신순", "가입일시 과거순", "신용점수 높은순", "신용점수 낮은순", "나이 많은순", "나이 적은순", "성명 가나다순"]
+                            )
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                    df = raw_df.copy()
                     if search_name.strip():
                         df = df[df["name"].str.contains(search_name.strip(), na=False)]
 
@@ -1030,6 +1113,8 @@ else:
                                     supabase.table("users").update({"is_admin": False}).eq("id", target_user["id"]).execute()
                                     st.warning(f"{target_user['name']} 님의 관리자 권한이 회수되었습니다.")
                                     st.rerun()
+
+    render_support_footer()
 
     st.markdown("---")
     if st.button("로그아웃"):
