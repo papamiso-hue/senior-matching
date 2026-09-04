@@ -215,7 +215,6 @@ st.markdown("""
         background-color: #F1F5F9;
     }
 
-    /* 한 줄 소개 및 프로필 세부 배너 */
     .intro-quote-box {
         background: #F8FAFC;
         border-left: 3.5px solid #3B82F6;
@@ -458,7 +457,7 @@ else:
         elif c_status == "REJECTED":
             st.markdown(f"⚠️ **<span style='color:#EF4444;'>신용 증빙 서류 반려 (재제출 필요)</span>**", unsafe_allow_html=True)
         else:
-            st.markdown(f"⏳ **<span style='color:#D97706;'>신용 증빙 심사 대기 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
+            st.markdown(f"🛡️ **<span style='color:#D97706;'>안심 서류 검토 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
         
         sub_info = f"📍 {me['region']}"
         if me.get("job"):
@@ -468,7 +467,6 @@ else:
     if me.get("intro"):
         st.markdown(f'<div class="intro-quote-box">“{me["intro"]}”</div>', unsafe_allow_html=True)
 
-    # 프로필 정보 관리 펼침 메뉴
     with st.expander("✏️ 프로필 사진 · 상세소개 · 신용 서류 관리"):
         tab_p_edit, tab_p_pic, tab_p_doc = st.tabs(["📝 소개 및 취미 수정", "📸 프로필 사진 등록", "📄 신용 증빙 서류"])
         
@@ -581,11 +579,10 @@ else:
                         if cand.get("credit_status") == "APPROVED":
                             st.caption(f"🛡️ **공인 신용 인증 통과** ({cand['credit_score']}점)")
                         else:
-                            st.caption(f"⏳ 신용점수 검증 대기 ({cand['credit_score']}점)")
+                            st.caption(f"🛡️ 안심 서류 검토 중 ({cand['credit_score']}점)")
                     with c_col_score:
                         st.metric("일치율", f"{score}%")
 
-                    # 직업/취미 태그 표시
                     tags_lifestyle = []
                     if cand.get("job"): tags_lifestyle.append(f"💼 {cand['job']}")
                     if cand.get("hobbies"): tags_lifestyle.append(f"⛳ {cand['hobbies']}")
@@ -593,11 +590,9 @@ else:
                         tags_html = " ".join([f'<span class="detail-tag">{t}</span>' for t in tags_lifestyle])
                         st.markdown(tags_html, unsafe_allow_html=True)
 
-                    # 한 줄 소개 표시
                     if cand.get("intro"):
                         st.markdown(f'<div class="intro-quote-box">“{cand["intro"]}”</div>', unsafe_allow_html=True)
 
-                    # 가치관 일치 태그
                     tags = []
                     if my_answers.get(1) == cand_answers.get(1): tags.append("💍 혼인관 일치")
                     if my_answers.get(38) == cand_answers.get(38): tags.append("🚭 흡연관 일치")
@@ -624,7 +619,8 @@ else:
 
                     req_status = sent_dict.get(cand["id"])
                     if req_status == "PENDING":
-                        st.button(f"⏳ 대화 수락 대기 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
+                        # 버튼 텍스트 정중하게 개선
+                        st.button(f"⏳ 답변을 기다리는 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
                     elif req_status == "ACCEPTED":
                         cand_phone = cand.get("phone", "연락처 미등록")
                         st.success(f"🎉 대화 성사! {cand['name']} 님 연락처: **{cand_phone}**")
@@ -680,6 +676,16 @@ else:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
 
+        # 상태 한글 변환 함수
+        def get_match_status_text(status):
+            if status == "PENDING":
+                return "⏳ 답변을 기다리는 중"
+            elif status == "ACCEPTED":
+                return "🎉 대화 수락 완료"
+            elif status == "REJECTED":
+                return "소중한 마음만 간직"
+            return status
+
         with inbox_tab1:
             sent_list = supabase.table("match_requests").select("id, receiver_id, status, created_at").eq("sender_id", me["id"]).execute().data
             if not sent_list:
@@ -689,10 +695,11 @@ else:
                     rcv_user = supabase.table("users").select("name, age, region, phone, photo_url, credit_status, job, intro").eq("id", req["receiver_id"]).execute().data
                     if rcv_user:
                         rcv = rcv_user[0]
+                        status_kr = get_match_status_text(req['status'])
                         if req['status'] == 'ACCEPTED':
-                            st.write(f"• **{rcv['name']}** 님 | 상태: `수락 완료 🎉` | 📞 연락처: **{rcv.get('phone', '미등록')}**")
+                            st.write(f"• **{rcv['name']}** 님 | 상태: `{status_kr}` | 📞 연락처: **{rcv.get('phone', '미등록')}**")
                         else:
-                            st.write(f"• **{rcv['name']}** 님에게 보낸 신청 | 상태: `{req['status']}`")
+                            st.write(f"• **{rcv['name']}** 님에게 보낸 신청 | 상태: `{status_kr}`")
 
         with inbox_tab2:
             received_list = supabase.table("match_requests").select("id, sender_id, status, created_at").eq("receiver_id", me["id"]).execute().data
@@ -722,11 +729,10 @@ else:
                             if u.get("credit_status") == "APPROVED":
                                 st.caption(f"🛡️ **공인 신용 인증 통과** ({u['credit_score']}점)")
                             else:
-                                st.caption(f"⏳ 신용점수 검증 대기 ({u['credit_score']}점)")
+                                st.caption(f"🛡️ 안심 서류 검토 중 ({u['credit_score']}점)")
                         with rcv_c_score:
                             st.metric("일치율", f"{score}%")
 
-                        # 직업/취미 태그
                         tags_lifestyle = []
                         if u.get("job"): tags_lifestyle.append(f"💼 {u['job']}")
                         if u.get("hobbies"): tags_lifestyle.append(f"⛳ {u['hobbies']}")
@@ -764,7 +770,7 @@ else:
                         if req['status'] == 'ACCEPTED':
                             st.success(f"대화 성사 완료! 📞 연락처: **{u.get('phone', '미등록')}**")
                         elif req['status'] == 'REJECTED':
-                            st.caption("거절된 신청입니다.")
+                            st.caption("정중히 거절된 신청입니다.")
                         else:
                             col_acc, col_rej = st.columns(2)
                             with col_acc:
@@ -790,9 +796,9 @@ else:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
                 if not pending_users:
-                    st.info("현재 심사 대기 중인 증빙 서류가 없습니다.")
+                    st.info("현재 안심 서류 검토 대상이 없습니다.")
                 else:
-                    st.write(f"총 **{len(pending_users)}명**의 회원이 신용 승인을 기다리고 있습니다.")
+                    st.write(f"총 **{len(pending_users)}명**의 회원이 안심 서류 검토를 기다리고 있습니다.")
                     for pu in pending_users:
                         with st.container():
                             st.markdown(f"##### **{pu['name']}** 회원 ({pu['gender']} / {pu['age']}세 / {pu['region']})")
@@ -825,7 +831,7 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부 (직업 컬럼 추가)
+            # [2] 전체 고객 데이터 명부
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
                 
@@ -895,7 +901,7 @@ else:
 
                         page_df["권한"] = page_df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
                         page_df["심사상태"] = page_df["credit_status"].apply(
-                            lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "⏳ 대기중")
+                            lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "🛡️ 안심 서류 검토 중")
                         )
 
                         display_df = page_df[[
@@ -918,7 +924,7 @@ else:
                                 "지역": st.column_config.TextColumn("지역", width="small"),
                                 "직업/전문분야": st.column_config.TextColumn("직업/전문분야", width="medium"),
                                 "신용점수": st.column_config.NumberColumn("신용점수", width="small"),
-                                "심사상태": st.column_config.TextColumn("심사상태", width="small"),
+                                "심사상태": st.column_config.TextColumn("심사상태", width="medium"),
                                 "휴대폰 번호": st.column_config.TextColumn("휴대폰 번호", width="medium"),
                                 "권한": st.column_config.TextColumn("권한", width="small"),
                                 "가입일": st.column_config.TextColumn("가입일", width="small")
