@@ -51,13 +51,11 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* ✨ 눈에 확 띄는 프리미엄 안내 박스 */
+    /* 프리미엄 안내 박스 */
     .premium-hero-box {
         background: #F8FAFC;
-        border-left: 5px solid #D97706; /* 딥 골드 액센트 */
         border: 2px solid #E2E8F0;
-        border-left-width: 5px;
-        border-left-color: #D97706;
+        border-left: 5px solid #D97706;
         padding: 16px 18px;
         border-radius: 10px;
         margin-bottom: 1.3rem;
@@ -191,7 +189,6 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
     
-    # 눈에 확 들어오는 프리미엄 소개 박스
     st.markdown("""
         <div class="premium-hero-box">
             <div class="hero-line1">
@@ -206,7 +203,8 @@ if not st.session_state.user_id:
     tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
     with tab_login:
-        st.caption("🛡️ 지인 도용 방지를 위해 성함, 휴대폰 번호, 간편 비밀번호로 안전하게 인증합니다.")
+        # 요청하신 문구 수정 반영 (도용 방지 문구 제거)
+        st.caption("🛡️ 성함, 휴대폰 번호, 간편 비밀번호로 안전하게 인증합니다.")
         
         login_name = st.text_input("가입하신 성함", value=saved_name_val, key="login_name")
         login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", value=saved_phone_val, placeholder="01012345678", key="login_phone")
