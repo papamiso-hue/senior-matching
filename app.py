@@ -18,7 +18,7 @@ st.markdown("""
     .block-container { 
         padding-top: 3.2rem !important; 
         padding-bottom: 3rem !important; 
-        max-width: 780px; /* 전체 폭을 넉넉하게 확장 */
+        max-width: 780px; 
     }
     .main-title {
         font-size: 1.65rem;
@@ -198,13 +198,21 @@ st.markdown("""
         border: 2.5px solid #CBD5E1;
     }
 
-    /* 관리자 검색 및 필터 박스 */
     .filter-card {
         background-color: #F8FAFC;
         border: 1.5px solid #CBD5E1;
         border-radius: 10px;
         padding: 14px 16px;
         margin-bottom: 1rem;
+    }
+
+    .pdf-preview-box {
+        border: 2px solid #CBD5E1;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        background-color: #F1F5F9;
     }
 
     #MainMenu {visibility: hidden !important;}
@@ -421,7 +429,7 @@ else:
         st.caption(f"📍 희망 활동 지역: {me['region']}")
 
     with st.expander("📷 프로필 사진 및 신용 증빙서류 등록"):
-        tab_p_pic, tab_p_doc = st.tabs(["내 얼굴/일상 사진", "📄 토스/카카오페이 신용점수 캡처"])
+        tab_p_pic, tab_p_doc = st.tabs(["내 얼굴/일상 사진", "📄 신용점수 캡처 또는 공식 PDF"])
         
         with tab_p_pic:
             up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
@@ -440,13 +448,15 @@ else:
                     st.error(f"사진 저장 실패: {e}")
 
         with tab_p_doc:
-            st.caption("카카오페이, 토스, 나이스, 올크레딧 등에서 조회한 신용점수 캡처본을 첨부하시면 관리자 확인 후 '공인 인증' 마크가 부여됩니다.")
-            up_doc = st.file_uploader("신용점수 캡처 이미지 선택", type=["jpg", "jpeg", "png"], key="user_credit_doc_up")
+            st.caption("토스/카카오페이 신용점수 캡처 이미지(JPG, PNG) 또는 나이스/KCB 공식 신용조회서(PDF)를 등록해 주세요.")
+            # PDF 및 이미지 확장자 모두 허용
+            up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
             if up_doc and st.button("증빙 서류 제출하기"):
                 ext = up_doc.name.split(".")[-1].lower()
                 fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
+                content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
                 try:
-                    supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": f"image/{ext}"})
+                    supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": content_type})
                     url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
                     supabase.table("users").update({
                         "credit_doc_url": url,
@@ -455,7 +465,7 @@ else:
                     me["credit_doc_url"] = url
                     me["credit_status"] = "PENDING"
                     st.session_state.user_info = me
-                    st.success("증빙 서류가 정상 제출되었습니다. 관리자 심사 후 승인 배지가 부여됩니다!")
+                    st.success("증빙 서류가 정상 제출되었습니다. 관리자 심사 후 공인 인증 마크가 부여됩니다!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"서류 제출 실패: {e}")
@@ -692,7 +702,7 @@ else:
             
             adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 관리자 권한 관리"])
             
-            # [1] 신용 심사 대기열
+            # [1] 신용 심사 대기열 (이미지 및 PDF 뷰어 동시 지원)
             with adm_sub1:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
@@ -704,8 +714,22 @@ else:
                         with st.container():
                             st.markdown(f"##### **{pu['name']}** 회원 ({pu['gender']} / {pu['age']}세 / {pu['region']})")
                             st.write(f"• 입력 신용점수: **{pu['credit_score']}점** | 📞 연락처: `{pu['phone']}`")
-                            st.write("• 제출된 증빙 서류 원본:")
-                            st.image(pu['credit_doc_url'], caption=f"{pu['name']} 님의 제출 서류", use_container_width=True)
+                            
+                            doc_url = pu['credit_doc_url']
+                            is_pdf = doc_url.lower().endswith(".pdf")
+                            
+                            st.write("• 제출된 증빙 서류:")
+                            if is_pdf:
+                                # PDF 뷰어 및 새 창 열기 지원
+                                st.markdown(f"""
+                                    <div class="pdf-preview-box">
+                                        <iframe src="{doc_url}" width="100%" height="450px" style="border:none;"></iframe>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                st.markdown(f'<a href="{doc_url}" target="_blank" style="display:inline-block; margin-bottom:12px; font-weight:800; color:#0284C7; text-decoration:none;">📄 PDF 새 창에서 크게 보기 & 다운로드</a>', unsafe_allow_html=True)
+                            else:
+                                # 이미지 원본 렌더링
+                                st.image(doc_url, caption=f"{pu['name']} 님의 제출 이미지", use_container_width=True)
                             
                             bcol1, bcol2 = st.columns(2)
                             with bcol1:
@@ -720,11 +744,10 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부 (검색, 정렬, 페이지네이션 탑재)
+            # [2] 전체 고객 데이터 명부 (검색, 정렬, 페이지네이션)
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
                 
-                # 검색 및 정렬 제어판
                 with st.container():
                     st.markdown('<div class="filter-card">', unsafe_allow_html=True)
                     f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
@@ -739,28 +762,22 @@ else:
                         )
                     st.markdown('</div>', unsafe_allow_html=True)
 
-                # DB에서 전체 회원 조회
                 all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, is_admin, created_at").execute().data
                 
                 if all_users:
                     df = pd.DataFrame(all_users)
-                    
-                    # 결측치 정돈
                     df["phone"] = df["phone"].fillna("-").astype(str)
                     df["credit_score"] = df["credit_score"].fillna(0).astype(int)
                     df["age"] = df["age"].fillna(0).astype(int)
                     df["created_at"] = df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
 
-                    # 1) 성명 검색 필터링
                     if search_name.strip():
                         df = df[df["name"].str.contains(search_name.strip(), na=False)]
 
-                    # 2) 전화번호 뒷 4자리 검색 필터링
                     if search_phone4.strip():
                         clean_p4 = re.sub(r'[^0-9]', '', search_phone4.strip())
                         df = df[df["phone"].apply(lambda p: p.endswith(clean_p4) if len(p) >= 4 else False)]
 
-                    # 3) 정렬 로직
                     if sort_option == "가입일시 최신순":
                         df = df.sort_values(by="created_at", ascending=False)
                     elif sort_option == "가입일시 과거순":
@@ -782,7 +799,6 @@ else:
                     if total_found == 0:
                         st.warning("조건에 일치하는 회원이 없습니다.")
                     else:
-                        # 4) 페이지네이션 제어
                         page_size_col, page_no_col = st.columns([1.5, 2])
                         with page_size_col:
                             page_size = st.selectbox("페이지당 인원", [10, 20, 50], index=0)
@@ -795,7 +811,6 @@ else:
                         end_idx = start_idx + page_size
                         page_df = df.iloc[start_idx:end_idx].copy()
 
-                        # 표시용 컬럼 정리
                         page_df["권한"] = page_df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
                         page_df["심사상태"] = page_df["credit_status"].apply(
                             lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "⏳ 대기중")
@@ -808,10 +823,8 @@ else:
                             "credit_score": "신용점수", "phone": "휴대폰 번호", "created_at": "가입일"
                         })
 
-                        # 인덱스 초기화(1부터 시작)
                         display_df.index = range(start_idx + 1, start_idx + len(display_df) + 1)
 
-                        # 시원한 폭으로 데이터프레임 렌더링
                         st.dataframe(
                             display_df,
                             use_container_width=True,
