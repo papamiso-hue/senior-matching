@@ -3,25 +3,53 @@ from supabase import create_client, Client
 
 st.set_page_config(page_title="5060 안심 매칭", page_icon="💍", layout="centered")
 
-# 상단 여백(padding-top) 확보 및 모바일 최적화 CSS
+# 상단 여백 및 가독성 최적화 스타일
 st.markdown("""
     <style>
     .block-container { 
-        padding-top: 4.5rem !important; 
+        padding-top: 3.5rem !important; 
         padding-bottom: 3rem !important; 
         max-width: 580px; 
     }
     .main-title {
         font-size: 1.65rem;
         font-weight: 800;
-        color: #1a1a1a;
-        margin-bottom: 0.3rem;
+        color: #111827;
+        margin-bottom: 0.8rem;
+        line-height: 1.35;
+        letter-spacing: -0.5px;
+    }
+    .badge-box {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        color: #F8FAFC;
+        padding: 14px 18px;
+        border-radius: 12px;
+        margin-bottom: 0.9rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid #334155;
+    }
+    .badge-tag {
+        display: inline-block;
+        background-color: #E11D48;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+    }
+    .badge-text {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #F8FAFC;
         line-height: 1.4;
     }
-    .sub-title {
-        font-size: 0.95rem;
-        color: #666;
-        margin-bottom: 1.2rem;
+    .sub-desc {
+        font-size: 0.92rem;
+        color: #4B5563;
+        margin-bottom: 1.3rem;
+        line-height: 1.55;
     }
     .stButton>button { 
         width: 100%; 
@@ -48,8 +76,15 @@ if "user_info" not in st.session_state:
 
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
-    st.markdown('<div class="main-title">💍 5060 프리미엄 안심 가치관 매칭</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-title">신용 인증과 가치관 문답 기반의 품격 있는 만남</div>', unsafe_allow_html=True)
+    # 요청하신 문구 적용
+    st.markdown('<div class="main-title">💍 5060 프리미엄 가치관·신용 매칭</div>', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="badge-box">
+            <span class="badge-tag">엄격한 입회 기준</span>
+            <div class="badge-text">남성 800점 이상 · 여성 600점 이상 신용 인증 필수</div>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div class="sub-desc">신용이 검증된 분들만 모시는 고품격 만남. 75가지 가치관 문답으로 깊이가 통하는 인연을 찾습니다.</div>', unsafe_allow_html=True)
     st.divider()
 
     tab_login, tab_join = st.tabs(["기존 회원 로그인", "신규 회원가입"])
@@ -71,7 +106,7 @@ if not st.session_state.user_id:
             gender = st.radio("성별", ["남", "여"], horizontal=True)
             age = st.number_input("나이 (만 나이)", 40, 85, 58)
             region = st.selectbox("활동 희망 지역", ["서울 강남/서초", "서울 강북/도심", "서울 서남/영등포", "경기 분당/판교", "경기 일산", "인천/부천", "기타"])
-            credit_score = st.number_input("신용점수 (남 800+ / 여 600+)", 0, 1000, 820)
+            credit_score = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820)
             
             st.markdown("##### 🎯 3대 필수 가치관 문답")
             q1 = st.radio("1. 관계의 최종 형태?", ["법률혼 (서류상 정식 재혼 희망)", "사실혼 (합가 동거하되 서류 정리는 신중)", "LAT 동반자 (각자 주거를 유지하며 여행과 일상 공유)", "상황에 맞추어 유연하게 협의"])
