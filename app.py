@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import re
 import uuid
+import math
 import pandas as pd
 from supabase import create_client, Client
 
@@ -11,13 +12,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# 반응형 고대비 및 프리미엄 스타일
+# 반응형 고대비 및 관리자 와이드 스타일 지원
 st.markdown("""
     <style>
     .block-container { 
         padding-top: 3.2rem !important; 
         padding-bottom: 3rem !important; 
-        max-width: 620px; 
+        max-width: 780px; /* 전체 폭을 넉넉하게 확장 */
     }
     .main-title {
         font-size: 1.65rem;
@@ -124,20 +125,20 @@ st.markdown("""
     }
 
     div[data-baseweb="tab-list"] {
-        gap: 10px;
+        gap: 8px;
         background-color: transparent;
         border-bottom: none !important;
         margin-bottom: 1.2rem;
     }
     div[data-baseweb="tab"] {
         flex: 1;
-        height: 52px;
+        height: 50px;
         border: 2px solid #CBD5E1 !important;
         border-radius: 10px !important;
         background-color: #F1F5F9 !important;
         color: #475569 !important;
         font-weight: 700 !important;
-        font-size: 1rem !important;
+        font-size: 0.95rem !important;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -195,6 +196,15 @@ st.markdown("""
         align-items: center;
         font-size: 2.2rem;
         border: 2.5px solid #CBD5E1;
+    }
+
+    /* 관리자 검색 및 필터 박스 */
+    .filter-card {
+        background-color: #F8FAFC;
+        border: 1.5px solid #CBD5E1;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 1rem;
     }
 
     #MainMenu {visibility: hidden !important;}
@@ -674,13 +684,12 @@ else:
                                     st.rerun()
                         st.divider()
 
-    # --- 탭 4: 👑 관리자 콘솔 (운영자 계정만 접근 가능) ---
+    # --- 탭 4: 👑 관리자 콘솔 ---
     if me.get("is_admin"):
         with tabs[3]:
             st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
             st.caption("신용 증빙 서류 심사, 전체 고객 명부 및 관리자 권한을 관리합니다.")
             
-            # 관리자 권한 관리 탭 추가
             adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 관리자 권한 관리"])
             
             # [1] 신용 심사 대기열
@@ -711,23 +720,118 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부
+            # [2] 전체 고객 데이터 명부 (검색, 정렬, 페이지네이션 탑재)
             with adm_sub2:
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, is_admin, created_at").order("created_at", desc=True).execute().data
+                st.markdown("##### 👥 회원 조회 및 실시간 검색")
+                
+                # 검색 및 정렬 제어판
+                with st.container():
+                    st.markdown('<div class="filter-card">', unsafe_allow_html=True)
+                    f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
+                    with f_col1:
+                        search_name = st.text_input("🔍 성명 검색", placeholder="이름 입력 (예: 김진호)")
+                    with f_col2:
+                        search_phone4 = st.text_input("📱 전화번호 뒷 4자리", placeholder="뒷 4자리 (예: 2222)")
+                    with f_col3:
+                        sort_option = st.selectbox(
+                            "📊 정렬 기준",
+                            ["가입일시 최신순", "가입일시 과거순", "신용점수 높은순", "신용점수 낮은순", "나이 많은순", "나이 적은순", "성명 가나다순"]
+                        )
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                # DB에서 전체 회원 조회
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, is_admin, created_at").execute().data
+                
                 if all_users:
                     df = pd.DataFrame(all_users)
-                    df["is_admin"] = df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
-                    df = df.rename(columns={
-                        "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
-                        "credit_score": "신용점수", "credit_status": "심사상태",
-                        "phone": "연락처", "is_admin": "권한", "created_at": "가입일시"
-                    })
-                    st.dataframe(df[["성명", "성별", "나이", "지역", "신용점수", "심사상태", "연락처", "권한", "가입일시"]], use_container_width=True)
-                    st.caption(f"총 등록 회원 수: **{len(all_users)}명**")
+                    
+                    # 결측치 정돈
+                    df["phone"] = df["phone"].fillna("-").astype(str)
+                    df["credit_score"] = df["credit_score"].fillna(0).astype(int)
+                    df["age"] = df["age"].fillna(0).astype(int)
+                    df["created_at"] = df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
+
+                    # 1) 성명 검색 필터링
+                    if search_name.strip():
+                        df = df[df["name"].str.contains(search_name.strip(), na=False)]
+
+                    # 2) 전화번호 뒷 4자리 검색 필터링
+                    if search_phone4.strip():
+                        clean_p4 = re.sub(r'[^0-9]', '', search_phone4.strip())
+                        df = df[df["phone"].apply(lambda p: p.endswith(clean_p4) if len(p) >= 4 else False)]
+
+                    # 3) 정렬 로직
+                    if sort_option == "가입일시 최신순":
+                        df = df.sort_values(by="created_at", ascending=False)
+                    elif sort_option == "가입일시 과거순":
+                        df = df.sort_values(by="created_at", ascending=True)
+                    elif sort_option == "신용점수 높은순":
+                        df = df.sort_values(by="credit_score", ascending=False)
+                    elif sort_option == "신용점수 낮은순":
+                        df = df.sort_values(by="credit_score", ascending=True)
+                    elif sort_option == "나이 많은순":
+                        df = df.sort_values(by="age", ascending=False)
+                    elif sort_option == "나이 적은순":
+                        df = df.sort_values(by="age", ascending=True)
+                    elif sort_option == "성명 가나다순":
+                        df = df.sort_values(by="name", ascending=True)
+
+                    total_found = len(df)
+                    st.caption(f"검색 결과: 총 **{total_found}명**")
+
+                    if total_found == 0:
+                        st.warning("조건에 일치하는 회원이 없습니다.")
+                    else:
+                        # 4) 페이지네이션 제어
+                        page_size_col, page_no_col = st.columns([1.5, 2])
+                        with page_size_col:
+                            page_size = st.selectbox("페이지당 인원", [10, 20, 50], index=0)
+                        
+                        total_pages = math.ceil(total_found / page_size)
+                        with page_no_col:
+                            page_num = st.selectbox("페이지 이동", list(range(1, total_pages + 1)), index=0)
+
+                        start_idx = (page_num - 1) * page_size
+                        end_idx = start_idx + page_size
+                        page_df = df.iloc[start_idx:end_idx].copy()
+
+                        # 표시용 컬럼 정리
+                        page_df["권한"] = page_df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
+                        page_df["심사상태"] = page_df["credit_status"].apply(
+                            lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "⏳ 대기중")
+                        )
+
+                        display_df = page_df[[
+                            "name", "gender", "age", "region", "credit_score", "심사상태", "phone", "권한", "created_at"
+                        ]].rename(columns={
+                            "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
+                            "credit_score": "신용점수", "phone": "휴대폰 번호", "created_at": "가입일"
+                        })
+
+                        # 인덱스 초기화(1부터 시작)
+                        display_df.index = range(start_idx + 1, start_idx + len(display_df) + 1)
+
+                        # 시원한 폭으로 데이터프레임 렌더링
+                        st.dataframe(
+                            display_df,
+                            use_container_width=True,
+                            height=380,
+                            column_config={
+                                "성명": st.column_config.TextColumn("성명", width="small"),
+                                "성별": st.column_config.TextColumn("성별", width="small"),
+                                "나이": st.column_config.NumberColumn("나이", width="small"),
+                                "지역": st.column_config.TextColumn("지역", width="medium"),
+                                "신용점수": st.column_config.NumberColumn("신용점수", width="small"),
+                                "심사상태": st.column_config.TextColumn("심사상태", width="small"),
+                                "휴대폰 번호": st.column_config.TextColumn("휴대폰 번호", width="medium"),
+                                "권한": st.column_config.TextColumn("권한", width="small"),
+                                "가입일": st.column_config.TextColumn("가입일", width="small")
+                            }
+                        )
                 else:
                     st.caption("등록된 회원이 없습니다.")
 
-            # [3] 🔑 관리자 권한 관리 (신규 관리자 임명 및 해제)
+            # [3] 🔑 관리자 권한 관리
             with adm_sub3:
                 st.markdown("##### 👥 신규 관리자 임명 및 해제")
                 st.caption("함께 운영할 회원을 선택하여 관리자 권한을 부여하거나 회수할 수 있습니다.")
@@ -735,7 +839,6 @@ else:
                 users_list = supabase.table("users").select("id, name, phone, is_admin").order("name").execute().data
                 
                 if users_list:
-                    # 선택 옵션 목록 생성
                     user_options = {f"{u['name']} ({u['phone']}) - {'[👑현재 관리자]' if u.get('is_admin') else '[일반회원]'}": u for u in users_list}
                     selected_label = st.selectbox("회원 선택", list(user_options.keys()))
                     target_user = user_options[selected_label]
@@ -752,7 +855,6 @@ else:
 
                     with col_adm_btn2:
                         if target_user.get("is_admin"):
-                            # 본인 계정 권한 스스로 박탈 방지
                             if target_user["id"] == me["id"]:
                                 st.caption("⚠️ 현재 로그인된 본인 계정은 관리자 해제할 수 없습니다.")
                             else:
