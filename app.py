@@ -132,14 +132,12 @@ if "user_id" not in st.session_state:
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
 
-# Query param 기반 자동 채움 확인 (localStorage 복원 연동)
 qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
 
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
-    # 브라우저 로컬 저장소에서 저장된 성함/전화번호를 읽어와 URL 파라미터로 주입하는 스크립트
     components.html("""
     <script>
     const savedName = localStorage.getItem('senior_match_name') || '';
@@ -170,12 +168,10 @@ if not st.session_state.user_id:
     with tab_login:
         st.caption("🛡️ 지인 도용 방지를 위해 성함, 휴대폰 번호, 간편 비밀번호로 안전하게 인증합니다.")
         
-        # 저장된 값이 있으면 기본값으로 노출
         login_name = st.text_input("가입하신 성함", value=saved_name_val, key="login_name")
         login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", value=saved_phone_val, placeholder="01012345678", key="login_phone")
         login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", placeholder="비밀번호 입력", key="login_pwd")
         
-        # 체크박스 기본값: 저장된 값이 있으면 기본 체크
         remember_me = st.checkbox("성함 및 휴대폰 번호 기억하기", value=bool(saved_name_val and saved_phone_val))
 
         if st.button("안심 본인인증 로그인"):
@@ -192,7 +188,6 @@ if not st.session_state.user_id:
                     st.session_state.user_id = res.data[0]["id"]
                     st.session_state.user_info = res.data[0]
 
-                    # 기억하기 체크 여부에 따라 브라우저 로컬 저장소 업데이트
                     if remember_me:
                         components.html(f"""
                         <script>
@@ -213,6 +208,28 @@ if not st.session_state.user_id:
                     st.rerun()
                 else:
                     st.error("회원 정보 또는 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
+
+        # 🔑 비밀번호 재설정 섹션
+        with st.expander("❓ 비밀번호를 잊으셨나요? (비밀번호 재설정)"):
+            st.caption("가입 시 등록하신 본인 정보(성함, 휴대폰 번호, 나이)를 확인 후 즉시 새 비밀번호로 변경합니다.")
+            reset_name = st.text_input("성함 확인", key="reset_name")
+            reset_phone = st.text_input("휴대폰 번호 확인 (- 없이 숫자만)", placeholder="01012345678", key="reset_phone")
+            reset_age = st.number_input("가입 시 등록한 나이 (만 나이)", 40, 85, 58, key="reset_age")
+            new_pwd = st.text_input("새로운 간편 비밀번호 (4~6자리)", type="password", placeholder="새 비밀번호 입력", key="new_pwd")
+
+            if st.button("비밀번호 즉시 변경하기"):
+                clean_rphone = re.sub(r'[^0-9]', '', reset_phone.strip())
+                if not reset_name.strip() or not clean_rphone or len(new_pwd.strip()) < 4:
+                    st.error("모든 항목을 올바르게 입력해 주세요. (비밀번호는 최소 4자리 이상)")
+                else:
+                    # 성함 + 휴대폰 번호 + 등록 나이 3중 본인 확인
+                    match_u = supabase.table("users").select("id").eq("name", reset_name.strip()).eq("phone", clean_rphone).eq("age", int(reset_age)).execute().data
+                    if match_u:
+                        user_target_id = match_u[0]["id"]
+                        supabase.table("users").update({"password": new_pwd.strip()}).eq("id", user_target_id).execute()
+                        st.success("🎉 비밀번호가 성공적으로 변경되었습니다! 위 로그인 창에서 새 비밀번호로 로그인해 주세요.")
+                    else:
+                        st.error("일치하는 회원 정보를 찾을 수 없습니다. 성함, 휴대폰 번호, 나이를 다시 확인해 주세요.")
 
     with tab_join:
         with st.form("join_form"):
