@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 다크/화이트 모드 자동 반응형 스타일
+# 탭/버튼/입력창 테두리 강화 및 클릭 대비 극대화 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -15,7 +15,6 @@ st.markdown("""
         padding-bottom: 3rem !important; 
         max-width: 580px; 
     }
-    /* 타이틀: 테마 변수(var(--text-color))를 따라 화이트에선 검정, 다크에선 흰색 자동 전환 */
     .main-title {
         font-size: 1.6rem;
         font-weight: 800;
@@ -24,7 +23,6 @@ st.markdown("""
         line-height: 1.35;
         letter-spacing: -0.5px;
     }
-    /* 설명문: 테마 기본 글자색에 살짝 투명도 적용 */
     .sub-desc {
         font-size: 0.95rem;
         color: var(--text-color) !important;
@@ -32,14 +30,13 @@ st.markdown("""
         margin-bottom: 1.3rem;
         line-height: 1.6;
     }
-    /* 배지 박스: 자체 다크 배경이므로 글자색은 고정 */
     .badge-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         padding: 16px;
         border-radius: 12px;
         margin-bottom: 1rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        border: 1px solid #334155;
+        border: 2px solid #334155;
     }
     .badge-tag {
         display: inline-block;
@@ -58,12 +55,69 @@ st.markdown("""
         color: #38BDF8 !important;
         line-height: 1.4;
     }
+
+    /* 🎯 탭(기존 회원 로그인 / 신규 회원가입) 직관적 박스형 UI */
+    div[data-baseweb="tab-list"] {
+        gap: 10px;
+        background-color: transparent;
+        border-bottom: none !important;
+        margin-bottom: 1.2rem;
+    }
+    div[data-baseweb="tab"] {
+        flex: 1;
+        height: 52px;
+        border: 2px solid #CBD5E1 !important; /* 미선택 탭 테두리 */
+        border-radius: 10px !important;
+        background-color: #F1F5F9 !important;
+        color: #475569 !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s ease-in-out;
+    }
+    /* 클릭되어 활성화된 탭: 진한 네이비 배경 + 굵은 강조 테두리 + 흰 글씨 */
+    div[data-baseweb="tab"][aria-selected="true"] {
+        background-color: #0F172A !important;
+        border: 2.5px solid #E11D48 !important; /* 강렬한 로즈레드 테두리 */
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+    }
+    div[data-baseweb="tab-border"] {
+        display: none !important; /* 기존 흐릿한 밑줄 제거 */
+    }
+
+    /* 🎯 텍스트 입력창 및 선택창 테두리 강조 */
+    div[data-baseweb="input"] {
+        border: 2px solid #94A3B8 !important;
+        border-radius: 8px !important;
+    }
+    div[data-baseweb="input"]:focus-within {
+        border: 2.5px solid #E11D48 !important;
+    }
+
+    /* 🎯 버튼 스타일: 도톰한 테두리 및 클릭 효과 */
     .stButton>button { 
         width: 100%; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        height: 3rem;
+        border-radius: 10px; 
+        font-weight: 800; 
+        height: 3.2rem;
+        font-size: 1.05rem;
+        border: 2px solid #0F172A !important;
+        background-color: #0F172A !important;
+        color: #FFFFFF !important;
+        transition: all 0.15s ease;
     }
+    .stButton>button:active {
+        transform: scale(0.98);
+        border-color: #E11D48 !important;
+    }
+
+    /* 기타 Streamlit 기본 메뉴 숨김 */
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -93,7 +147,7 @@ if not st.session_state.user_id:
     st.markdown('<div class="sub-desc">신용이 검증된 분들만 모시는 고품격 만남.<br>75가지 가치관 문답으로 깊이가 통하는 인연을 찾습니다.</div>', unsafe_allow_html=True)
     st.divider()
 
-    tab_login, tab_join = st.tabs(["기존 회원 로그인", "신규 회원가입"])
+    tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
     with tab_login:
         login_name = st.text_input("가입하신 성함", key="login_name")
@@ -119,7 +173,7 @@ if not st.session_state.user_id:
             q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"])
             q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"])
 
-            submit_join = st.form_submit_button("신용 검증 및 안심 가입")
+            submit_join = st.form_submit_button("신용 검증 및 안심 가입 완료")
             if submit_join:
                 cutoff = 800 if gender == "남" else 600
                 if credit_score < cutoff:
@@ -155,7 +209,6 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
-    # --- 탭 1: 이성 추천 피드 & 가치관 대조표 ---
     with tab_feed:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
@@ -228,7 +281,6 @@ else:
 
                     st.divider()
 
-    # --- 탭 2: 75문항 문답 이어하기 ---
     with tab_survey:
         answered_qnums = list(my_answers.keys())
         st.progress(len(answered_qnums) / 75, text=f"전체 75문항 중 {len(answered_qnums)}개 답변 완료")
@@ -263,7 +315,6 @@ else:
         else:
             st.success("🎉 모든 문항 답변을 완료하셨습니다.")
 
-    # --- 탭 3: 대화 신청 보관함 ---
     with tab_inbox:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
