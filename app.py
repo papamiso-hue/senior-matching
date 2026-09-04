@@ -239,6 +239,18 @@ st.markdown("""
         border: 1px solid #E2E8F0;
     }
 
+    .terms-box {
+        background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        color: #475569;
+        line-height: 1.5;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }
+
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -328,27 +340,32 @@ if not st.session_state.user_id:
                     .eq("password", login_pwd.strip())\
                     .execute()
                 if res.data:
-                    st.session_state.user_id = res.data[0]["id"]
-                    st.session_state.user_info = res.data[0]
-
-                    if remember_me:
-                        components.html(f"""
-                        <script>
-                        localStorage.setItem('senior_match_name', '{login_name.strip()}');
-                        localStorage.setItem('senior_match_phone', '{clean_lphone}');
-                        localStorage.setItem('senior_match_remember', 'true');
-                        </script>
-                        """, height=0)
+                    user_data = res.data[0]
+                    # 🚫 계정 정지(블랙리스트) 체크
+                    if user_data.get("is_suspended"):
+                        st.error("🚫 운영 정책 위반 또는 이용 제한 조치된 계정입니다. 고객센터에 문의해 주세요.")
                     else:
-                        components.html("""
-                        <script>
-                        localStorage.removeItem('senior_match_name');
-                        localStorage.removeItem('senior_match_phone');
-                        localStorage.setItem('senior_match_remember', 'false');
-                        </script>
-                        """, height=0)
+                        st.session_state.user_id = user_data["id"]
+                        st.session_state.user_info = user_data
 
-                    st.rerun()
+                        if remember_me:
+                            components.html(f"""
+                            <script>
+                            localStorage.setItem('senior_match_name', '{login_name.strip()}');
+                            localStorage.setItem('senior_match_phone', '{clean_lphone}');
+                            localStorage.setItem('senior_match_remember', 'true');
+                            </script>
+                            """, height=0)
+                        else:
+                            components.html("""
+                            <script>
+                            localStorage.removeItem('senior_match_name');
+                            localStorage.removeItem('senior_match_phone');
+                            localStorage.setItem('senior_match_remember', 'false');
+                            </script>
+                            """, height=0)
+
+                        st.rerun()
                 else:
                     st.error("회원 정보 또는 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
 
@@ -364,11 +381,14 @@ if not st.session_state.user_id:
                 if not reset_name.strip() or not clean_rphone or len(new_pwd.strip()) < 4:
                     st.error("모든 항목을 올바르게 입력해 주세요. (비밀번호는 최소 4자리 이상)")
                 else:
-                    match_u = supabase.table("users").select("id").eq("name", reset_name.strip()).eq("phone", clean_rphone).eq("age", int(reset_age)).execute().data
+                    match_u = supabase.table("users").select("id, is_suspended").eq("name", reset_name.strip()).eq("phone", clean_rphone).eq("age", int(reset_age)).execute().data
                     if match_u:
-                        user_target_id = match_u[0]["id"]
-                        supabase.table("users").update({"password": new_pwd.strip()}).eq("id", user_target_id).execute()
-                        st.success("🎉 비밀번호가 성공적으로 변경되었습니다! 위 로그인 창에서 새 비밀번호로 로그인해 주세요.")
+                        if match_u[0].get("is_suspended"):
+                            st.error("이용이 제한된 계정은 비밀번호를 변경할 수 없습니다.")
+                        else:
+                            user_target_id = match_u[0]["id"]
+                            supabase.table("users").update({"password": new_pwd.strip()}).eq("id", user_target_id).execute()
+                            st.success("🎉 비밀번호가 성공적으로 변경되었습니다! 위 로그인 창에서 새 비밀번호로 로그인해 주세요.")
                     else:
                         st.error("일치하는 회원 정보를 찾을 수 없습니다. 성함, 휴대폰 번호, 나이를 다시 확인해 주세요.")
 
@@ -392,12 +412,28 @@ if not st.session_state.user_id:
             q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"])
             q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"])
 
+            # 📜 개인정보 처리방침 및 신용 서류 안전 보장 약관
+            st.markdown("---")
+            st.markdown("##### 🛡️ 안심 개인정보 및 신용 서류 파기 원칙")
+            st.markdown("""
+                <div class="terms-box">
+                    <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 연락처 제공.<br>
+                    <b>2. 신용 증빙 서류 100% 안전 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 안전하게 비공개 처리되며 타인에게 절대 노출되지 않습니다.<br>
+                    <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처가 공개됩니다.<br>
+                    <b>4. 부적격 회원 조치:</b> 허위 서류 제출 및 불량 매너 회원은 사전 통보 없이 영구 이용 정지 처리됩니다.
+                </div>
+            """, unsafe_allow_html=True)
+            
+            agree_terms = st.checkbox("위 개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의합니다. (필수)")
+
             submit_join = st.form_submit_button("신용 검증 및 안심 가입 완료")
             if submit_join:
                 clean_phone = re.sub(r'[^0-9]', '', phone.strip())
                 cutoff = 800 if gender == "남" else 600
                 
-                if not name.strip():
+                if not agree_terms:
+                    st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
+                elif not name.strip():
                     st.error("성명을 입력해 주세요.")
                 elif len(clean_phone) < 10:
                     st.error("올바른 휴대폰 번호를 입력해 주세요. (예: 01012345678)")
@@ -423,7 +459,8 @@ if not st.session_state.user_id:
                             "intro": intro.strip() if intro else None,
                             "is_verified": False,
                             "credit_status": "PENDING",
-                            "is_admin": False
+                            "is_admin": False,
+                            "is_suspended": False
                         }).execute().data[0]
                         
                         uid = new_u["id"]
@@ -545,7 +582,8 @@ else:
     with tabs[0]:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
-        candidates = supabase.table("users").select("*").eq("gender", target_gender).execute().data
+        # 🚫 정지된 회원은 추천 피드에서 제외
+        candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
 
         sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
         sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
@@ -619,7 +657,6 @@ else:
 
                     req_status = sent_dict.get(cand["id"])
                     if req_status == "PENDING":
-                        # 버튼 텍스트 정중하게 개선
                         st.button(f"⏳ 답변을 기다리는 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
                     elif req_status == "ACCEPTED":
                         cand_phone = cand.get("phone", "연락처 미등록")
@@ -676,7 +713,6 @@ else:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
 
-        # 상태 한글 변환 함수
         def get_match_status_text(status):
             if status == "PENDING":
                 return "⏳ 답변을 기다리는 중"
@@ -787,9 +823,9 @@ else:
     if me.get("is_admin"):
         with tabs[3]:
             st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
-            st.caption("신용 증빙 서류 심사, 전체 고객 명부 및 관리자 권한을 관리합니다.")
+            st.caption("신용 증빙 서류 심사, 전체 고객 명부 및 관리자 권한/회원 제재를 관리합니다.")
             
-            adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 관리자 권한 관리"])
+            adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 회원 제재 및 관리자 권한"])
             
             # [1] 신용 심사 대기열
             with adm_sub1:
@@ -831,7 +867,7 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부
+            # [2] 전체 고객 데이터 명부 (계정 상태 추가)
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
                 
@@ -849,7 +885,7 @@ else:
                         )
                     st.markdown('</div>', unsafe_allow_html=True)
 
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, is_admin, created_at").execute().data
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, is_admin, is_suspended, created_at").execute().data
                 
                 if all_users:
                     df = pd.DataFrame(all_users)
@@ -900,12 +936,13 @@ else:
                         page_df = df.iloc[start_idx:end_idx].copy()
 
                         page_df["권한"] = page_df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
+                        page_df["계정상태"] = page_df["is_suspended"].apply(lambda s: "🚫 이용정지" if s else "정상")
                         page_df["심사상태"] = page_df["credit_status"].apply(
                             lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "🛡️ 안심 서류 검토 중")
                         )
 
                         display_df = page_df[[
-                            "name", "gender", "age", "region", "job", "credit_score", "심사상태", "phone", "권한", "created_at"
+                            "name", "gender", "age", "region", "job", "credit_score", "심사상태", "계정상태", "phone", "권한", "created_at"
                         ]].rename(columns={
                             "name": "성명", "gender": "성별", "age": "나이", "region": "지역", "job": "직업/전문분야",
                             "credit_score": "신용점수", "phone": "휴대폰 번호", "created_at": "가입일"
@@ -925,6 +962,7 @@ else:
                                 "직업/전문분야": st.column_config.TextColumn("직업/전문분야", width="medium"),
                                 "신용점수": st.column_config.NumberColumn("신용점수", width="small"),
                                 "심사상태": st.column_config.TextColumn("심사상태", width="medium"),
+                                "계정상태": st.column_config.TextColumn("계정상태", width="small"),
                                 "휴대폰 번호": st.column_config.TextColumn("휴대폰 번호", width="medium"),
                                 "권한": st.column_config.TextColumn("권한", width="small"),
                                 "가입일": st.column_config.TextColumn("가입일", width="small")
@@ -933,18 +971,46 @@ else:
                 else:
                     st.caption("등록된 회원이 없습니다.")
 
-            # [3] 🔑 관리자 권한 관리
+            # [3] 🔑 회원 제재 및 관리자 권한 관리
             with adm_sub3:
-                st.markdown("##### 👥 신규 관리자 임명 및 해제")
-                st.caption("함께 운영할 회원을 선택하여 관리자 권한을 부여하거나 회수할 수 있습니다.")
+                st.markdown("##### 👥 회원 계정 제재(블랙리스트) 및 관리자 권한 설정")
+                st.caption("불량 회원을 즉시 차단하거나, 신뢰할 수 있는 회원을 공동 관리자로 임명합니다.")
                 
-                users_list = supabase.table("users").select("id, name, phone, is_admin").order("name").execute().data
+                users_list = supabase.table("users").select("id, name, phone, is_admin, is_suspended").order("name").execute().data
                 
                 if users_list:
-                    user_options = {f"{u['name']} ({u['phone']}) - {'[👑현재 관리자]' if u.get('is_admin') else '[일반회원]'}": u for u in users_list}
-                    selected_label = st.selectbox("회원 선택", list(user_options.keys()))
+                    def make_label(u):
+                        status_str = "🚫이용정지" if u.get("is_suspended") else "정상"
+                        role_str = "👑관리자" if u.get("is_admin") else "일반회원"
+                        return f"{u['name']} ({u['phone']}) - [{status_str} / {role_str}]"
+
+                    user_options = {make_label(u): u for u in users_list}
+                    selected_label = st.selectbox("대상 회원 선택", list(user_options.keys()))
                     target_user = user_options[selected_label]
                     
+                    st.write("")
+                    st.markdown("###### 1. 계정 이용 상태 제어 (블랙리스트)")
+                    col_ban1, col_ban2 = st.columns(2)
+                    with col_ban1:
+                        if not target_user.get("is_suspended"):
+                            if target_user["id"] == me["id"]:
+                                st.caption("본인 계정은 정지할 수 없습니다.")
+                            else:
+                                if st.button(f"🚫 {target_user['name']} 회원 이용 정지 (차단)", key=f"ban_{target_user['id']}"):
+                                    supabase.table("users").update({"is_suspended": True}).eq("id", target_user["id"]).execute()
+                                    st.warning(f"{target_user['name']} 회원이 이용 정지(차단) 처리되었습니다.")
+                                    st.rerun()
+                        else:
+                            st.info("현재 이용 정지(차단) 상태입니다.")
+                    with col_ban2:
+                        if target_user.get("is_suspended"):
+                            if st.button(f"✅ {target_user['name']} 회원 정지 해제 (정상 복원)", key=f"unban_{target_user['id']}"):
+                                supabase.table("users").update({"is_suspended": False}).eq("id", target_user["id"]).execute()
+                                st.success(f"{target_user['name']} 회원의 이용 정지가 해제되었습니다.")
+                                st.rerun()
+
+                    st.markdown("---")
+                    st.markdown("###### 2. 관리자 권한 위임 및 회수")
                     col_adm_btn1, col_adm_btn2 = st.columns(2)
                     with col_adm_btn1:
                         if not target_user.get("is_admin"):
