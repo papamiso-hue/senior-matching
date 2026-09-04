@@ -1,9 +1,13 @@
 import streamlit as st
 from supabase import create_client, Client
 
-st.set_page_config(page_title="5060 안심 매칭", page_icon="💍", layout="centered")
+st.set_page_config(
+    page_title="5060 프리미엄 가치관·신용 매칭",
+    page_icon="💍",
+    layout="centered"
+)
 
-# 상단 여백 및 가독성 최적화 스타일
+# 다크/라이트 모드 모두에서 글씨가 또렷하게 보이도록 강제 고정
 st.markdown("""
     <style>
     .block-container { 
@@ -12,9 +16,9 @@ st.markdown("""
         max-width: 580px; 
     }
     .main-title {
-        font-size: 1.65rem;
+        font-size: 1.55rem;
         font-weight: 800;
-        color: #111827;
+        color: #F8FAFC !important; /* 다크 모드에서도 선명한 화이트 */
         margin-bottom: 0.8rem;
         line-height: 1.35;
         letter-spacing: -0.5px;
@@ -22,10 +26,10 @@ st.markdown("""
     .badge-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         color: #F8FAFC;
-        padding: 14px 18px;
+        padding: 16px;
         border-radius: 12px;
-        margin-bottom: 0.9rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
         border: 1px solid #334155;
     }
     .badge-tag {
@@ -36,20 +40,20 @@ st.markdown("""
         font-weight: 700;
         padding: 3px 8px;
         border-radius: 4px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         letter-spacing: 0.5px;
     }
     .badge-text {
         font-size: 1.05rem;
         font-weight: 700;
-        color: #F8FAFC;
+        color: #38BDF8 !important; /* 시선 집중용 하늘색 포인트 */
         line-height: 1.4;
     }
     .sub-desc {
         font-size: 0.92rem;
-        color: #4B5563;
+        color: #CBD5E1 !important; /* 가독성 좋은 밝은 회색 */
         margin-bottom: 1.3rem;
-        line-height: 1.55;
+        line-height: 1.6;
     }
     .stButton>button { 
         width: 100%; 
@@ -76,7 +80,6 @@ if "user_info" not in st.session_state:
 
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
-    # 요청하신 문구 적용
     st.markdown('<div class="main-title">💍 5060 프리미엄 가치관·신용 매칭</div>', unsafe_allow_html=True)
     st.markdown("""
         <div class="badge-box">
@@ -84,7 +87,7 @@ if not st.session_state.user_id:
             <div class="badge-text">남성 800점 이상 · 여성 600점 이상 신용 인증 필수</div>
         </div>
     """, unsafe_allow_html=True)
-    st.markdown('<div class="sub-desc">신용이 검증된 분들만 모시는 고품격 만남. 75가지 가치관 문답으로 깊이가 통하는 인연을 찾습니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-desc">신용이 검증된 분들만 모시는 고품격 만남.<br>75가지 가치관 문답으로 깊이가 통하는 인연을 찾습니다.</div>', unsafe_allow_html=True)
     st.divider()
 
     tab_login, tab_join = st.tabs(["기존 회원 로그인", "신규 회원가입"])
