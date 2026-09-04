@@ -8,7 +8,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 탭/버튼/입력창 UI 스타일
+# 보안 강화 및 고대비 반응형 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -146,20 +146,34 @@ if not st.session_state.user_id:
     tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
     with tab_login:
+        st.caption("🛡️ 지인 도용 방지를 위해 성함, 휴대폰 번호, 간편 비밀번호로 안전하게 인증합니다.")
         login_name = st.text_input("가입하신 성함", key="login_name")
-        if st.button("내 계정 불러오기"):
-            res = supabase.table("users").select("*").eq("name", login_name.strip()).execute()
-            if res.data:
-                st.session_state.user_id = res.data[0]["id"]
-                st.session_state.user_info = res.data[0]
-                st.rerun()
+        login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", placeholder="01012345678", key="login_phone")
+        login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", placeholder="비밀번호 입력", key="login_pwd")
+        
+        if st.button("안심 본인인증 로그인"):
+            clean_lphone = re.sub(r'[^0-9]', '', login_phone.strip())
+            if not login_name.strip() or not clean_lphone or not login_pwd.strip():
+                st.error("성함, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
             else:
-                st.error("일치하는 회원 정보를 찾을 수 없습니다.")
+                # 3중 대조 (성함 + 휴대폰 번호 + 본인 설정 비밀번호)
+                res = supabase.table("users").select("*")\
+                    .eq("name", login_name.strip())\
+                    .eq("phone", clean_lphone)\
+                    .eq("password", login_pwd.strip())\
+                    .execute()
+                if res.data:
+                    st.session_state.user_id = res.data[0]["id"]
+                    st.session_state.user_info = res.data[0]
+                    st.rerun()
+                else:
+                    st.error("회원 정보 또는 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
 
     with tab_join:
         with st.form("join_form"):
             name = st.text_input("성명 (실명)")
             phone = st.text_input("휴대폰 번호 (- 없이 숫자만 입력)", placeholder="01012345678")
+            pwd = st.text_input("간편 비밀번호 설정 (4~6자리)", type="password", placeholder="숫자 4~6자리 권장")
             gender = st.radio("성별", ["남", "여"], horizontal=True)
             age = st.number_input("나이 (만 나이)", 40, 85, 58)
             region = st.selectbox("활동 희망 지역", ["서울 강남/서초", "서울 강북/도심", "서울 서남/영등포", "경기 분당/판교", "경기 일산", "인천/부천", "기타"])
@@ -179,29 +193,36 @@ if not st.session_state.user_id:
                     st.error("성명을 입력해 주세요.")
                 elif len(clean_phone) < 10:
                     st.error("올바른 휴대폰 번호를 입력해 주세요. (예: 01012345678)")
+                elif len(pwd.strip()) < 4:
+                    st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
                 elif credit_score < cutoff:
                     st.error(f"입회 기준 미달: {gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
                 else:
-                    new_u = supabase.table("users").insert({
-                        "name": name.strip(),
-                        "phone": clean_phone,
-                        "gender": gender,
-                        "age": int(age),
-                        "region": region,
-                        "credit_score": int(credit_score),
-                        "is_verified": True
-                    }).execute().data[0]
-                    
-                    uid = new_u["id"]
-                    supabase.table("user_answers").insert([
-                        {"user_id": uid, "question_num": 1, "answer_value": q1},
-                        {"user_id": uid, "question_num": 38, "answer_value": q38},
-                        {"user_id": uid, "question_num": 56, "answer_value": q56}
-                    ]).execute()
+                    dup = supabase.table("users").select("id").eq("phone", clean_phone).execute().data
+                    if dup:
+                        st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
+                    else:
+                        new_u = supabase.table("users").insert({
+                            "name": name.strip(),
+                            "phone": clean_phone,
+                            "password": pwd.strip(),
+                            "gender": gender,
+                            "age": int(age),
+                            "region": region,
+                            "credit_score": int(credit_score),
+                            "is_verified": True
+                        }).execute().data[0]
+                        
+                        uid = new_u["id"]
+                        supabase.table("user_answers").insert([
+                            {"user_id": uid, "question_num": 1, "answer_value": q1},
+                            {"user_id": uid, "question_num": 38, "answer_value": q38},
+                            {"user_id": uid, "question_num": 56, "answer_value": q56}
+                        ]).execute()
 
-                    st.session_state.user_id = uid
-                    st.session_state.user_info = new_u
-                    st.rerun()
+                        st.session_state.user_id = uid
+                        st.session_state.user_info = new_u
+                        st.rerun()
 
 # [2. 메인 대시보드]
 else:
@@ -354,7 +375,6 @@ else:
                     snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone").eq("id", req["sender_id"]).execute().data
                     if snd_user:
                         u = snd_user[0]
-                        # 🎯 신청자의 가치관 답변 조회 및 일치율 산출
                         u_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", u["id"]).execute().data
                         u_answers = {item["question_num"]: item["answer_value"] for item in u_ans_data}
 
@@ -367,7 +387,6 @@ else:
                         with col_score:
                             st.metric("일치율", f"{score}%")
 
-                        # 핵심 가치관 일치 배지
                         tags = []
                         if my_answers.get(1) == u_answers.get(1): tags.append("💍 혼인관 일치")
                         if my_answers.get(38) == u_answers.get(38): tags.append("🚭 흡연관 일치")
@@ -375,7 +394,6 @@ else:
                         if tags:
                             st.write(" ".join([f"`{t}`" for t in tags]))
 
-                        # 🔍 상대방 가치관 문답 대조표 펼치기
                         with st.expander(f"🔍 {u['name']} 님의 가치관 문답 대조표 확인하기"):
                             if not common_keys:
                                 st.caption("공통으로 응답한 문항이 아직 없습니다.")
@@ -393,7 +411,6 @@ else:
                                     st.markdown(f"- **상대방({u['name']}) 답변:** {u_val}")
                                     st.write("")
 
-                        # 수락/거절 상태 분기
                         if req['status'] == 'ACCEPTED':
                             st.success(f"대화 성사 완료! 📞 연락처: **{u.get('phone', '미등록')}**")
                         elif req['status'] == 'REJECTED':
