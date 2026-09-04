@@ -197,15 +197,6 @@ st.markdown("""
         border: 2.5px solid #CBD5E1;
     }
 
-    /* 관리자 전용 스타일 */
-    .admin-card {
-        background-color: #F8FAFC;
-        border: 2px solid #3B82F6;
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 1rem;
-    }
-
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -381,7 +372,8 @@ if not st.session_state.user_id:
                             "region": region,
                             "credit_score": int(credit_score),
                             "is_verified": False,
-                            "credit_status": "PENDING"
+                            "credit_status": "PENDING",
+                            "is_admin": False
                         }).execute().data[0]
                         
                         uid = new_u["id"]
@@ -399,7 +391,6 @@ if not st.session_state.user_id:
 else:
     me = st.session_state.user_info
 
-    # 📸 상단 내 프로필 & 신용 인증 상태 뱃지
     top_col1, top_col2 = st.columns([1, 3])
     with top_col1:
         if me.get("photo_url"):
@@ -410,7 +401,6 @@ else:
     with top_col2:
         st.markdown(f"#### **{me['name']}** 님 ({me['gender']}·{me['age']}세)")
         
-        # 신용 인증 상태별 배지 노출
         c_status = me.get("credit_status", "PENDING")
         if c_status == "APPROVED":
             st.markdown(f"🛡️ **<span style='color:#0284C7;'>공인 신용 인증 완료</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
@@ -420,7 +410,6 @@ else:
             st.markdown(f"⏳ **<span style='color:#D97706;'>신용 증빙 심사 대기 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
         st.caption(f"📍 희망 활동 지역: {me['region']}")
 
-    # 프로필 사진 및 신용 증빙서류 업로드 창
     with st.expander("📷 프로필 사진 및 신용 증빙서류 등록"):
         tab_p_pic, tab_p_doc = st.tabs(["내 얼굴/일상 사진", "📄 토스/카카오페이 신용점수 캡처"])
         
@@ -459,11 +448,10 @@ else:
                     st.success("증빙 서류가 정상 제출되었습니다. 관리자 심사 후 승인 배지가 부여됩니다!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"서류 제출 실패: credit-docs 버킷 생성을 확인해 주세요. ({e})")
+                    st.error(f"서류 제출 실패: {e}")
 
     st.divider()
 
-    # 탭 구성 (관리자일 경우 👑 관리자 콘솔 탭 추가 노출)
     tabs_list = ["💖 추천 피드", "📝 가치관 문답 이어하기", "📬 매칭 보관함"]
     if me.get("is_admin"):
         tabs_list.append("👑 관리자 콘솔")
@@ -690,9 +678,10 @@ else:
     if me.get("is_admin"):
         with tabs[3]:
             st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
-            st.caption("신용 증빙 서류 심사 및 전체 고객 데이터를 실시간 관리합니다.")
+            st.caption("신용 증빙 서류 심사, 전체 고객 명부 및 관리자 권한을 관리합니다.")
             
-            adm_sub1, adm_sub2 = st.tabs(["📑 신용 증빙 서류 심사 대기열", "👥 전체 고객 데이터 명부"])
+            # 관리자 권한 관리 탭 추가
+            adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 관리자 권한 관리"])
             
             # [1] 신용 심사 대기열
             with adm_sub1:
@@ -724,18 +713,53 @@ else:
 
             # [2] 전체 고객 데이터 명부
             with adm_sub2:
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, created_at").order("created_at", desc=True).execute().data
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, is_admin, created_at").order("created_at", desc=True).execute().data
                 if all_users:
                     df = pd.DataFrame(all_users)
+                    df["is_admin"] = df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
                     df = df.rename(columns={
                         "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
                         "credit_score": "신용점수", "credit_status": "심사상태",
-                        "phone": "연락처", "created_at": "가입일시"
+                        "phone": "연락처", "is_admin": "권한", "created_at": "가입일시"
                     })
-                    st.dataframe(df[["성명", "성별", "나이", "지역", "신용점수", "심사상태", "연락처", "가입일시"]], use_container_width=True)
+                    st.dataframe(df[["성명", "성별", "나이", "지역", "신용점수", "심사상태", "연락처", "권한", "가입일시"]], use_container_width=True)
                     st.caption(f"총 등록 회원 수: **{len(all_users)}명**")
                 else:
                     st.caption("등록된 회원이 없습니다.")
+
+            # [3] 🔑 관리자 권한 관리 (신규 관리자 임명 및 해제)
+            with adm_sub3:
+                st.markdown("##### 👥 신규 관리자 임명 및 해제")
+                st.caption("함께 운영할 회원을 선택하여 관리자 권한을 부여하거나 회수할 수 있습니다.")
+                
+                users_list = supabase.table("users").select("id, name, phone, is_admin").order("name").execute().data
+                
+                if users_list:
+                    # 선택 옵션 목록 생성
+                    user_options = {f"{u['name']} ({u['phone']}) - {'[👑현재 관리자]' if u.get('is_admin') else '[일반회원]'}": u for u in users_list}
+                    selected_label = st.selectbox("회원 선택", list(user_options.keys()))
+                    target_user = user_options[selected_label]
+                    
+                    col_adm_btn1, col_adm_btn2 = st.columns(2)
+                    with col_adm_btn1:
+                        if not target_user.get("is_admin"):
+                            if st.button(f"👑 {target_user['name']} 님을 관리자로 임명"):
+                                supabase.table("users").update({"is_admin": True}).eq("id", target_user["id"]).execute()
+                                st.success(f"{target_user['name']} 님이 새로운 관리자로 임명되었습니다!")
+                                st.rerun()
+                        else:
+                            st.info("이미 관리자 권한을 보유하고 있습니다.")
+
+                    with col_adm_btn2:
+                        if target_user.get("is_admin"):
+                            # 본인 계정 권한 스스로 박탈 방지
+                            if target_user["id"] == me["id"]:
+                                st.caption("⚠️ 현재 로그인된 본인 계정은 관리자 해제할 수 없습니다.")
+                            else:
+                                if st.button(f"❌ {target_user['name']} 님 관리자 권한 회수"):
+                                    supabase.table("users").update({"is_admin": False}).eq("id", target_user["id"]).execute()
+                                    st.warning(f"{target_user['name']} 님의 관리자 권한이 회수되었습니다.")
+                                    st.rerun()
 
     st.markdown("---")
     if st.button("로그아웃"):
