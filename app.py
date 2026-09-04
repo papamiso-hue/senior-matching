@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 보안 강화 및 고대비 반응형 스타일
+# 반응형 고대비 및 프리미엄 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -58,7 +58,7 @@ st.markdown("""
         text-underline-offset: 4px;
     }
 
-    /* 프리미엄 안내 박스 */
+    /* 프리미엄 핵심 소개 카드 */
     .premium-hero-box {
         background: #F8FAFC;
         border: 2px solid #E2E8F0;
@@ -93,26 +93,35 @@ st.markdown("""
         font-weight: 900;
     }
 
-    /* 네트워크 효과 프리미엄 안내 배너 */
-    .network-accent-box {
-        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
-        border: 1px solid #FCD34D;
-        border-radius: 10px;
-        padding: 12px 16px;
+    /* ✨ 두 칸으로 정돈된 은은하고 또렷한 네트워크 가치 배너 */
+    .network-accent-card {
+        background: linear-gradient(135deg, #FFFDF7 0%, #FEF9EE 100%);
+        border: 1.5px solid #F6D896;
+        border-radius: 12px;
+        padding: 14px 18px;
         margin-bottom: 1.3rem;
+        box-shadow: 0 3px 10px rgba(217, 119, 6, 0.08);
+    }
+    .network-row-1 {
         display: flex;
         align-items: center;
-        gap: 10px;
-        box-shadow: 0 2px 6px rgba(217, 119, 6, 0.08);
-    }
-    .network-text {
-        font-size: 0.92rem;
-        font-weight: 700;
-        color: #78350F !important;
-        line-height: 1.45;
-    }
-    .network-bold {
+        gap: 8px;
+        font-size: 0.96rem;
+        font-weight: 800;
         color: #B45309 !important;
+        letter-spacing: -0.3px;
+        margin-bottom: 4px;
+    }
+    .network-row-2 {
+        padding-left: 26px;
+        font-size: 0.98rem;
+        font-weight: 800;
+        color: #0F172A !important;
+        letter-spacing: -0.3px;
+        line-height: 1.4;
+    }
+    .network-highlight {
+        color: #E11D48 !important;
         font-weight: 900;
     }
 
@@ -228,10 +237,13 @@ if not st.session_state.user_id:
                 <span>💬</span> <span class="highlight-blue">75가지 가치관 문답</span>으로 깊이가 통하는 진짜 인연을 찾습니다.
             </div>
         </div>
-        <div class="network-accent-box">
-            <span style="font-size: 1.25rem;">✨</span>
-            <div class="network-text">
-                <span class="network-bold">검증된 인연이 모일수록,</span> 내 기준에 꼭 맞는 단 한 사람과의 만남은 더욱 완벽해집니다.
+        
+        <div class="network-accent-card">
+            <div class="network-row-1">
+                <span>✨</span> <span>검증된 품격 있는 인연이 모일수록</span>
+            </div>
+            <div class="network-row-2">
+                내 기준에 꼭 맞는 <span class="network-highlight">단 한 사람과의 만남</span>은 더욱 완벽해집니다.
             </div>
         </div>
     """, unsafe_allow_html=True)
