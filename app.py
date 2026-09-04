@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 from supabase import create_client, Client
 
 st.set_page_config(
@@ -7,7 +8,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 탭/버튼/입력창 테두리 강화 및 클릭 대비 극대화 스타일
+# 탭/버튼/입력창 테두리 강화 및 반응형 스타일
 st.markdown("""
     <style>
     .block-container { 
@@ -56,7 +57,7 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* 🎯 탭(기존 회원 로그인 / 신규 회원가입) 직관적 박스형 UI */
+    /* 탭 디자인: 도톰한 테두리와 뚜렷한 반전 */
     div[data-baseweb="tab-list"] {
         gap: 10px;
         background-color: transparent;
@@ -66,7 +67,7 @@ st.markdown("""
     div[data-baseweb="tab"] {
         flex: 1;
         height: 52px;
-        border: 2px solid #CBD5E1 !important; /* 미선택 탭 테두리 */
+        border: 2px solid #CBD5E1 !important;
         border-radius: 10px !important;
         background-color: #F1F5F9 !important;
         color: #475569 !important;
@@ -77,18 +78,16 @@ st.markdown("""
         align-items: center;
         transition: all 0.2s ease-in-out;
     }
-    /* 클릭되어 활성화된 탭: 진한 네이비 배경 + 굵은 강조 테두리 + 흰 글씨 */
     div[data-baseweb="tab"][aria-selected="true"] {
         background-color: #0F172A !important;
-        border: 2.5px solid #E11D48 !important; /* 강렬한 로즈레드 테두리 */
+        border: 2.5px solid #E11D48 !important;
         color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
     }
     div[data-baseweb="tab-border"] {
-        display: none !important; /* 기존 흐릿한 밑줄 제거 */
+        display: none !important;
     }
 
-    /* 🎯 텍스트 입력창 및 선택창 테두리 강조 */
     div[data-baseweb="input"] {
         border: 2px solid #94A3B8 !important;
         border-radius: 8px !important;
@@ -97,7 +96,6 @@ st.markdown("""
         border: 2.5px solid #E11D48 !important;
     }
 
-    /* 🎯 버튼 스타일: 도톰한 테두리 및 클릭 효과 */
     .stButton>button { 
         width: 100%; 
         border-radius: 10px; 
@@ -114,7 +112,6 @@ st.markdown("""
         border-color: #E11D48 !important;
     }
 
-    /* 기타 Streamlit 기본 메뉴 숨김 */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -163,6 +160,7 @@ if not st.session_state.user_id:
     with tab_join:
         with st.form("join_form"):
             name = st.text_input("성명 (실명)")
+            phone = st.text_input("휴대폰 번호 (- 없이 숫자만 입력)", placeholder="01012345678")
             gender = st.radio("성별", ["남", "여"], horizontal=True)
             age = st.number_input("나이 (만 나이)", 40, 85, 58)
             region = st.selectbox("활동 희망 지역", ["서울 강남/서초", "서울 강북/도심", "서울 서남/영등포", "경기 분당/판교", "경기 일산", "인천/부천", "기타"])
@@ -175,13 +173,24 @@ if not st.session_state.user_id:
 
             submit_join = st.form_submit_button("신용 검증 및 안심 가입 완료")
             if submit_join:
+                clean_phone = re.sub(r'[^0-9]', '', phone.strip())
                 cutoff = 800 if gender == "남" else 600
-                if credit_score < cutoff:
+                
+                if not name.strip():
+                    st.error("성명을 입력해 주세요.")
+                elif len(clean_phone) < 10:
+                    st.error("올바른 휴대폰 번호를 입력해 주세요. (예: 01012345678)")
+                elif credit_score < cutoff:
                     st.error(f"입회 기준 미달: {gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
                 else:
                     new_u = supabase.table("users").insert({
-                        "name": name.strip(), "gender": gender, "age": int(age),
-                        "region": region, "credit_score": int(credit_score), "is_verified": True
+                        "name": name.strip(),
+                        "phone": clean_phone,
+                        "gender": gender,
+                        "age": int(age),
+                        "region": region,
+                        "credit_score": int(credit_score),
+                        "is_verified": True
                     }).execute().data[0]
                     
                     uid = new_u["id"]
@@ -209,6 +218,7 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
+    # --- 탭 1: 이성 추천 피드 & 가치관 대조표 ---
     with tab_feed:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
@@ -268,7 +278,8 @@ else:
                     if req_status == "PENDING":
                         st.button(f"⏳ 대화 수락 대기 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
                     elif req_status == "ACCEPTED":
-                        st.success(f"🎉 대화가 성사되었습니다! (연락처 교환 가능)")
+                        cand_phone = cand.get("phone", "연락처 미등록")
+                        st.success(f"🎉 대화 성사! {cand['name']} 님 연락처: **{cand_phone}**")
                     else:
                         if st.button(f"💌 {cand['name']} 님에게 대화 신청", key=f"btn_{cand['id']}"):
                             supabase.table("match_requests").insert({
@@ -281,6 +292,7 @@ else:
 
                     st.divider()
 
+    # --- 탭 2: 75문항 문답 이어하기 ---
     with tab_survey:
         answered_qnums = list(my_answers.keys())
         st.progress(len(answered_qnums) / 75, text=f"전체 75문항 중 {len(answered_qnums)}개 답변 완료")
@@ -315,6 +327,7 @@ else:
         else:
             st.success("🎉 모든 문항 답변을 완료하셨습니다.")
 
+    # --- 탭 3: 대화 신청 보관함 ---
     with tab_inbox:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
@@ -325,9 +338,13 @@ else:
                 st.caption("아직 보낸 대화 신청이 없습니다.")
             else:
                 for req in sent_list:
-                    rcv_user = supabase.table("users").select("name, age, region").eq("id", req["receiver_id"]).execute().data
-                    rcv_name = rcv_user[0]["name"] if rcv_user else "회원"
-                    st.write(f"• **{rcv_name}** 님에게 보낸 신청 | 상태: `{req['status']}`")
+                    rcv_user = supabase.table("users").select("name, age, region, phone").eq("id", req["receiver_id"]).execute().data
+                    if rcv_user:
+                        rcv = rcv_user[0]
+                        if req['status'] == 'ACCEPTED':
+                            st.write(f"• **{rcv['name']}** 님 | 상태: `수락 완료 🎉` | 📞 연락처: **{rcv.get('phone', '미등록')}**")
+                        else:
+                            st.write(f"• **{rcv['name']}** 님에게 보낸 신청 | 상태: `{req['status']}`")
 
         with inbox_tab2:
             received_list = supabase.table("match_requests").select("id, sender_id, status, created_at").eq("receiver_id", me["id"]).execute().data
@@ -335,19 +352,24 @@ else:
                 st.caption("도착한 대화 신청이 없습니다.")
             else:
                 for req in received_list:
-                    snd_user = supabase.table("users").select("name, age, region, credit_score").eq("id", req["sender_id"]).execute().data
+                    snd_user = supabase.table("users").select("name, age, region, credit_score, phone").eq("id", req["sender_id"]).execute().data
                     if snd_user:
                         u = snd_user[0]
                         st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']} / 신용 {u['credit_score']}점)")
-                        col_acc, col_rej = st.columns(2)
-                        with col_acc:
-                            if st.button("수락", key=f"acc_{req['id']}"):
-                                supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
-                                st.rerun()
-                        with col_rej:
-                            if st.button("거절", key=f"rej_{req['id']}"):
-                                supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
-                                st.rerun()
+                        if req['status'] == 'ACCEPTED':
+                            st.success(f"대화 성사 완료! 📞 연락처: **{u.get('phone', '미등록')}**")
+                        elif req['status'] == 'REJECTED':
+                            st.caption("거절된 신청입니다.")
+                        else:
+                            col_acc, col_rej = st.columns(2)
+                            with col_acc:
+                                if st.button("수락", key=f"acc_{req['id']}"):
+                                    supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
+                                    st.rerun()
+                            with col_rej:
+                                if st.button("거절", key=f"rej_{req['id']}"):
+                                    supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
+                                    st.rerun()
                         st.divider()
 
     st.markdown("---")
