@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import re
+import uuid
 from supabase import create_client, Client
 
 st.set_page_config(
@@ -58,7 +59,6 @@ st.markdown("""
         text-underline-offset: 4px;
     }
 
-    /* 프리미엄 핵심 소개 카드 */
     .premium-hero-box {
         background: #F8FAFC;
         border: 2px solid #E2E8F0;
@@ -93,7 +93,6 @@ st.markdown("""
         font-weight: 900;
     }
 
-    /* ✨ 두 칸으로 정돈된 은은하고 또렷한 네트워크 가치 배너 */
     .network-accent-card {
         background: linear-gradient(135deg, #FFFDF7 0%, #FEF9EE 100%);
         border: 1.5px solid #F6D896;
@@ -177,6 +176,27 @@ st.markdown("""
     .stButton>button:active {
         transform: scale(0.98);
         border-color: #E11D48 !important;
+    }
+
+    /* 프로필 아바타 이미지 스타일 */
+    .profile-avatar {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2.5px solid #D97706;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .profile-placeholder {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        background-color: #E2E8F0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2.2rem;
+        border: 2.5px solid #CBD5E1;
     }
 
     #MainMenu {visibility: hidden !important;}
@@ -370,8 +390,43 @@ if not st.session_state.user_id:
 # [2. 메인 대시보드]
 else:
     me = st.session_state.user_info
-    st.markdown(f"#### 👤 {me['name']} 님 ({me['gender']}·{me['age']}세·{me['region']})")
-    st.caption(f"🛡️ 신용 안심 인증 통과 ({me['credit_score']}점)")
+
+    # 📸 상단 내 프로필 & 사진 관리 영역
+    top_col1, top_col2 = st.columns([1, 3])
+    with top_col1:
+        if me.get("photo_url"):
+            st.markdown(f'<img src="{me["photo_url"]}" class="profile-avatar">', unsafe_allow_html=True)
+        else:
+            default_icon = "👨🏻‍💼" if me["gender"] == "남" else "👩🏻‍💼"
+            st.markdown(f'<div class="profile-placeholder">{default_icon}</div>', unsafe_allow_html=True)
+    with top_col2:
+        st.markdown(f"#### **{me['name']}** 님 ({me['gender']}·{me['age']}세)")
+        st.caption(f"📍 {me['region']} | 🛡️ 신용 안심 인증 통과 ({me['credit_score']}점)")
+
+    # 사진 등록/변경 펼침 메뉴
+    with st.expander("📷 내 프로필 사진 등록/변경"):
+        uploaded_file = st.file_uploader("사진을 선택해 주세요 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="profile_pic_uploader")
+        if uploaded_file is not None:
+            if st.button("사진 저장하기"):
+                file_bytes = uploaded_file.read()
+                file_ext = uploaded_file.name.split(".")[-1].lower()
+                unique_filename = f"user_{me['id']}_{uuid.uuid4().hex[:8]}.{file_ext}"
+                
+                try:
+                    # Supabase Storage(avatars 버킷)에 업로드
+                    supabase.storage.from_("avatars").upload(unique_filename, file_bytes, {"content-type": f"image/{file_ext}"})
+                    public_url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{unique_filename}"
+                    
+                    # users 테이블 photo_url 갱신
+                    supabase.table("users").update({"photo_url": public_url}).eq("id", me["id"]).execute()
+                    me["photo_url"] = public_url
+                    st.session_state.user_info = me
+                    st.success("프로필 사진이 안전하게 등록되었습니다!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"사진 저장 실패: avatars 버킷이 'Public'으로 생성되었는지 확인해 주세요. ({e})")
+
+    st.divider()
 
     tab_feed, tab_survey, tab_inbox = st.tabs(["💖 추천 피드", "📝 가치관 문답 이어하기", "📬 매칭 보관함"])
 
@@ -381,6 +436,7 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
+    # --- 탭 1: 이성 추천 피드 ---
     with tab_feed:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
@@ -405,11 +461,18 @@ else:
 
             for cand, cand_answers, common_keys, score in cand_scores:
                 with st.container():
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
+                    c_col_img, c_col_info, c_col_score = st.columns([1, 2.5, 1])
+                    with c_col_img:
+                        if cand.get("photo_url"):
+                            st.markdown(f'<img src="{cand["photo_url"]}" class="profile-avatar">', unsafe_allow_html=True)
+                        else:
+                            c_icon = "👩🏻‍💼" if cand["gender"] == "여" else "👨🏻‍💼"
+                            st.markdown(f'<div class="profile-placeholder">{c_icon}</div>', unsafe_allow_html=True)
+                    
+                    with c_col_info:
                         st.markdown(f"**{cand['name']}** ({cand['age']}세 / {cand['region']})")
                         st.caption(f"🛡️ 신용 안심 인증 ({cand['credit_score']}점)")
-                    with col2:
+                    with c_col_score:
                         st.metric("일치율", f"{score}%")
 
                     tags = []
@@ -454,6 +517,7 @@ else:
 
                     st.divider()
 
+    # --- 탭 2: 75문항 문답 이어하기 ---
     with tab_survey:
         answered_qnums = list(my_answers.keys())
         st.progress(len(answered_qnums) / 75, text=f"전체 75문항 중 {len(answered_qnums)}개 답변 완료")
@@ -488,6 +552,7 @@ else:
         else:
             st.success("🎉 모든 문항 답변을 완료하셨습니다.")
 
+    # --- 탭 3: 대화 신청 보관함 ---
     with tab_inbox:
         st.markdown("##### 📬 매칭 신청 현황")
         inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
@@ -498,7 +563,7 @@ else:
                 st.caption("아직 보낸 대화 신청이 없습니다.")
             else:
                 for req in sent_list:
-                    rcv_user = supabase.table("users").select("name, age, region, phone").eq("id", req["receiver_id"]).execute().data
+                    rcv_user = supabase.table("users").select("name, age, region, phone, photo_url").eq("id", req["receiver_id"]).execute().data
                     if rcv_user:
                         rcv = rcv_user[0]
                         if req['status'] == 'ACCEPTED':
@@ -512,7 +577,7 @@ else:
                 st.caption("도착한 대화 신청이 없습니다.")
             else:
                 for req in received_list:
-                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone").eq("id", req["sender_id"]).execute().data
+                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone, photo_url").eq("id", req["sender_id"]).execute().data
                     if snd_user:
                         u = snd_user[0]
                         u_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", u["id"]).execute().data
@@ -521,10 +586,17 @@ else:
                         common_keys = set(my_answers.keys()).intersection(set(u_answers.keys()))
                         score = int((sum(1 for k in common_keys if my_answers[k] == u_answers[k]) / len(common_keys)) * 100) if common_keys else 0
 
-                        col_info, col_score = st.columns([3, 1])
-                        with col_info:
+                        rcv_c_img, rcv_c_info, rcv_c_score = st.columns([1, 2.5, 1])
+                        with rcv_c_img:
+                            if u.get("photo_url"):
+                                st.markdown(f'<img src="{u["photo_url"]}" class="profile-avatar">', unsafe_allow_html=True)
+                            else:
+                                snd_icon = "👩🏻‍💼" if me["gender"] == "남" else "👨🏻‍💼"
+                                st.markdown(f'<div class="profile-placeholder">{snd_icon}</div>', unsafe_allow_html=True)
+
+                        with rcv_c_info:
                             st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']} / 신용 {u['credit_score']}점)")
-                        with col_score:
+                        with rcv_c_score:
                             st.metric("일치율", f"{score}%")
 
                         tags = []
