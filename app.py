@@ -7,37 +7,70 @@ from datetime import datetime
 import pandas as pd
 from supabase import create_client, Client
 
+# 브랜드 기본 정보
+BRAND_NAME_KR = "노블레스 라온"
+BRAND_NAME_EN = "NOBLESSE RAON"
+BRAND_SLOGAN = "신용과 품격이 통하는 5060 프리미엄 맞춤 인연"
+# 생성하신 오픈채팅방 링크로 아래 URL을 교체하시면 됩니다.
+KAKAO_CHAT_URL = "https://open.kakao.com"
+
 st.set_page_config(
-    page_title="5060 프리미엄 가치관·신용 맞춤 만남",
-    page_icon="💍",
+    page_title=f"{BRAND_NAME_KR} - 5060 프리미엄 안심 매칭",
+    page_icon="👑",
     layout="centered"
 )
 
-# 반응형 고대비 및 관리자 와이드 스타일 지원
-st.markdown("""
+# 반응형 고대비 및 프리미엄 브랜드 전면 스타일
+st.markdown(f"""
     <style>
-    .block-container { 
-        padding-top: 3.2rem !important; 
+    .block-container {{ 
+        padding-top: 2.8rem !important; 
         padding-bottom: 3.5rem !important; 
         max-width: 780px; 
-    }
-    .main-title {
-        font-size: 1.65rem;
+    }}
+    
+    /* 브랜드 헤더 전면 배너 */
+    .brand-hero-header {{
+        text-align: center;
+        padding: 22px 16px 18px 16px;
+        background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+        border: 2px solid #D97706;
+        border-radius: 14px;
+        margin-bottom: 1.2rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    }}
+    .brand-logo-en {{
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 3.5px;
+        color: #F59E0B;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }}
+    .brand-logo-kr {{
+        font-size: 1.95rem;
         font-weight: 900;
-        color: var(--text-color) !important;
-        margin-bottom: 0.9rem;
-        line-height: 1.35;
-        letter-spacing: -0.5px;
-    }
-    .badge-box {
+        color: #FFFFFF;
+        letter-spacing: -0.8px;
+        line-height: 1.25;
+        margin-bottom: 8px;
+    }}
+    .brand-slogan {{
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #94A3B8;
+        letter-spacing: -0.2px;
+    }}
+
+    .badge-box {{
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         padding: 16px;
         border-radius: 12px;
         margin-bottom: 0.9rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         border: 2px solid #334155;
-    }
-    .badge-tag {
+    }}
+    .badge-tag {{
         display: inline-block;
         background-color: #E11D48;
         color: #FFFFFF !important;
@@ -47,22 +80,22 @@ st.markdown("""
         border-radius: 5px;
         margin-bottom: 8px;
         letter-spacing: 0.5px;
-    }
-    .badge-text {
+    }}
+    .badge-text {{
         font-size: 1.05rem;
         font-weight: 800;
         color: #38BDF8 !important;
         line-height: 1.45;
-    }
-    .highlight-score {
+    }}
+    .highlight-score {{
         color: #FDE047 !important;
         font-size: 1.15rem;
         font-weight: 900;
         text-decoration: underline;
         text-underline-offset: 4px;
-    }
+    }}
 
-    .premium-hero-box {
+    .premium-hero-box {{
         background: #F8FAFC;
         border: 2px solid #E2E8F0;
         border-left: 5px solid #D97706;
@@ -70,8 +103,8 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 0.8rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-    .hero-line1 {
+    }}
+    .hero-line1 {{
         font-size: 1.05rem;
         font-weight: 800;
         color: #0F172A !important;
@@ -80,31 +113,31 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 6px;
-    }
-    .hero-line2 {
+    }}
+    .hero-line2 {{
         font-size: 0.95rem;
         font-weight: 700;
         color: #475569 !important;
         line-height: 1.5;
-    }
-    .highlight-gold {
+    }}
+    .highlight-gold {{
         color: #B45309 !important;
         font-weight: 900;
-    }
-    .highlight-blue {
+    }}
+    .highlight-blue {{
         color: #0369A1 !important;
         font-weight: 900;
-    }
+    }}
 
-    .network-accent-card {
+    .network-accent-card {{
         background: linear-gradient(135deg, #FFFDF7 0%, #FEF9EE 100%);
         border: 1.5px solid #F6D896;
         border-radius: 12px;
         padding: 14px 18px;
         margin-bottom: 1.3rem;
         box-shadow: 0 3px 10px rgba(217, 119, 6, 0.08);
-    }
-    .network-row-1 {
+    }}
+    .network-row-1 {{
         display: flex;
         align-items: center;
         gap: 8px;
@@ -112,26 +145,26 @@ st.markdown("""
         font-weight: 800;
         color: #B45309 !important;
         margin-bottom: 4px;
-    }
-    .network-row-2 {
+    }}
+    .network-row-2 {{
         padding-left: 26px;
         font-size: 0.98rem;
         font-weight: 800;
         color: #0F172A !important;
         line-height: 1.4;
-    }
-    .network-highlight {
+    }}
+    .network-highlight {{
         color: #E11D48 !important;
         font-weight: 900;
-    }
+    }}
 
-    div[data-baseweb="tab-list"] {
+    div[data-baseweb="tab-list"] {{
         gap: 8px;
         background-color: transparent;
         border-bottom: none !important;
         margin-bottom: 1.2rem;
-    }
-    div[data-baseweb="tab"] {
+    }}
+    div[data-baseweb="tab"] {{
         flex: 1;
         height: 50px;
         border: 2px solid #CBD5E1 !important;
@@ -144,26 +177,26 @@ st.markdown("""
         justify-content: center;
         align-items: center;
         transition: all 0.2s ease-in-out;
-    }
-    div[data-baseweb="tab"][aria-selected="true"] {
+    }}
+    div[data-baseweb="tab"][aria-selected="true"] {{
         background-color: #0F172A !important;
         border: 2.5px solid #E11D48 !important;
         color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
-    }
-    div[data-baseweb="tab-border"] {
+    }}
+    div[data-baseweb="tab-border"] {{
         display: none !important;
-    }
+    }}
 
-    div[data-baseweb="input"] {
+    div[data-baseweb="input"] {{
         border: 2px solid #94A3B8 !important;
         border-radius: 8px !important;
-    }
-    div[data-baseweb="input"]:focus-within {
+    }}
+    div[data-baseweb="input"]:focus-within {{
         border: 2.5px solid #E11D48 !important;
-    }
+    }}
 
-    .stButton>button { 
+    .stButton>button {{ 
         width: 100%; 
         border-radius: 10px; 
         font-weight: 800; 
@@ -173,21 +206,21 @@ st.markdown("""
         background-color: #0F172A !important;
         color: #FFFFFF !important;
         transition: all 0.15s ease;
-    }
-    .stButton>button:active {
+    }}
+    .stButton>button:active {{
         transform: scale(0.98);
         border-color: #E11D48 !important;
-    }
+    }}
 
-    .profile-avatar {
+    .profile-avatar {{
         width: 76px;
         height: 76px;
         border-radius: 50%;
         object-fit: cover;
         border: 2.5px solid #D97706;
         box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    }
-    .profile-placeholder {
+    }}
+    .profile-placeholder {{
         width: 76px;
         height: 76px;
         border-radius: 50%;
@@ -197,26 +230,26 @@ st.markdown("""
         align-items: center;
         font-size: 2.2rem;
         border: 2.5px solid #CBD5E1;
-    }
+    }}
 
-    .filter-card {
+    .filter-card {{
         background-color: #F8FAFC;
         border: 1.5px solid #CBD5E1;
         border-radius: 10px;
         padding: 14px 16px;
         margin-bottom: 1rem;
-    }
+    }}
 
-    .pdf-preview-box {
+    .pdf-preview-box {{
         border: 2px solid #CBD5E1;
         border-radius: 10px;
         overflow: hidden;
         margin-top: 8px;
         margin-bottom: 12px;
         background-color: #F1F5F9;
-    }
+    }}
 
-    .intro-quote-box {
+    .intro-quote-box {{
         background: #F8FAFC;
         border-left: 3.5px solid #3B82F6;
         padding: 8px 12px;
@@ -226,8 +259,8 @@ st.markdown("""
         font-weight: 600;
         margin: 6px 0 8px 0;
         font-style: italic;
-    }
-    .detail-tag {
+    }}
+    .detail-tag {{
         display: inline-block;
         background: #F1F5F9;
         color: #334155;
@@ -238,9 +271,9 @@ st.markdown("""
         margin-right: 5px;
         margin-bottom: 5px;
         border: 1px solid #E2E8F0;
-    }
+    }}
 
-    .terms-box {
+    .terms-box {{
         background-color: #F8FAFC;
         border: 1px solid #E2E8F0;
         border-radius: 8px;
@@ -250,18 +283,17 @@ st.markdown("""
         line-height: 1.5;
         margin-top: 10px;
         margin-bottom: 12px;
-    }
+    }}
 
-    /* 하단 고객센터 배너 */
-    .support-footer-card {
+    .support-footer-card {{
         background-color: #F8FAFC;
         border: 1.5px solid #E2E8F0;
         border-radius: 10px;
         padding: 16px;
         margin-top: 2rem;
         margin-bottom: 1rem;
-    }
-    .support-header {
+    }}
+    .support-header {{
         font-size: 0.98rem;
         font-weight: 800;
         color: #0F172A;
@@ -269,14 +301,14 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 6px;
-    }
-    .support-desc {
+    }}
+    .support-desc {{
         font-size: 0.86rem;
         color: #64748B;
         line-height: 1.5;
         margin-bottom: 10px;
-    }
-    .support-kakao-btn {
+    }}
+    .support-kakao-btn {{
         display: inline-block;
         background-color: #FEE500;
         color: #191919 !important;
@@ -286,11 +318,11 @@ st.markdown("""
         border-radius: 6px;
         text-decoration: none;
         border: 1px solid #E6CF00;
-    }
+    }}
 
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
+    #MainMenu {{visibility: hidden !important;}}
+    footer {{visibility: hidden !important;}}
+    header {{visibility: hidden !important;}}
     </style>
 """, unsafe_allow_html=True)
 
@@ -313,15 +345,15 @@ saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
 
 def render_support_footer():
-    st.markdown("""
+    st.markdown(f"""
         <div class="support-footer-card">
             <div class="support-header">
-                <span>💬</span> <span>5060 안심 전담 고객지원센터</span>
+                <span>💬</span> <span>{BRAND_NAME_KR} 안심 전담 고객지원센터</span>
             </div>
             <div class="support-desc">
                 서류 심사 문의, 비밀번호 변경 지원, 불량 매너 회원 신고 등 불편하신 점은 언제든 1:1 상담창구로 말씀해 주세요.
             </div>
-            <a href="https://open.kakao.com" target="_blank" class="support-kakao-btn">
+            <a href="{KAKAO_CHAT_URL}" target="_blank" class="support-kakao-btn">
                 💬 카카오톡 1:1 상담문의 열기
             </a>
         </div>
@@ -344,7 +376,15 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
-    st.markdown('<div class="main-title">💍 5060 프리미엄 가치관·신용 맞춤 만남</div>', unsafe_allow_html=True)
+    # 👑 전면 브랜드 헤더
+    st.markdown(f"""
+        <div class="brand-hero-header">
+            <div class="brand-logo-en">{BRAND_NAME_EN}</div>
+            <div class="brand-logo-kr">👑 {BRAND_NAME_KR}</div>
+            <div class="brand-slogan">{BRAND_SLOGAN}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("""
         <div class="badge-box">
             <span class="badge-tag">엄격한 입회 기준</span>
@@ -529,6 +569,14 @@ if not st.session_state.user_id:
 # [2. 메인 대시보드]
 else:
     me = st.session_state.user_info
+
+    # 👑 상단 미니 브랜드 엠블럼
+    st.markdown(f"""
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px;">
+            <div style="font-size:1.1rem; font-weight:900; color:#0F172A;">👑 {BRAND_NAME_KR}</div>
+            <div style="font-size:0.75rem; font-weight:800; color:#D97706; letter-spacing:1px;">{BRAND_NAME_EN}</div>
+        </div>
+    """, unsafe_allow_html=True)
 
     top_col1, top_col2 = st.columns([1, 3])
     with top_col1:
@@ -874,7 +922,7 @@ else:
     if me.get("is_admin"):
         with tabs[3]:
             st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
-            st.caption("신용 증빙 서류 심사, 전체 고객 명부 및 관리자 권한/회원 제재를 관리합니다.")
+            st.caption(f"{BRAND_NAME_KR} 신용 증빙 심사, 전체 고객 명부 및 권한/회원 제재를 관리합니다.")
             
             adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 회원 제재 및 관리자 권한"])
             
@@ -918,11 +966,10 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부 (엑셀 다운로드 추가)
+            # [2] 전체 고객 데이터 명부 (엑셀 다운로드)
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
 
-                # DB에서 전체 회원 조회
                 all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
 
                 if all_users:
@@ -935,7 +982,6 @@ else:
                     raw_df["age"] = raw_df["age"].fillna(0).astype(int)
                     raw_df["created_at"] = raw_df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
 
-                    # 📥 엑셀(CSV) 다운로드 버튼 배치
                     excel_export_df = raw_df.copy()
                     excel_export_df["권한"] = excel_export_df["is_admin"].apply(lambda x: "관리자" if x else "일반회원")
                     excel_export_df["계정상태"] = excel_export_df["is_suspended"].apply(lambda s: "이용정지" if s else "정상")
@@ -957,12 +1003,10 @@ else:
                     st.download_button(
                         label="📥 전체 회원 명부 엑셀(CSV) 다운로드",
                         data=csv_data,
-                        file_name=f"5060_회원명부_{today_str}.csv",
-                        mime="text/csv",
-                        help="클릭 시 엑셀에서 바로 열 수 있는 CSV 파일로 즉시 저장됩니다."
+                        file_name=f"노블레스라온_회원명부_{today_str}.csv",
+                        mime="text/csv"
                     )
 
-                    # 검색 및 정렬 제어판
                     with st.container():
                         st.markdown('<div class="filter-card">', unsafe_allow_html=True)
                         f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
