@@ -301,3 +301,17 @@ else:
         st.session_state.user_id = None
         st.session_state.user_info = None
         st.rerun()
+
+# 하단 관리자 바 및 Streamlit 기본 크롬 요소 완벽 숨김
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    div[data-testid="stStatusWidget"] {display: none !important;}
+    .stAppDeployButton {display: none !important;}
+    [data-testid="manage-app-button"] {display: none !important;}
+    iframe[title="streamlit_app"] ~ div {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
