@@ -93,7 +93,7 @@ KOREA_REGIONS = {
 }
 
 st.set_page_config(
-    page_title=f"{BRAND_NAME_KR} - 5060 프라이빗 시크릿 클럽",
+    page_title=f"{BRAND_NAME_KR} - 5060 프라이빗 소셜 클럽",
     page_icon="👑",
     layout="centered"
 )
@@ -121,13 +121,13 @@ function setNameMetaTag(name, content) {{
 }}
 
 setMetaTag('og:type', 'website');
-setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 검증된 품격과 신용, 우리 동네 5060 프리미엄 인연 찾기');
-setMetaTag('og:description', '대중 앱스토어 비공개 · 100% 프라이빗 시크릿 멤버십');
+setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 가치관·신용 기반 5060 프라이빗 소셜 데이팅 플랫폼');
+setMetaTag('og:description', '철저한 신용 검증과 프라이버시 안심 보장 · 100% 프라이빗 멤버십');
 setMetaTag('og:image', '{OG_IMAGE_URL}');
 setMetaTag('og:url', '{SITE_URL}');
 
-setNameMetaTag('description', '대중 앱스토어 비공개 · 100% 프라이빗 시크릿 멤버십');
-window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프라이빗 시크릿 클럽';
+setNameMetaTag('description', '철저한 신용 검증과 프라이버시 안심 보장 · 100% 프라이빗 멤버십');
+window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프라이빗 소셜 클럽';
 
 let deferredPrompt;
 window.parent.addEventListener('beforeinstallprompt', (e) => {{
@@ -334,55 +334,20 @@ st.markdown(f"""
         line-height: 1.5;
     }}
 
+    /* 법적 분리 약관 박스 */
     .terms-box {{
         background-color: #1E293B !important;
         border: 1.5px solid #475569 !important;
         border-radius: 8px;
         padding: 14px 16px;
-        font-size: 0.88rem;
-        color: #E2E8F0 !important;
+        font-size: 0.86rem;
+        color: #CBD5E1 !important;
         line-height: 1.6;
-        margin-top: 10px;
-        margin-bottom: 12px;
+        margin-top: 6px;
+        margin-bottom: 10px;
     }}
 
-    .support-footer-card {{
-        background-color: #1E293B !important;
-        border: 1.5px solid #475569 !important;
-        border-radius: 10px;
-        padding: 16px;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-    }}
-    .support-header {{
-        font-size: 1rem;
-        font-weight: 800;
-        color: #FFFFFF !important;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }}
-    .support-desc {{
-        font-size: 0.88rem;
-        color: #94A3B8 !important;
-        line-height: 1.55;
-        margin-bottom: 12px;
-    }}
-    .support-kakao-btn {{
-        display: inline-block;
-        background-color: #FEE500;
-        color: #191919 !important;
-        font-weight: 800;
-        font-size: 0.9rem;
-        padding: 10px 20px;
-        border-radius: 6px;
-        text-decoration: none;
-        border: 1px solid #E6CF00;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }}
-
-    /* 안심 매칭 듀얼 브릿지 박스 (안심 전화번호 + 공식 카톡 브릿지) */
+    /* 안심 매칭 듀얼 브릿지 박스 */
     .match-success-bridge-box {{
         background: linear-gradient(135deg, #090E17 0%, #1E293B 100%);
         border: 1.5px solid #D4AF37;
@@ -449,6 +414,87 @@ st.markdown(f"""
         border-radius: 8px;
         text-decoration: none;
         box-shadow: 0 2px 8px rgba(254, 229, 0, 0.25);
+    }}
+
+    /* 로맨스 스캠/금전요구 원스트라이크 아웃 경고 배너 */
+    .scam-warning-banner {{
+        background: rgba(225, 29, 72, 0.12);
+        border: 1.5px solid #E11D48;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-top: 12px;
+        font-size: 0.82rem;
+        color: #FECDD3 !important;
+        line-height: 1.5;
+    }}
+    .scam-warning-title {{
+        font-weight: 900;
+        color: #FDA4AF !important;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }}
+
+    .report-btn-link {{
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background-color: transparent;
+        border: 1px solid #94A3B8;
+        color: #CBD5E1 !important;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+        text-decoration: none;
+        margin-top: 8px;
+    }}
+
+    .support-footer-card {{
+        background-color: #1E293B !important;
+        border: 1.5px solid #475569 !important;
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }}
+    .support-header {{
+        font-size: 1rem;
+        font-weight: 800;
+        color: #FFFFFF !important;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .support-desc {{
+        font-size: 0.88rem;
+        color: #94A3B8 !important;
+        line-height: 1.55;
+        margin-bottom: 12px;
+    }}
+    .support-kakao-btn {{
+        display: inline-block;
+        background-color: #FEE500;
+        color: #191919 !important;
+        font-weight: 800;
+        font-size: 0.9rem;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        border: 1px solid #E6CF00;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }}
+
+    .legal-footer-info {{
+        font-size: 0.76rem;
+        color: #64748B;
+        line-height: 1.6;
+        margin-top: 14px;
+        border-top: 1px solid #334155;
+        padding-top: 12px;
+        text-align: left;
     }}
 
     .intro-quote-box {{
@@ -694,7 +740,7 @@ def delete_file_from_storage(bucket_name, file_url):
     except Exception as e:
         print(f"File deletion error: {e}")
 
-# 안심 전화번호 & 공식 카톡 브릿지 렌더러
+# 안심 전화번호 & 공식 카톡 브릿지 + 로맨스스캠 경고 및 1:1 신고 연동 렌더러
 def render_dual_safe_bridge(target_user, role_prefix=""):
     name = target_user.get("name", "회원")
     phone = target_user.get("phone", "")
@@ -714,6 +760,15 @@ def render_dual_safe_bridge(target_user, role_prefix=""):
                     💬 안심 카카오톡 브릿지 입장
                 </a>
             </div>
+            <div class="scam-warning-banner">
+                <div class="scam-warning-title">🚨 회원 보호 및 안전 수칙 (원스트라이크 아웃제)</div>
+                본 서비스는 순수 소셜 교류 플랫폼입니다. 대화 도중 <b>금전 대여 요구, 사업/투자 권유, 가상화폐(코인)·주식 리딩방 가입 유도</b> 적발 시 즉시 영구 강제 탈퇴 및 관할 수사기관에 형사 고발 조치됩니다.
+            </div>
+            <div style="display:flex; justify-content:flex-end;">
+                <a href="{KAKAO_CHAT_URL}" target="_blank" class="report-btn-link">
+                    🚨 {name} 회원 비매너/사기의심 즉시 신고
+                </a>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -727,8 +782,14 @@ def render_support_footer():
                 서류 심사 문의, 비밀번호 변경 지원, 불량 매너 회원 신고 등 불편하신 점은 언제든 1:1 상담창구로 말씀해 주세요.
             </div>
             <a href="{KAKAO_CHAT_URL}" target="_blank" class="support-kakao-btn">
-                💬 카카오톡 1:1 상담문의 열기
+                💬 카카오톡 1:1 상담 및 불량회원 신고
             </a>
+            <div class="legal-footer-info">
+                <b>서비스 법적 고지:</b><br>
+                1. {BRAND_NAME_KR}은 가치관 및 신용 정보 교류를 기반으로 하는 5060 프라이빗 소셜 네트워킹 플랫폼(통신판매중개)이며, 특정인의 혼인이나 결합을 일대일로 강제 주선하거나 성혼을 법적으로 보증하는 결혼중개업체가 아닙니다.<br>
+                2. 회원의 제출 신용 증빙 서류는 관리자 진위 확인 즉시 스토리지에서 기술적으로 복구 불가능하게 영구 파기되며 별도 보관되지 않습니다.<br>
+                3. 회원 상호 간 자율적 소통 과정에서 발생하는 사인 간의 거래 및 분쟁에 대해 플랫폼은 고의 또는 중과실이 없는 한 법적 책임을 지지 않습니다.
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -765,7 +826,7 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
-    hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
+    hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">가치관 및 신용 기반 5060 프라이빗 소셜 데이팅 커뮤니티</span></div></div>'''
     st.markdown(hero_html, unsafe_allow_html=True)
 
     st.markdown("""
@@ -989,24 +1050,50 @@ if not st.session_state.user_id:
         join_q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"], key="join_q56")
 
         st.markdown("---")
-        st.markdown("##### 🛡️ 안심 개인정보 및 신용 서류 파기 원칙")
-        st.markdown("""
-            <div class="terms-box">
-                <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 안심 연락처 제공.<br>
-                <b>2. 신용 증빙 서류 100% 안전 파기 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 스토리지 및 데이터베이스에서 영구 삭제 처리되며 절대 보관되지 않습니다.<br>
-                <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처 및 공식 카톡 브릿지가 공개됩니다.<br>
-                <b>4. 부적격 회원 조치:</b> 허위 서류 제출 및 불량 매너 회원은 사전 통보 없이 영구 이용 정지 처리됩니다.
-            </div>
-        """, unsafe_allow_html=True)
-        
-        agree_terms = st.checkbox("위 개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의합니다. (필수)", key="agree_terms_cb")
+        st.markdown("##### 🛡️ 이용약관 및 개인정보 안심 보증 (법적 고지)")
+
+        with st.expander("📄 [필독] 노블레스 라온 서비스 성격 및 면책 고지"):
+            st.markdown("""
+                <div class="terms-box">
+                    <b>제1조 (서비스의 본질 및 성격)</b><br>
+                    본 플랫폼은 회원의 가치관과 금융 신용 지표를 바탕으로 상호 적합한 인연을 자율적으로 탐색하고 교류할 수 있도록 기술적 매칭 환경을 제공하는 <b>'소셜 데이팅 및 커뮤니티 정보 매개 서비스'</b>입니다.<br>
+                    본 서비스는 회원 간의 특정 성혼, 동거, 결합을 직접적으로 지목·주선하거나 법적으로 보증하는 '결혼중개업'이 아니며, 회원의 선택과 상호 동의에 의한 자율 소통을 원칙으로 합니다.
+                </div>
+            """, unsafe_allow_html=True)
+
+        agree_terms_service = st.checkbox("[필수] 소셜 커뮤니티 플랫폼 이용약관 및 면책 조항에 동의합니다.", key="agree_terms_service")
+
+        with st.expander("🔒 [필독] 신용 증빙 서류 100% 영구 파기 및 개인정보 처리방침"):
+            st.markdown("""
+                <div class="terms-box">
+                    <b>제2조 (신용 서류 안전 관리 및 즉시 영구 파기 원칙)</b><br>
+                    1. <b>수집 목적:</b> 남성 800점 / 여성 600점의 최소 신용 신뢰 기준 부합 여부 판정 목적에 한함.<br>
+                    2. <b>영구 파기 보증:</b> 회원이 제출한 신용 증빙 이미지 및 PDF 파일은 운영자 검토 판정 완료 즉시 클라우드 스토리지 및 데이터베이스에서 <b>복구 불가능한 방법으로 영구 파기(완전 삭제)</b>되며 절대 보관되지 않습니다.<br>
+                    3. 회원의 기본 인적사항(성명, 연락처, 나이, 지역)은 회원 탈퇴 시까지 본인 확인 및 서비스 제공 목적으로 안전하게 암호화 관리됩니다.
+                </div>
+            """, unsafe_allow_html=True)
+
+        agree_terms_privacy = st.checkbox("[필수] 개인정보 처리방침 및 신용 증빙 서류 즉시 영구 파기 원칙에 동의합니다.", key="agree_terms_privacy")
+
+        with st.expander("🤝 [필독] 매칭 성사 시 개인정보 제3자 제공 동의"):
+            st.markdown("""
+                <div class="terms-box">
+                    <b>제3조 (개인정보의 제3자 제공 동의)</b><br>
+                    1. <b>제공 대상:</b> 회원이 상호 대화 신청을 전원 '수락'하여 매칭이 최종 성사된 상대방 회원.<br>
+                    2. <b>제공 항목:</b> 성명, 연락처, 활동 지역, 가치관 문답 응답 내용.<br>
+                    3. <b>제공 목적:</b> 매칭 성사 회원 간의 1:1 안심 연락처 교환 및 소통 개시.<br>
+                    4. <b>불법 행위 금지:</b> 교환된 연락처를 본래 만남 목적 외 상업적 홍보, 투자 권유, 금전 요구 등에 사용할 경우 즉시 강제 탈퇴 및 법적 고발 조치됩니다.
+                </div>
+            """, unsafe_allow_html=True)
+
+        agree_terms_thirdparty = st.checkbox("[필수] 상호 매칭 수락 시 상대방 회원에 대한 안심 연락처 제공에 동의합니다.", key="agree_terms_thirdparty")
 
         if st.button("신용 검증 및 안심 가입 완료", key="submit_join_btn"):
             clean_phone = re.sub(r'[^0-9]', '', join_phone.strip())
             cutoff = 800 if join_gender == "남" else 600
             
-            if not agree_terms:
-                st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
+            if not (agree_terms_service and agree_terms_privacy and agree_terms_thirdparty):
+                st.error("필수 이용약관, 개인정보 파기 원칙, 제3자 제공 동의에 모두 체크해 주세요.")
             elif not join_name.strip():
                 st.error("성명을 입력해 주세요.")
             elif not st.session_state.sms_is_verified or st.session_state.sms_verified_phone != clean_phone:
