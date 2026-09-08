@@ -532,9 +532,7 @@ def send_aligo_sms(receiver_phone, auth_code):
             if res_json.get("result_code") == "1":
                 return True, "인증번호가 발송되었습니다. 문자를 확인해 주세요."
             else:
-                curr_ip = requests.get("https://api.ipify.org", timeout=3).text if "IP" in res_json.get("message", "") else ""
-                ip_msg = f" (현재 서버 IP: {curr_ip} -> 알리고에 이 IP를 등록해주세요)" if curr_ip else ""
-                return False, f"문자 발송 실패: {res_json.get('message', '통신 오류')}{ip_msg}"
+                return False, f"문자 발송 실패: {res_json.get('message', '통신 오류')}"
         return False, "알리고 서버 통신 지연"
     except Exception as e:
         return False, f"SMS 발송 오류: {e}"
