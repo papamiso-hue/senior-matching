@@ -777,6 +777,10 @@ def send_aligo_notice_sms(receiver_phone, text_message):
     except Exception as e:
         print(f"Notice SMS Error: {e}")
 
+# [블러 프로필 기본 실물 이미지]
+DEFAULT_FEMALE_BLUR = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop"
+DEFAULT_MALE_BLUR = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop"
+
 CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
 
 def extract_text_lightweight_api(file_bytes, ext):
@@ -1623,8 +1627,11 @@ else:
     # --- 탭 1: 이성 추천 피드 ---
     with tabs[0]:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
-        target_gender = "여" if me["gender"] == "남" else "남"
+        my_real_gender = "남" if "남" in str(me.get("gender", "남")) else "여"
+        target_gender = "여" if my_real_gender == "남" else "남"
         raw_candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
+        # 이중 안전 필터: 상대방 성별이 반드시 반대 성별인 경우만 통과
+        raw_candidates = [c for c in raw_candidates if c.get("gender") == target_gender]
 
         # [핵심 1 & 3: 지인 차단 필터링 + 최근 14일 이내 활동 회원 우선 선별]
         my_blocked_set = set(me.get("blocked_phones") or [])
@@ -1675,11 +1682,13 @@ else:
                 with st.container():
                     c_col_img, c_col_info, c_col_score = st.columns([1, 2.5, 1])
                     with c_col_img:
+                        # 등록 사진이 있으면 그 사진을 블러 처리, 없으면 품격 있는 성별 맞춤 실물 사진을 블러 처리
                         if cand.get("photo_url"):
-                            st.markdown(f'<img src="{cand["photo_url"]}" class="profile-avatar">', unsafe_allow_html=True)
+                            display_img_url = cand["photo_url"]
                         else:
-                            c_icon = "👩🏻‍💼" if cand["gender"] == "여" else "👨🏻‍💼"
-                            st.markdown(f'<div class="profile-placeholder">{c_icon}</div>', unsafe_allow_html=True)
+                            display_img_url = DEFAULT_FEMALE_BLUR if cand.get("gender") == "여" else DEFAULT_MALE_BLUR
+                        
+                        st.markdown(f'<img src="{display_img_url}" class="profile-avatar" style="filter: blur(5px); transform: scale(0.96);">', unsafe_allow_html=True)
                     
                     with c_col_info:
                         st.markdown(f"**{cand['name']}** ({cand['age']}세 / {cand['region']})")
@@ -1848,10 +1857,10 @@ else:
                         rcv_c_img, rcv_c_info, rcv_c_score = st.columns([1, 2.5, 1])
                         with rcv_c_img:
                             if u.get("photo_url"):
-                                st.markdown(f'<img src="{u["photo_url"]}" class="profile-avatar">', unsafe_allow_html=True)
+                                in_img = u["photo_url"]
                             else:
-                                snd_icon = "👩🏻‍💼" if me["gender"] == "남" else "👨🏻‍💼"
-                                st.markdown(f'<div class="profile-placeholder">{snd_icon}</div>', unsafe_allow_html=True)
+                                in_img = DEFAULT_FEMALE_BLUR if u.get("gender") == "여" else DEFAULT_MALE_BLUR
+                            st.markdown(f'<img src="{in_img}" class="profile-avatar" style="filter: blur(5px); transform: scale(0.96);">', unsafe_allow_html=True)
 
                         with rcv_c_info:
                             st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']})")
