@@ -4,9 +4,10 @@ import re
 import uuid
 import math
 import io
+import json
 import random
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
@@ -313,28 +314,55 @@ st.markdown(f"""
         font-weight: 900;
     }}
 
-    .taste-teaser-card {{
-        background: #1E293B !important;
-        border: 2px dashed #D4AF37 !important;
+    /* 실시간 블러 티저 카드 스타일 */
+    .blur-teaser-box {{
+        background: #1E293B;
+        border: 1.5px solid #D4AF37;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 1.2rem;
-        text-align: center;
+        margin-top: 14px;
+        margin-bottom: 16px;
     }}
-    .taste-teaser-header {{
-        font-size: 1.05rem;
+    .blur-teaser-title {{
+        font-size: 1rem;
         font-weight: 800;
-        color: #FDE047 !important;
-        margin-bottom: 6px;
+        color: #FDE047;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }}
-    .taste-teaser-desc {{
-        font-size: 0.88rem;
-        color: #CBD5E1 !important;
-        margin-bottom: 12px;
-        line-height: 1.5;
+    .blur-teaser-card {{
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }}
+    .blur-avatar {{
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+        filter: blur(6.5px);
+        transform: scale(0.98);
+        border: 2px solid #D4AF37;
+    }}
+    .blur-placeholder {{
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #334155;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        filter: blur(5.5px);
     }}
 
-    /* 멤버십 & 지갑 상태 바 */
     .wallet-status-bar {{
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border: 1.5px solid #D4AF37;
@@ -360,7 +388,6 @@ st.markdown(f"""
         font-size: 0.82rem;
     }}
 
-    /* 요금제 카드 그리드 */
     .pricing-grid {{
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -401,7 +428,6 @@ st.markdown(f"""
         line-height: 1.4;
     }}
 
-    /* 후불 잠금 결제 카드 */
     .postpay-lock-card {{
         background: linear-gradient(135deg, #1E293B 0%, #2A151B 100%);
         border: 2px solid #F43F5E;
@@ -827,7 +853,7 @@ def delete_file_from_storage(bucket_name, file_url):
     except Exception as e:
         print(f"File deletion error: {e}")
 
-# 안심 전화번호 & 공식 카톡 브릿지 + 로맨스스캠 경고 및 1:1 신고 연동 렌더러
+# 안심 전화번호 & 공식 카톡 브릿지
 def render_dual_safe_bridge(target_user, role_prefix=""):
     name = target_user.get("name", "회원")
     phone = target_user.get("phone", "")
@@ -859,7 +885,7 @@ def render_dual_safe_bridge(target_user, role_prefix=""):
         </div>
     """, unsafe_allow_html=True)
 
-# [후불 잠금 결제 카드 렌더러]
+# 후불 잠금 결제 카드
 def render_postpay_lock_card(target_user, match_id):
     name = target_user.get("name", "회원")
     st.markdown(f"""
@@ -874,7 +900,7 @@ def render_postpay_lock_card(target_user, match_id):
     
     col_pay1, col_pay2 = st.columns([2, 1])
     with col_pay1:
-        st.caption("💡 현재 시범 서비스 기간: 1:1 전담 컨시어지를 통해 입금 확인 후 즉시 잠금을 해제해 드립니다.")
+        st.caption("💡 시범 서비스 기간: 1:1 컨시어지 채널을 통해 입금 확인 후 즉시 잠금을 해제해 드립니다.")
     with col_pay2:
         if st.button(f"💳 열람권 결제 / 잠금해제 요청", key=f"btn_pay_{match_id}"):
             supabase.table("match_requests").update({"payment_status": "PAID"}).eq("id", match_id).execute()
@@ -953,8 +979,8 @@ if not st.session_state.user_id:
             </div>
             <div class="privacy-card">
                 <div class="privacy-icon">🚫</div>
-                <div class="privacy-title">지인 차단 보장</div>
-                <div class="privacy-desc">휴대폰 번호 자동 보호</div>
+                <div class="privacy-title">지인 번호 완벽차단</div>
+                <div class="privacy-desc">상호 피드 영구 미노출</div>
             </div>
             <div class="privacy-card">
                 <div class="privacy-icon">🔒</div>
@@ -978,6 +1004,52 @@ if not st.session_state.user_id:
                 • <b style="color:#38BDF8 !important;">남성 (800점 이상):</b> 사업 및 경제활동 유지 과정에서의 안정적인 부채 관리와 책임감 있는 금융 신뢰도를 검증합니다.<br>
                 • <b style="color:#38BDF8 !important;">여성 (600점 이상):</b> 금융 이력 부족(신용카드 무사용, 가정경제 전담 등)으로 점수가 낮게 형성되는 주부·여성 회원의 현실적 금융 구조를 고려한 정상 금융거래 기준입니다.<br>
                 • <b style="color:#4ADE80 !important;">안심 보증:</b> 제출하신 신용 증빙 서류는 관리자 진위 확인 완료 즉시 <b>100% 영구 파기</b>되어 안전하게 보호됩니다.
+            </div>
+        """, unsafe_allow_html=True)
+
+    # [핵심 2: 가입 전환율을 높이는 실시간 피드 블러(Blur) 미리보기]
+    try:
+        sample_members = supabase.table("users").select("name, gender, age, region, job, credit_score, photo_url").eq("is_suspended", False).limit(3).execute().data
+    except Exception:
+        sample_members = []
+
+    if sample_members:
+        st.markdown(f"""
+            <div class="blur-teaser-box">
+                <div class="blur-teaser-title">
+                    <span>✨ 현재 활동 중인 검증 회원 실시간 프로필</span>
+                    <span style="font-size:0.75rem; color:#38BDF8; font-weight:700;">프라이버시 안심 블러 적용</span>
+                </div>
+        """, unsafe_allow_html=True)
+        
+        for sm in sample_members:
+            masked_name = sm['name'][0] + "*" + (sm['name'][-1] if len(sm['name']) > 1 else "")
+            job_str = sm.get("job") or "전문직 / 사업가"
+            photo = sm.get("photo_url")
+            
+            img_tag = f'<img src="{photo}" class="blur-avatar">' if photo else f'<div class="blur-placeholder">{"👩🏻‍💼" if sm["gender"]=="여" else "👨🏻‍💼"}</div>'
+            
+            st.markdown(f"""
+                <div class="blur-teaser-card">
+                    {img_tag}
+                    <div style="flex:1;">
+                        <div style="font-size:0.92rem; font-weight:800; color:#FFFFFF;">
+                            {masked_name} 회원 ({sm['gender']} · {sm['age']}세)
+                        </div>
+                        <div style="font-size:0.8rem; color:#94A3B8; margin-top:2px;">
+                            📍 {sm['region']} | 💼 {job_str}
+                        </div>
+                        <div style="font-size:0.78rem; color:#38BDF8; font-weight:700; margin-top:2px;">
+                            🛡️ 공인 신용점수 {sm['credit_score']}점 검증 통과
+                        </div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown("""
+                <div style="font-size:0.78rem; color:#CBD5E1; text-align:center; margin-top:8px;">
+                    🔒 상세 프로필 및 가치관 일치율은 <b>정회원 가입 및 신용 심사 통과 후</b> 안전하게 열람하실 수 있습니다.
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1030,6 +1102,11 @@ if not st.session_state.user_id:
                     if user_data.get("is_suspended"):
                         st.error("🚫 운영 정책 위반 또는 이용 제한 조치된 계정입니다. 고객센터에 문의해 주세요.")
                     else:
+                        # [핵심 3: 로그인 시 마지막 접속 일시(last_login_at) 실시간 갱신]
+                        now_utc = datetime.now(timezone.utc).isoformat()
+                        supabase.table("users").update({"last_login_at": now_utc}).eq("id", user_data["id"]).execute()
+                        user_data["last_login_at"] = now_utc
+
                         st.session_state.user_id = user_data["id"]
                         st.session_state.user_info = user_data
 
@@ -1233,6 +1310,8 @@ if not st.session_state.user_id:
                             )
                             doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{storage_filename}"
 
+                            now_utc_str = datetime.now(timezone.utc).isoformat()
+
                             new_u = supabase.table("users").insert({
                                 "name": join_name.strip(),
                                 "phone": clean_phone,
@@ -1246,6 +1325,8 @@ if not st.session_state.user_id:
                                 "is_verified": False,
                                 "ticket_count": 2,
                                 "is_vip": False,
+                                "blocked_phones": [],
+                                "last_login_at": now_utc_str,
                                 "job": join_job.strip() if join_job else None,
                                 "hobbies": join_hobbies.strip() if join_hobbies else None,
                                 "intro": join_intro.strip() if join_intro else None,
@@ -1281,7 +1362,6 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # [멤버십 & 신청권 지갑 상태 바]
     my_tickets = me.get("ticket_count", 0)
     is_vip = bool(me.get("is_vip", False))
     vip_badge_str = "👑 VIP 프리미엄 (무제한)" if is_vip else f"🎟️ 대화 신청권: {my_tickets}장"
@@ -1335,7 +1415,7 @@ else:
             </div>
         """, unsafe_allow_html=True)
         
-        st.caption("💳 현재 시범 운영 기간: 1:1 컨시어지 채널을 통해 신청권 충전 및 VIP 즉시 등록이 가능합니다.")
+        st.caption("💳 시범 운영 기간: 1:1 컨시어지 채널을 통해 신청권 충전 및 VIP 즉시 등록이 가능합니다.")
         col_chg1, col_chg2 = st.columns(2)
         with col_chg1:
             if st.button("🎟️ 신청권 5장 충전 요청 (25,000원)"):
@@ -1352,8 +1432,15 @@ else:
                 st.success("축하합니다! VIP 프리미엄 멤버십이 활성화되었습니다.")
                 st.rerun()
 
-    with st.expander("✏️ 프로필 설정 및 계정 관리"):
-        tab_p_edit, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs(["📝 소개 및 지역/취미", "📸 프로필 사진", "📄 신용 증빙 서류", "⚠️ 회원 탈퇴"])
+    # [프로필 관리 탭 + 핵심 1: 지인/아는 사람 차단 탭 추가]
+    with st.expander("✏️ 프로필 설정 및 지인 차단 관리"):
+        tab_p_edit, tab_p_block, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs([
+            "📝 소개 및 지역/취미", 
+            "🚫 아는 사람 차단", 
+            "📸 프로필 사진", 
+            "📄 신용 증빙 서류", 
+            "⚠️ 회원 탈퇴"
+        ])
         
         with tab_p_edit:
             curr_region = me.get("region", "서울특별시 강남구")
@@ -1390,6 +1477,58 @@ else:
                 st.session_state.user_info = me
                 st.success("프로필 정보가 성공적으로 변경되었습니다!")
                 st.rerun()
+
+        # [핵심 1: 지인 번호 차단 탭]
+        with tab_p_block:
+            st.markdown("###### 🚫 지인/아는 사람 차단 (상호 영구 미노출)")
+            st.caption("동창, 동네 지인, 친척 등 피하고 싶은 분의 휴대폰 번호를 등록하시면 서로의 추천 피드에서 완벽히 배제됩니다.")
+            
+            curr_blocked = me.get("blocked_phones") or []
+            if isinstance(curr_blocked, str):
+                try:
+                    curr_blocked = json.loads(curr_blocked)
+                except Exception:
+                    curr_blocked = []
+
+            col_b_input, col_b_btn = st.columns([2.5, 1.2])
+            with col_b_input:
+                new_block_num = st.text_input("차단할 휴대폰 번호 (- 없이 숫자만)", placeholder="예: 01012345678", key="input_block_num")
+            with col_b_btn:
+                st.write("")
+                add_block_btn = st.button("차단 번호 추가", key="btn_add_block")
+
+            if add_block_btn:
+                clean_bnum = re.sub(r'[^0-9]', '', new_block_num.strip())
+                if len(clean_bnum) < 10:
+                    st.error("올바른 휴대폰 번호를 입력해 주세요.")
+                elif clean_bnum == me.get("phone"):
+                    st.error("본인 번호는 차단 목록에 등록할 수 없습니다.")
+                elif clean_bnum in curr_blocked:
+                    st.warning("이미 차단 등록된 번호입니다.")
+                else:
+                    curr_blocked.append(clean_bnum)
+                    supabase.table("users").update({"blocked_phones": curr_blocked}).eq("id", me["id"]).execute()
+                    me["blocked_phones"] = curr_blocked
+                    st.session_state.user_info = me
+                    st.success(f"'{clean_bnum}' 번호가 차단 목록에 등록되었습니다.")
+                    st.rerun()
+
+            if curr_blocked:
+                st.write(f"현재 등록된 차단 번호 (총 **{len(curr_blocked)}개**):")
+                for b_idx, b_phone in enumerate(curr_blocked):
+                    c_b_txt, c_b_del = st.columns([3, 1])
+                    with c_b_txt:
+                        st.code(f"🚫 {b_phone}")
+                    with c_b_del:
+                        if st.button("삭제", key=f"del_b_{b_idx}"):
+                            curr_blocked.remove(b_phone)
+                            supabase.table("users").update({"blocked_phones": curr_blocked}).eq("id", me["id"]).execute()
+                            me["blocked_phones"] = curr_blocked
+                            st.session_state.user_info = me
+                            st.success(f"차단 해제되었습니다.")
+                            st.rerun()
+            else:
+                st.info("현재 등록된 차단 번호가 없습니다.")
 
         with tab_p_pic:
             up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
@@ -1485,13 +1624,41 @@ else:
     with tabs[0]:
         st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
         target_gender = "여" if me["gender"] == "남" else "남"
-        candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
+        raw_candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
+
+        # [핵심 1 & 3: 지인 차단 필터링 + 최근 14일 이내 활동 회원 우선 선별]
+        my_blocked_set = set(me.get("blocked_phones") or [])
+        my_phone = me.get("phone", "")
+
+        active_cutoff_date = datetime.now(timezone.utc) - timedelta(days=14)
+
+        candidates = []
+        for cand in raw_candidates:
+            c_phone = cand.get("phone", "")
+            c_blocked = set(cand.get("blocked_phones") or [])
+
+            # 지인 차단 조건: 내가 상대방을 차단했거나, 상대방이 나를 차단한 경우 제외
+            if c_phone in my_blocked_set or my_phone in c_blocked:
+                continue
+
+            # [핵심 3: 14일 이상 미접속 회원 후순위/제외 로직]
+            last_login = cand.get("last_login_at")
+            if last_login:
+                try:
+                    c_dt = datetime.fromisoformat(last_login.replace("Z", "+00:00"))
+                    # 14일 초과 미접속 회원은 자동 제외
+                    if c_dt < active_cutoff_date:
+                        continue
+                except Exception:
+                    pass
+
+            candidates.append(cand)
 
         sent_reqs = supabase.table("match_requests").select("id, receiver_id, status, payment_status").eq("sender_id", me["id"]).execute().data
         sent_dict = {req["receiver_id"]: req for req in sent_reqs}
 
         if not candidates:
-            st.info("현재 매칭 가능한 회원이 없습니다.")
+            st.info("현재 매칭 가능한 실시간 활동 회원이 없습니다. (지인 차단 및 최근 접속 회원 필터링 적용 중)")
         else:
             cand_scores = []
             for cand in candidates:
@@ -1813,7 +1980,7 @@ else:
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
 
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, ticket_count, is_vip, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, ticket_count, is_vip, last_login_at, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
 
                 if all_users:
                     raw_df = pd.DataFrame(all_users)
@@ -1822,6 +1989,7 @@ else:
                     raw_df["credit_score"] = raw_df["credit_score"].fillna(0).astype(int)
                     raw_df["age"] = raw_df["age"].fillna(0).astype(int)
                     raw_df["created_at"] = raw_df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
+                    raw_df["last_login_at"] = raw_df["last_login_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
 
                     excel_export_df = raw_df.copy()
                     excel_export_df["멤버십"] = excel_export_df["is_vip"].apply(lambda v: "VIP" if v else "일반")
@@ -1832,10 +2000,11 @@ else:
 
                     export_cols = excel_export_df[[
                         "name", "gender", "age", "region", "credit_score", "신용심사상태",
-                        "멤버십", "ticket_count", "계정상태", "phone", "created_at"
+                        "멤버십", "ticket_count", "계정상태", "phone", "last_login_at", "created_at"
                     ]].rename(columns={
                         "name": "성명", "gender": "성별", "age": "나이", "region": "활동지역",
-                        "credit_score": "신용점수", "ticket_count": "보유티켓", "phone": "연락처", "created_at": "가입일자"
+                        "credit_score": "신용점수", "ticket_count": "보유티켓", "phone": "연락처", 
+                        "last_login_at": "최근접속일", "created_at": "가입일자"
                     })
 
                     csv_data = export_cols.to_csv(index=False, encoding="utf-8-sig")
@@ -1909,10 +2078,10 @@ else:
                         )
 
                         display_df = page_df[[
-                            "name", "gender", "age", "region", "credit_score", "심사상태", "멤버십", "ticket_count", "계정상태", "phone", "created_at"
+                            "name", "gender", "age", "region", "credit_score", "심사상태", "멤버십", "ticket_count", "계정상태", "phone", "last_login_at"
                         ]].rename(columns={
                             "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
-                            "credit_score": "신용점수", "ticket_count": "잔여티켓", "phone": "휴대폰 번호", "created_at": "가입일"
+                            "credit_score": "신용점수", "ticket_count": "잔여티켓", "phone": "휴대폰 번호", "last_login_at": "최근접속"
                         })
 
                         display_df.index = range(start_idx + 1, start_idx + len(display_df) + 1)
