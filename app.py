@@ -557,21 +557,8 @@ if not st.session_state.user_id:
     """, height=0)
 
     # 👑 프리미엄 마케팅 카피 메인 히어로 배너
-    st.markdown(f"""
-        <div class="premium-master-hero">
-            <div class="noble-badge">5060 Private Noblesse Club</div>
-            <div class="noble-title-kr">👑 {BRAND_NAME_KR}</div>
-            
-            <div class="noble-main-copy">
-                “<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”
-            </div>
-            
-            <div class="noble-sub-policy-card">
-                <span class="noble-policy-star">✦</span>
-                <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
+    st.markdown(hero_html, unsafe_allow_html=True)
 
     # 신용인증 기준 바
     st.markdown("""
