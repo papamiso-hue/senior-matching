@@ -89,11 +89,12 @@ KOREA_REGIONS = {
 }
 
 st.set_page_config(
-    page_title=f"{BRAND_NAME_KR} - 5060 프리미엄 안심 매칭",
+    page_title=f"{BRAND_NAME_KR} - 5060 프라이빗 시크릿 클럽",
     page_icon="👑",
     layout="centered"
 )
 
+# [PWA 시스템 설치 팝업 유도 및 메타태그]
 components.html(f"""
 <script>
 function setMetaTag(property, content) {{
@@ -118,13 +119,50 @@ function setNameMetaTag(name, content) {{
 
 setMetaTag('og:type', 'website');
 setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 검증된 품격과 신용, 우리 동네 5060 프리미엄 인연 찾기');
-setMetaTag('og:description', '사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준');
+setMetaTag('og:description', '대중 앱스토어 비공개 · 100% 프라이빗 시크릿 멤버십');
 setMetaTag('og:image', '{OG_IMAGE_URL}');
 setMetaTag('og:url', '{SITE_URL}');
 
-setNameMetaTag('description', '사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준');
-window.parent.document.title = '👑 {BRAND_NAME_KR} - 우리 동네 5060 프리미엄 인연 찾기';
+setNameMetaTag('description', '대중 앱스토어 비공개 · 100% 프라이빗 시크릿 멤버십');
+window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프라이빗 시크릿 클럽';
+
+// 모바일 브라우저 자체 PWA 설치 이벤트 감지 및 세련된 하단 미니 바 제어
+let deferredPrompt;
+window.parent.addEventListener('beforeinstallprompt', (e) => {{
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBar = window.parent.document.getElementById('pwa-mini-install-bar');
+    if (installBar) {{
+        installBar.style.display = 'flex';
+    }}
+}});
+
+window.parent.installNoblesseApp = function() {{
+    if (deferredPrompt) {{
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {{
+            if (choiceResult.outcome === 'accepted') {{
+                const installBar = window.parent.document.getElementById('pwa-mini-install-bar');
+                if (installBar) installBar.style.display = 'none';
+            }}
+            deferredPrompt = null;
+        }});
+    }}
+}};
 </script>
+
+<div id="pwa-mini-install-bar" style="display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:90%; max-width:440px; background:#0F172A; border:1.5px solid #D4AF37; border-radius:12px; padding:10px 16px; z-index:999999; box-shadow:0 8px 24px rgba(0,0,0,0.5); align-items:center; justify-content:space-between; animation:slideUp 0.3s ease-out;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.2rem;">👑</span>
+        <div style="display:flex; flex-direction:column;">
+            <span style="font-size:0.86rem; font-weight:800; color:#FFFFFF;">노블레스 라온 전용 바로가기</span>
+            <span style="font-size:0.72rem; color:#94A3B8;">홈 화면에서 앱처럼 편리하게 이용하세요</span>
+        </div>
+    </div>
+    <button onclick="window.parent.installNoblesseApp()" style="background:linear-gradient(90deg, #D4AF37, #F59E0B); color:#0F172A; font-weight:900; font-size:0.8rem; padding:7px 14px; border:none; border-radius:6px; cursor:pointer;">
+        앱 추가
+    </button>
+</div>
 """, height=0)
 
 st.markdown(f"""
@@ -142,7 +180,7 @@ st.markdown(f"""
         border-radius: 16px;
         padding: 26px 20px 20px 20px;
         text-align: center;
-        margin-bottom: 1rem;
+        margin-bottom: 0.9rem;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
     }}
     .noble-badge {{
@@ -197,7 +235,20 @@ st.markdown(f"""
         margin-right: 2px;
     }}
 
-    /* 프라이버시 안심 보장 3단 배너 (다크모드 고대비 대응) */
+    /* 프라이빗 시크릿 클럽 한 줄 안내 */
+    .secret-club-notice {{
+        text-align: center;
+        margin-bottom: 1rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #94A3B8;
+        letter-spacing: -0.2px;
+    }}
+    .secret-club-notice span {{
+        color: #D4AF37;
+    }}
+
+    /* 프라이버시 안심 보장 3단 배너 */
     .privacy-promise-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -264,7 +315,7 @@ st.markdown(f"""
         font-weight: 900;
     }}
 
-    /* 미끼 콘텐츠 카드 (다크모드 고대비 대응) */
+    /* 미끼 콘텐츠 카드 */
     .taste-teaser-card {{
         background: #1E293B !important;
         border: 2px dashed #D4AF37 !important;
@@ -286,7 +337,7 @@ st.markdown(f"""
         line-height: 1.5;
     }}
 
-    /* 약관 안내 상자 (다크모드 고대비 대응) */
+    /* 약관 안내 상자 */
     .terms-box {{
         background-color: #1E293B !important;
         border: 1.5px solid #475569 !important;
@@ -299,7 +350,7 @@ st.markdown(f"""
         margin-bottom: 12px;
     }}
 
-    /* 고객센터 푸터 (다크모드 고대비 대응) */
+    /* 고객센터 푸터 */
     .support-footer-card {{
         background-color: #1E293B !important;
         border: 1.5px solid #475569 !important;
@@ -336,7 +387,7 @@ st.markdown(f"""
         box-shadow: 0 2px 5px rgba(0,0,0,0.15);
     }}
 
-    /* 피드 내 한 줄 소개 및 태그 (다크모드 고대비 대응) */
+    /* 피드 내 한 줄 소개 및 태그 */
     .intro-quote-box {{
         background: #1E293B !important;
         border-left: 4px solid #38BDF8 !important;
@@ -589,17 +640,12 @@ if not st.session_state.user_id:
     hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # 2. 📱 스마트폰 홈 화면 앱 바로가기 설치 안내 (다크모드 선명화 완비)
-    with st.expander("📲 [필독] 이 사이트를 휴대폰 '앱'처럼 바탕화면에 저장하는 법", expanded=False):
-        st.markdown("""
-            <div style="font-size:0.95rem; color:#F8FAFC !important; line-height:1.7; padding: 10px 14px; background: rgba(255,255,255,0.08); border-radius: 8px; border: 1px solid #475569;">
-                매번 주소를 입력할 필요 없이, 스마트폰 바탕화면에 <b style="color:#FDE047 !important;">노블레스 라온 전용 앱</b>으로 바로가기 아이콘을 만들어 접속하세요.<br><br>
-                <b style="color:#38BDF8 !important;">📌 갤럭시 (삼성인터넷 / 크롬):</b><br>
-                화면 우측 하단(또는 상단) <b>[점 3개 ⋮ / 메뉴 ≡]</b> ➔ <b>[현재 페이지 추가 / 홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료<br><br>
-                <b style="color:#38BDF8 !important;">📌 아이폰 (Safari 사파리):</b><br>
-                화면 하단 중앙 <b>[공유 버튼 ↑]</b> ➔ 메뉴를 위로 올려 <b>[홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료
-            </div>
-        """, unsafe_allow_html=True)
+    # 2. 프라이빗 시크릿 클럽 한 줄 안내 (스토어 비공개의 정당성 부여)
+    st.markdown("""
+        <div class="secret-club-notice">
+            🔒 본 클럽은 철저한 프라이버시 보호를 위해 <span>대중 앱스토어에 노출되지 않는 비공개 프라이빗 웹 멤버십</span>으로 운영됩니다.
+        </div>
+    """, unsafe_allow_html=True)
 
     # 3. 5060 프라이버시 안심 보장 3단 배너
     st.markdown("""
