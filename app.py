@@ -12,8 +12,6 @@ import easyocr
 
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON"
-BRAND_SLOGAN = "신용과 품격이 통하는 5060 프리미엄 맞춤 인연"
-BRAND_DESC = "엄격한 신용 검증과 75가지 가치관 대조를 통한 고품격 안심 만남"
 SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
@@ -120,63 +118,105 @@ function setNameMetaTag(name, content) {{
 }}
 
 setMetaTag('og:type', 'website');
-setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 5060 프리미엄 맞춤 인연');
-setMetaTag('og:description', '{BRAND_DESC}');
+setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 검증된 품격과 신용, 우리 동네 5060 프리미엄 인연 찾기');
+setMetaTag('og:description', '사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준');
 setMetaTag('og:image', '{OG_IMAGE_URL}');
 setMetaTag('og:url', '{SITE_URL}');
 
-setNameMetaTag('description', '{BRAND_DESC}');
-window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프리미엄 맞춤 인연';
+setNameMetaTag('description', '사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준');
+window.parent.document.title = '👑 {BRAND_NAME_KR} - 우리 동네 5060 프리미엄 인연 찾기';
 </script>
 """, height=0)
 
 st.markdown(f"""
     <style>
     .block-container {{ 
-        padding-top: 2.8rem !important; 
+        padding-top: 2.2rem !important; 
         padding-bottom: 3.5rem !important; 
         max-width: 780px; 
     }}
     
-    .brand-hero-header {{
+    /* 럭셔리 프리미엄 메인 히어로 헤더 */
+    .premium-master-hero {{
+        background: linear-gradient(135deg, #090E17 0%, #131D2E 50%, #0B111D 100%);
+        border: 2px solid #D4AF37;
+        border-radius: 16px;
+        padding: 28px 20px 22px 20px;
         text-align: center;
-        padding: 22px 16px 18px 16px;
-        background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
-        border: 2px solid #D97706;
-        border-radius: 14px;
         margin-bottom: 1.2rem;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        position: relative;
     }}
-    .brand-logo-en {{
-        font-size: 0.85rem;
-        font-weight: 800;
-        letter-spacing: 3.5px;
-        color: #F59E0B;
+    .noble-badge {{
+        display: inline-block;
+        background: linear-gradient(90deg, #D4AF37 0%, #F3E5AB 50%, #AA771C 100%);
+        color: #0A0F1D !important;
+        font-size: 0.74rem;
+        font-weight: 900;
+        letter-spacing: 3px;
+        padding: 4px 14px;
+        border-radius: 20px;
         text-transform: uppercase;
-        margin-bottom: 4px;
+        margin-bottom: 10px;
     }}
-    .brand-logo-kr {{
-        font-size: 1.95rem;
+    .noble-title-kr {{
+        font-size: 2.1rem;
         font-weight: 900;
         color: #FFFFFF;
-        letter-spacing: -0.8px;
-        line-height: 1.25;
-        margin-bottom: 8px;
+        letter-spacing: -1px;
+        line-height: 1.2;
+        margin-bottom: 10px;
     }}
-    .brand-slogan {{
-        font-size: 0.95rem;
+    
+    /* 메인 광고 카피 1 */
+    .noble-main-copy {{
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #F8FAFC;
+        letter-spacing: -0.4px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+        word-break: keep-all;
+    }}
+    .noble-gold-highlight {{
+        color: #F6D896 !important;
+        text-shadow: 0 0 10px rgba(246, 216, 150, 0.35);
+    }}
+    
+    /* 메인 광고 카피 2 (사회적 활동 및 금융 환경 고려) */
+    .noble-sub-policy-card {{
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(212, 175, 55, 0.35);
+        border-radius: 8px;
+        padding: 8px 14px;
+        display: inline-block;
+        margin-top: 4px;
+    }}
+    .noble-sub-policy-text {{
+        font-size: 0.88rem;
         font-weight: 700;
-        color: #94A3B8;
+        color: #CBD5E1;
         letter-spacing: -0.2px;
     }}
+    .noble-policy-star {{
+        color: #F59E0B;
+        font-weight: 900;
+        margin-right: 2px;
+    }}
 
+    /* 신용 점수 인증 배지 바 */
     .badge-box {{
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        padding: 16px;
+        background: linear-gradient(135deg, #162032 0%, #0B111E 100%);
+        padding: 14px 18px;
         border-radius: 12px;
         margin-bottom: 0.9rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        border: 2px solid #334155;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        border: 1.5px solid #2A3B53;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
     }}
     .badge-tag {{
         display: inline-block;
@@ -184,49 +224,45 @@ st.markdown(f"""
         color: #FFFFFF !important;
         font-size: 0.78rem;
         font-weight: 800;
-        padding: 4px 9px;
-        border-radius: 5px;
-        margin-bottom: 8px;
+        padding: 4px 10px;
+        border-radius: 6px;
         letter-spacing: 0.5px;
     }}
     .badge-text {{
-        font-size: 1.05rem;
+        font-size: 0.98rem;
         font-weight: 800;
         color: #38BDF8 !important;
-        line-height: 1.45;
     }}
     .highlight-score {{
         color: #FDE047 !important;
-        font-size: 1.15rem;
+        font-size: 1.12rem;
         font-weight: 900;
-        text-decoration: underline;
-        text-underline-offset: 4px;
     }}
 
     .premium-hero-box {{
         background: #F8FAFC;
-        border: 2px solid #E2E8F0;
-        border-left: 5px solid #D97706;
-        padding: 16px 18px;
+        border: 1.5px solid #E2E8F0;
+        border-left: 5px solid #D4AF37;
+        padding: 15px 18px;
         border-radius: 10px;
         margin-bottom: 0.8rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }}
     .hero-line1 {{
-        font-size: 1.05rem;
+        font-size: 1.02rem;
         font-weight: 800;
         color: #0F172A !important;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         line-height: 1.4;
         display: flex;
         align-items: center;
         gap: 6px;
     }}
     .hero-line2 {{
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         font-weight: 700;
         color: #475569 !important;
-        line-height: 1.5;
+        line-height: 1.45;
     }}
     .highlight-gold {{
         color: #B45309 !important;
@@ -234,35 +270,6 @@ st.markdown(f"""
     }}
     .highlight-blue {{
         color: #0369A1 !important;
-        font-weight: 900;
-    }}
-
-    .network-accent-card {{
-        background: linear-gradient(135deg, #FFFDF7 0%, #FEF9EE 100%);
-        border: 1.5px solid #F6D896;
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin-bottom: 1.3rem;
-        box-shadow: 0 3px 10px rgba(217, 119, 6, 0.08);
-    }}
-    .network-row-1 {{
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.96rem;
-        font-weight: 800;
-        color: #B45309 !important;
-        margin-bottom: 4px;
-    }}
-    .network-row-2 {{
-        padding-left: 26px;
-        font-size: 0.98rem;
-        font-weight: 800;
-        color: #0F172A !important;
-        line-height: 1.4;
-    }}
-    .network-highlight {{
-        color: #E11D48 !important;
         font-weight: 900;
     }}
 
@@ -288,7 +295,7 @@ st.markdown(f"""
     }}
     div[data-baseweb="tab"][aria-selected="true"] {{
         background-color: #0F172A !important;
-        border: 2.5px solid #E11D48 !important;
+        border: 2.5px solid #D4AF37 !important;
         color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
     }}
@@ -301,7 +308,7 @@ st.markdown(f"""
         border-radius: 8px !important;
     }}
     div[data-baseweb="input"]:focus-within {{
-        border: 2.5px solid #E11D48 !important;
+        border: 2.5px solid #D4AF37 !important;
     }}
 
     .stButton>button {{ 
@@ -317,7 +324,7 @@ st.markdown(f"""
     }}
     .stButton>button:active {{
         transform: scale(0.98);
-        border-color: #E11D48 !important;
+        border-color: #D4AF37 !important;
     }}
 
     .profile-avatar {{
@@ -325,7 +332,7 @@ st.markdown(f"""
         height: 76px;
         border-radius: 50%;
         object-fit: cover;
-        border: 2.5px solid #D97706;
+        border: 2.5px solid #D4AF37;
         box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     }}
     .profile-placeholder {{
@@ -448,7 +455,6 @@ supabase = get_supabase_client()
 def get_ocr_reader():
     return easyocr.Reader(['ko', 'en'], gpu=False)
 
-# 신용 서류 필수 키워드 목록
 CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
 
 def extract_text_from_file(file_bytes, ext):
@@ -490,7 +496,6 @@ def validate_credit_doc(uploaded_file, max_size_mb=15):
     if file_size_bytes == 0:
         return False, "내용이 없는 빈 파일입니다. 정상 파일을 업로드해 주세요.", None
 
-    # 신용 키워드 사전 자동 검사
     with st.spinner("🔍 신용 증빙 서류의 진위 키워드를 자동 분석 중입니다..."):
         text_content = extract_text_from_file(file_bytes, ext)
         matched = [kw for kw in CREDIT_KEYWORDS if kw in text_content]
@@ -534,7 +539,7 @@ qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
 
-# [1. 로그인/가입 화면]
+# [1. 로그인/가입 메인 랜딩 화면]
 if not st.session_state.user_id:
     components.html("""
     <script>
@@ -551,37 +556,38 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
+    # 👑 프리미엄 마케팅 카피 메인 히어로 배너
     st.markdown(f"""
-        <div class="brand-hero-header">
-            <div class="brand-logo-en">{BRAND_NAME_EN}</div>
-            <div class="brand-logo-kr">👑 {BRAND_NAME_KR}</div>
-            <div class="brand-slogan">{BRAND_SLOGAN}</div>
+        <div class="premium-master-hero">
+            <div class="noble-badge">5060 Private Noblesse Club</div>
+            <div class="noble-title-kr">👑 {BRAND_NAME_KR}</div>
+            
+            <div class="noble-main-copy">
+                “<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”
+            </div>
+            
+            <div class="noble-sub-policy-card">
+                <span class="noble-policy-star">✦</span>
+                <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
+    # 신용인증 기준 바
     st.markdown("""
         <div class="badge-box">
-            <span class="badge-tag">엄격한 입회 기준</span>
-            <div class="badge-text">남성 800점 이상 · 여성 600점 이상 <span class="highlight-score">신용점수</span> 인증 필수</div>
+            <span class="badge-tag">엄격한 신용 보증제</span>
+            <div class="badge-text">남성 800점 이상 · 여성 600점 이상 <span class="highlight-score">공인 신용인증</span> 필수</div>
         </div>
     """, unsafe_allow_html=True)
     
     st.markdown("""
         <div class="premium-hero-box">
             <div class="hero-line1">
-                <span>🏆</span> <span><span class="highlight-gold">신용이 검증된 분들</span>만 모시는 고품격 만남</span>
+                <span>🏆</span> <span><span class="highlight-gold">신용과 품격이 검증된 분들</span>만 모시는 프라이빗 만남</span>
             </div>
             <div class="hero-line2">
-                <span>💬</span> <span class="highlight-blue">75가지 가치관 문답</span>으로 깊이가 통하는 진짜 인연을 찾습니다.
-            </div>
-        </div>
-        
-        <div class="network-accent-card">
-            <div class="network-row-1">
-                <span>✨</span> <span>검증된 품격 있는 인연이 모일수록</span>
-            </div>
-            <div class="network-row-2">
-                내 기준에 꼭 맞는 <span class="network-highlight">단 한 사람과의 만남</span>은 더욱 완벽해집니다.
+                <span>💬</span> <span class="highlight-blue">75가지 심층 가치관 문답</span>으로 깊이와 취향이 통하는 진짜 인연을 완성합니다.
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -723,7 +729,6 @@ if not st.session_state.user_id:
                 if dup:
                     st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
                 else:
-                    # 신용 서류 텍스트 및 키워드 검증 실행
                     is_valid_doc, doc_msg, file_bytes = validate_credit_doc(join_credit_doc, max_size_mb=15)
                     if not is_valid_doc:
                         st.error(doc_msg)
@@ -783,7 +788,7 @@ else:
     st.markdown(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px;">
             <div style="font-size:1.1rem; font-weight:900; color:#0F172A;">👑 {BRAND_NAME_KR}</div>
-            <div style="font-size:0.75rem; font-weight:800; color:#D97706; letter-spacing:1px;">{BRAND_NAME_EN}</div>
+            <div style="font-size:0.75rem; font-weight:800; color:#D4AF37; letter-spacing:1px;">{BRAND_NAME_EN}</div>
         </div>
     """, unsafe_allow_html=True)
 
