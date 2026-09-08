@@ -537,6 +537,21 @@ def send_aligo_sms(receiver_phone, auth_code):
     except Exception as e:
         return False, f"SMS 발송 오류: {e}"
 
+def send_aligo_notice_sms(receiver_phone, text_message):
+    try:
+        url = "https://apis.aligo.in/send/"
+        payload = {
+            "key": ALIGO_API_KEY,
+            "user_id": ALIGO_USER_ID,
+            "sender": ALIGO_SENDER,
+            "receiver": receiver_phone,
+            "msg": f"[{BRAND_NAME_KR}] {text_message}",
+            "testmode_yn": "N"
+        }
+        requests.post(url, data=payload, timeout=6)
+    except Exception as e:
+        print(f"Notice SMS Error: {e}")
+
 CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
 
 def extract_text_lightweight_api(file_bytes, ext):
@@ -1229,7 +1244,10 @@ else:
                                 "receiver_id": cand["id"],
                                 "status": "PENDING"
                             }).execute()
-                            st.toast(f"{cand['name']} 님에게 대화 신청을 보냈습니다!")
+                            cand_target_phone = cand.get("phone")
+                            if cand_target_phone:
+                                send_aligo_notice_sms(cand_target_phone, f"{me['name']} 님으로부터 가치관 기반 대화 신청이 도착했습니다. 보관함에서 확인해 보세요.")
+                            st.toast(f"{cand['name']} 님에게 대화 신청 및 알림 문자를 보냈습니다!")
                             st.rerun()
 
                     st.divider()
@@ -1373,6 +1391,9 @@ else:
                             with col_acc:
                                 if st.button("수락", key=f"acc_{req['id']}"):
                                     supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
+                                    sender_phone = u.get("phone")
+                                    if sender_phone:
+                                        send_aligo_notice_sms(sender_phone, f"축하합니다! {me['name']} 님과의 대화가 성사되었습니다. 웹사이트에서 연락처를 확인해 보세요.")
                                     st.rerun()
                             with col_rej:
                                 if st.button("거절", key=f"rej_{req['id']}"):
