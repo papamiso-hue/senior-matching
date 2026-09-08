@@ -458,10 +458,8 @@ supabase = get_supabase_client()
 
 CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
 
-# [초경량 API & 로컬 PDF 하이브리드 키워드 추출기]
 def extract_text_lightweight_api(file_bytes, ext):
     extracted_text = ""
-    # 1. PDF인 경우 로컬에서 0.05초 만에 즉시 추출
     if ext == "pdf":
         try:
             reader = PdfReader(io.BytesIO(file_bytes))
@@ -473,12 +471,11 @@ def extract_text_lightweight_api(file_bytes, ext):
             print(f"PDF extract error: {e}")
         return extracted_text.upper()
 
-    # 2. 이미지(JPG/PNG)인 경우: 서버 메모리를 쓰지 않고 무료 경량 REST API로 텍스트 확인
     try:
         api_url = "https://api.ocr.space/parse/image"
         files = {"file": ("doc." + ext, file_bytes)}
         data = {
-            "apikey": "K87899142388957",  # OCR.space 무료 공용 API Key
+            "apikey": "K87899142388957",
             "language": "kor",
             "isOverlayRequired": False
         }
@@ -490,7 +487,6 @@ def extract_text_lightweight_api(file_bytes, ext):
                 extracted_text = parsed_results[0].get("ParsedText", "")
     except Exception as e:
         print(f"Lightweight OCR API error: {e}")
-        # API 타임아웃이나 일시적 오류 시 유저 가입 차단 방지(관리자 심사 대기열로 안전 위임)
         return "신용 점수 PASS"
 
     return extracted_text.upper()
@@ -577,11 +573,23 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
-    # 1. 럭셔리 마케팅 메인 히어로 배너 (HTML 들여쓰기 오류 완전 제거)
+    # 1. 럭셔리 마케팅 메인 히어로 배너
     hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # 2. 5060 프라이버시 안심 보장 3단 배너
+    # 2. 📱 스마트폰 홈 화면 앱 바로가기 설치 안내 카드
+    with st.expander("📲 [필독] 이 사이트를 휴대폰 '앱'처럼 바탕화면에 저장하는 법", expanded=False):
+        st.markdown("""
+            <div style="font-size:0.92rem; color:#1E293B; line-height:1.6; padding: 4px 6px;">
+                매번 주소를 입력하거나 카카오톡 링크를 찾을 필요 없이, 스마트폰 바탕화면에 <b>노블레스 라온 전용 앱 아이콘</b>으로 만들어 둘 수 있습니다.<br><br>
+                <b>📌 갤럭시 (삼성 인터넷 / 크롬):</b><br>
+                화면 우측 하단 또는 상단의 <b>[점 3개 ⋮ 또는 메뉴 ≡]</b> 터치 ➔ <b>[현재 페이지 추가]</b> 또는 <b>[홈 화면에 추가]</b> 선택 ➔ <b>[추가]</b> 완료<br><br>
+                <b>📌 아이폰 (Safari 사파리):</b><br>
+                화면 맨 하단 가운데 <b>[공유 버튼 ↑]</b> 터치 ➔ 메뉴를 위로 올려 <b>[홈 화면에 추가]</b> 터치 ➔ 우측 상단 <b>[추가]</b> 완료
+            </div>
+        """, unsafe_allow_html=True)
+
+    # 3. 5060 프라이버시 안심 보장 3단 배너
     st.markdown("""
         <div class="privacy-promise-grid">
             <div class="privacy-card">
@@ -602,7 +610,7 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. 신용점수 기준 바 및 정당성 안내
+    # 4. 신용점수 기준 바 및 정당성 안내
     st.markdown("""
         <div class="badge-box">
             <span class="badge-tag">엄격한 신용 보증제</span>
@@ -620,7 +628,7 @@ if not st.session_state.user_id:
             </div>
         """, unsafe_allow_html=True)
 
-    # 4. 5문항 무료 가치관 매칭 체험
+    # 5. 5문항 무료 가치관 매칭 체험
     with st.expander("✨ [무료 체험] 가입 전 내 가치관 매칭률 & 활동 회원 수 확인하기", expanded=False):
         st.markdown("""
             <div class="taste-teaser-card">
