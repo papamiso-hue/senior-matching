@@ -3,9 +3,12 @@ import streamlit.components.v1 as components
 import re
 import uuid
 import math
+import io
 from datetime import datetime
 import pandas as pd
 from supabase import create_client, Client
+from pypdf import PdfReader
+import easyocr
 
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON"
@@ -441,36 +444,61 @@ def get_supabase_client() -> Client:
 
 supabase = get_supabase_client()
 
-if "user_id" not in st.session_state:
-    st.session_state.user_id = None
-if "user_info" not in st.session_state:
-    st.session_state.user_info = None
+@st.cache_resource
+def get_ocr_reader():
+    return easyocr.Reader(['ko', 'en'], gpu=False)
 
-qp = st.query_params
-saved_name_val = qp.get("saved_name", "")
-saved_phone_val = qp.get("saved_phone", "")
+# 신용 서류 필수 키워드 목록
+CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
 
-# 신용 서류 유효성 검증 함수
+def extract_text_from_file(file_bytes, ext):
+    extracted_text = ""
+    try:
+        if ext == "pdf":
+            reader = PdfReader(io.BytesIO(file_bytes))
+            for page in reader.pages:
+                t = page.extract_text()
+                if t:
+                    extracted_text += " " + t
+        else:
+            ocr_reader = get_ocr_reader()
+            results = ocr_reader.readtext(file_bytes, detail=0)
+            extracted_text = " ".join(results)
+    except Exception as e:
+        print(f"Text extraction error: {e}")
+    return extracted_text.upper()
+
 def validate_credit_doc(uploaded_file, max_size_mb=15):
     if uploaded_file is None:
-        return False, "신용점수 증빙 서류(캡처 이미지 또는 PDF)를 반드시 첨부해 주세요."
+        return False, "신용점수 증빙 서류(캡처 이미지 또는 PDF)를 반드시 첨부해 주세요.", None
     
     allowed_extensions = ["jpg", "jpeg", "png", "pdf"]
     fname = uploaded_file.name.lower()
     ext = fname.split(".")[-1] if "." in fname else ""
     
     if ext not in allowed_extensions:
-        return False, f"지원하지 않는 파일 형식입니다. (허용 형식: JPG, PNG, PDF / 입력 파일: {ext})"
+        return False, f"지원하지 않는 파일 형식입니다. (허용: JPG, PNG, PDF / 입력: {ext})", None
     
-    file_size_bytes = uploaded_file.size
+    file_bytes = uploaded_file.read()
+    uploaded_file.seek(0)
+    file_size_bytes = len(file_bytes)
     max_bytes = max_size_mb * 1024 * 1024
+    
     if file_size_bytes > max_bytes:
-        return False, f"파일 용량이 너무 큽니다. {max_size_mb}MB 이하 파일만 업로드 가능합니다. (현재: {file_size_bytes / (1024 * 1024):.1f}MB)"
+        return False, f"파일 용량이 너무 큽니다. {max_size_mb}MB 이하 파일만 가능합니다.", None
     
     if file_size_bytes == 0:
-        return False, "손상되었거나 내용이 없는 빈 파일입니다. 정상 파일을 업로드해 주세요."
+        return False, "내용이 없는 빈 파일입니다. 정상 파일을 업로드해 주세요.", None
+
+    # 신용 키워드 사전 자동 검사
+    with st.spinner("🔍 신용 증빙 서류의 진위 키워드를 자동 분석 중입니다..."):
+        text_content = extract_text_from_file(file_bytes, ext)
+        matched = [kw for kw in CREDIT_KEYWORDS if kw in text_content]
         
-    return True, ext
+        if not matched:
+            return False, "👉 신용점수 증빙 서류로 확인되지 않는 파일입니다. 신용점수가 명확히 보이는 캡처본(토스, 카카오페이, 올크레딧, NICE 등)을 등록해 주세요.", None
+
+    return True, ext, file_bytes
 
 def delete_file_from_storage(bucket_name, file_url):
     if not file_url:
@@ -496,6 +524,15 @@ def render_support_footer():
             </a>
         </div>
     """, unsafe_allow_html=True)
+
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "user_info" not in st.session_state:
+    st.session_state.user_info = None
+
+qp = st.query_params
+saved_name_val = qp.get("saved_name", "")
+saved_phone_val = qp.get("saved_phone", "")
 
 # [1. 로그인/가입 화면]
 if not st.session_state.user_id:
@@ -640,9 +677,8 @@ if not st.session_state.user_id:
 
         join_credit = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820, key="join_credit")
         
-        # 📄 공인 신용 증빙 서류 필수 첨부 UI
         st.markdown("##### 📄 공인 신용점수 증빙 서류 첨부 (필수)")
-        st.caption("남성 800점 이상 / 여성 600점 이상의 토스, 카카오페이, 나이스, KCB 신용 캡처 또는 공식 보고서 PDF를 첨부해 주세요. (최대 15MB)")
+        st.caption("남성 800점 이상 / 여성 600점 이상의 토스, 카카오페이, 나이스, KCB 신용 캡처 또는 공식 보고서 PDF를 첨부해 주세요. (자동 키워드 판별 적용)")
         join_credit_doc = st.file_uploader("증빙 파일 선택 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="join_credit_doc_file")
 
         st.markdown("##### 💼 나의 라이프스타일 (선택)")
@@ -672,9 +708,6 @@ if not st.session_state.user_id:
             clean_phone = re.sub(r'[^0-9]', '', join_phone.strip())
             cutoff = 800 if join_gender == "남" else 600
             
-            # 서류 검증 실행
-            is_valid_doc, doc_result = validate_credit_doc(join_credit_doc, max_size_mb=15)
-
             if not agree_terms:
                 st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
             elif not join_name.strip():
@@ -685,59 +718,61 @@ if not st.session_state.user_id:
                 st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
             elif join_credit < cutoff:
                 st.error(f"입회 기준 미달: {join_gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
-            elif not is_valid_doc:
-                st.error(doc_result)
             else:
                 dup = supabase.table("users").select("id").eq("phone", clean_phone).execute().data
                 if dup:
                     st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
                 else:
-                    ext = doc_result
-                    doc_uuid = uuid.uuid4().hex[:8]
-                    storage_filename = f"signup_{clean_phone}_{doc_uuid}.{ext}"
-                    content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
-                    
-                    try:
-                        file_bytes = join_credit_doc.read()
-                        supabase.storage.from_("credit-docs").upload(
-                            storage_filename, 
-                            file_bytes, 
-                            {"content-type": content_type}
-                        )
-                        doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{storage_filename}"
-
-                        new_u = supabase.table("users").insert({
-                            "name": join_name.strip(),
-                            "phone": clean_phone,
-                            "password": join_pwd.strip(),
-                            "gender": join_gender,
-                            "age": int(join_age),
-                            "region": selected_full_region,
-                            "credit_score": int(join_credit),
-                            "credit_doc_url": doc_url,
-                            "credit_status": "PENDING",
-                            "is_verified": False,
-                            "job": join_job.strip() if join_job else None,
-                            "hobbies": join_hobbies.strip() if join_hobbies else None,
-                            "intro": join_intro.strip() if join_intro else None,
-                            "is_admin": False,
-                            "is_suspended": False
-                        }).execute().data[0]
+                    # 신용 서류 텍스트 및 키워드 검증 실행
+                    is_valid_doc, doc_msg, file_bytes = validate_credit_doc(join_credit_doc, max_size_mb=15)
+                    if not is_valid_doc:
+                        st.error(doc_msg)
+                    else:
+                        ext = doc_msg
+                        doc_uuid = uuid.uuid4().hex[:8]
+                        storage_filename = f"signup_{clean_phone}_{doc_uuid}.{ext}"
+                        content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
                         
-                        uid = new_u["id"]
-                        supabase.table("user_answers").insert([
-                            {"user_id": uid, "question_num": 1, "answer_value": join_q1},
-                            {"user_id": uid, "question_num": 38, "answer_value": join_q38},
-                            {"user_id": uid, "question_num": 56, "answer_value": join_q56}
-                        ]).execute()
+                        try:
+                            supabase.storage.from_("credit-docs").upload(
+                                storage_filename, 
+                                file_bytes, 
+                                {"content-type": content_type}
+                            )
+                            doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{storage_filename}"
 
-                        st.session_state.user_id = uid
-                        st.session_state.user_info = new_u
-                        st.success("🎉 가입이 완료되었습니다! 관리자 서류 심사 후 공인 배지가 부여됩니다.")
-                        st.rerun()
+                            new_u = supabase.table("users").insert({
+                                "name": join_name.strip(),
+                                "phone": clean_phone,
+                                "password": join_pwd.strip(),
+                                "gender": join_gender,
+                                "age": int(join_age),
+                                "region": selected_full_region,
+                                "credit_score": int(join_credit),
+                                "credit_doc_url": doc_url,
+                                "credit_status": "PENDING",
+                                "is_verified": False,
+                                "job": join_job.strip() if join_job else None,
+                                "hobbies": join_hobbies.strip() if join_hobbies else None,
+                                "intro": join_intro.strip() if join_intro else None,
+                                "is_admin": False,
+                                "is_suspended": False
+                            }).execute().data[0]
+                            
+                            uid = new_u["id"]
+                            supabase.table("user_answers").insert([
+                                {"user_id": uid, "question_num": 1, "answer_value": join_q1},
+                                {"user_id": uid, "question_num": 38, "answer_value": join_q38},
+                                {"user_id": uid, "question_num": 56, "answer_value": join_q56}
+                            ]).execute()
 
-                    except Exception as e:
-                        st.error(f"서류 업로드 또는 회원가입 처리 중 오류가 발생했습니다: {e}")
+                            st.session_state.user_id = uid
+                            st.session_state.user_info = new_u
+                            st.success("🎉 서류 키워드 확인 완료 및 가입 승인 대기열에 등록되었습니다!")
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"서류 업로드 또는 회원가입 처리 중 오류가 발생했습니다: {e}")
 
     render_support_footer()
 
@@ -841,15 +876,15 @@ else:
                 st.caption("토스/카카오페이 캡처(JPG, PNG) 또는 공식 신용보고서(PDF)를 등록해 주세요. 확인 완료 즉시 안전 파기됩니다.")
                 up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
                 if up_doc and st.button("증빙 서류 제출하기"):
-                    is_valid, doc_res = validate_credit_doc(up_doc, max_size_mb=15)
+                    is_valid, doc_msg, f_bytes = validate_credit_doc(up_doc, max_size_mb=15)
                     if not is_valid:
-                        st.error(doc_res)
+                        st.error(doc_msg)
                     else:
-                        ext = doc_res
+                        ext = doc_msg
                         fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
                         content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
                         try:
-                            supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": content_type})
+                            supabase.storage.from_("credit-docs").upload(fname, f_bytes, {"content-type": content_type})
                             url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
                             supabase.table("users").update({
                                 "credit_doc_url": url,

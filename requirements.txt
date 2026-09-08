@@ -1,2 +1,4 @@
+pypdf
 streamlit
+easyocr
 supabase
