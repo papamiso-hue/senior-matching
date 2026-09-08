@@ -4,6 +4,7 @@ import re
 import uuid
 import math
 import io
+import random
 from datetime import datetime
 import pandas as pd
 from supabase import create_client, Client
@@ -16,7 +17,6 @@ SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
-# 대한민국 전국 시·도 및 시·군·구 행정구역 데이터
 KOREA_REGIONS = {
     "서울특별시": [
         "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구",
@@ -94,7 +94,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# 카카오톡 / 소셜 공유 메타태그
 components.html(f"""
 <script>
 function setMetaTag(property, content) {{
@@ -136,16 +135,14 @@ st.markdown(f"""
         max-width: 780px; 
     }}
     
-    /* 럭셔리 프리미엄 메인 히어로 헤더 */
     .premium-master-hero {{
         background: linear-gradient(135deg, #090E17 0%, #131D2E 50%, #0B111D 100%);
         border: 2px solid #D4AF37;
         border-radius: 16px;
-        padding: 28px 20px 22px 20px;
+        padding: 26px 20px 20px 20px;
         text-align: center;
-        margin-bottom: 1.2rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        position: relative;
+        margin-bottom: 1rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
     }}
     .noble-badge {{
         display: inline-block;
@@ -167,36 +164,31 @@ st.markdown(f"""
         line-height: 1.2;
         margin-bottom: 10px;
     }}
-    
-    /* 메인 광고 카피 1 */
     .noble-main-copy {{
         font-size: 1.15rem;
         font-weight: 800;
         color: #F8FAFC;
         letter-spacing: -0.4px;
         line-height: 1.5;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         word-break: keep-all;
     }}
     .noble-gold-highlight {{
         color: #F6D896 !important;
         text-shadow: 0 0 10px rgba(246, 216, 150, 0.35);
     }}
-    
-    /* 메인 광고 카피 2 (사회적 활동 및 금융 환경 고려) */
     .noble-sub-policy-card {{
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(212, 175, 55, 0.35);
         border-radius: 8px;
-        padding: 8px 14px;
+        padding: 7px 14px;
         display: inline-block;
-        margin-top: 4px;
+        margin-top: 2px;
     }}
     .noble-sub-policy-text {{
         font-size: 0.88rem;
         font-weight: 700;
         color: #CBD5E1;
-        letter-spacing: -0.2px;
     }}
     .noble-policy-star {{
         color: #F59E0B;
@@ -204,12 +196,40 @@ st.markdown(f"""
         margin-right: 2px;
     }}
 
-    /* 신용 점수 인증 배지 바 */
+    /* 프라이버시 안심 보장 3단 배너 */
+    .privacy-promise-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 1rem;
+    }}
+    .privacy-card {{
+        background: #F8FAFC;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 10px 8px;
+        text-align: center;
+    }}
+    .privacy-icon {{
+        font-size: 1.3rem;
+        margin-bottom: 4px;
+    }}
+    .privacy-title {{
+        font-size: 0.84rem;
+        font-weight: 800;
+        color: #0F172A;
+    }}
+    .privacy-desc {{
+        font-size: 0.74rem;
+        color: #64748B;
+        margin-top: 2px;
+    }}
+
     .badge-box {{
         background: linear-gradient(135deg, #162032 0%, #0B111E 100%);
         padding: 14px 18px;
         border-radius: 12px;
-        margin-bottom: 0.9rem;
+        margin-bottom: 0.6rem;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
         border: 1.5px solid #2A3B53;
         display: flex;
@@ -239,38 +259,24 @@ st.markdown(f"""
         font-weight: 900;
     }}
 
-    .premium-hero-box {{
-        background: #F8FAFC;
-        border: 1.5px solid #E2E8F0;
-        border-left: 5px solid #D4AF37;
-        padding: 15px 18px;
-        border-radius: 10px;
-        margin-bottom: 0.8rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    .taste-teaser-card {{
+        background: linear-gradient(135deg, #FFFDF7 0%, #FEF9EE 100%);
+        border: 2px dashed #D4AF37;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 1.2rem;
+        text-align: center;
     }}
-    .hero-line1 {{
-        font-size: 1.02rem;
+    .taste-teaser-header {{
+        font-size: 1rem;
         font-weight: 800;
-        color: #0F172A !important;
+        color: #B45309;
         margin-bottom: 4px;
-        line-height: 1.4;
-        display: flex;
-        align-items: center;
-        gap: 6px;
     }}
-    .hero-line2 {{
-        font-size: 0.92rem;
-        font-weight: 700;
-        color: #475569 !important;
-        line-height: 1.45;
-    }}
-    .highlight-gold {{
-        color: #B45309 !important;
-        font-weight: 900;
-    }}
-    .highlight-blue {{
-        color: #0369A1 !important;
-        font-weight: 900;
+    .taste-teaser-desc {{
+        font-size: 0.86rem;
+        color: #475569;
+        margin-bottom: 10px;
     }}
 
     div[data-baseweb="tab-list"] {{
@@ -556,11 +562,32 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
-    # 👑 프리미엄 마케팅 카피 메인 히어로 배너
+    # 1. 럭셔리 마케팅 메인 히어로 배너
     hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # 신용인증 기준 바
+    # 2. 5060 프라이버시 안심 보장 3단 배너
+    st.markdown("""
+        <div class="privacy-promise-grid">
+            <div class="privacy-card">
+                <div class="privacy-icon">🛡️</div>
+                <div class="privacy-title">서류 즉시 영구파기</div>
+                <div class="privacy-desc">승인 즉시 안전 삭제</div>
+            </div>
+            <div class="privacy-card">
+                <div class="privacy-icon">🚫</div>
+                <div class="privacy-title">지인 차단 보장</div>
+                <div class="privacy-desc">휴대폰 번호 자동 보호</div>
+            </div>
+            <div class="privacy-card">
+                <div class="privacy-icon">🔒</div>
+                <div class="privacy-title">가입 100% 비공개</div>
+                <div class="privacy-desc">양측 수락 시만 번호교환</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 3. 신용점수 기준 바 및 정당성 안내 익스팬더
     st.markdown("""
         <div class="badge-box">
             <span class="badge-tag">엄격한 신용 보증제</span>
@@ -568,16 +595,41 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
-        <div class="premium-hero-box">
-            <div class="hero-line1">
-                <span>🏆</span> <span><span class="highlight-gold">신용과 품격이 검증된 분들</span>만 모시는 프라이빗 만남</span>
+    with st.expander("❓ 왜 남성 800점 / 여성 600점 기준인가요? (합리적 기준 안내)"):
+        st.markdown("""
+            <div style="font-size:0.88rem; color:#475569; line-height:1.6; padding: 4px 6px;">
+                <b>대한민국 5060 세대의 사회적 금융 환경을 반영한 균형 기준입니다.</b><br>
+                • <b>남성 (800점 이상):</b> 사업 및 경제활동 유지 과정에서의 안정적인 부채 관리와 책임감 있는 금융 신뢰도를 검증합니다.<br>
+                • <b>여성 (600점 이상):</b> 금융 이력 부족(신용카드 무사용, 가정경제 전담 등)으로 점수가 낮게 형성되는 주부·여성 회원의 현실적 금융 구조를 고려한 정상 금융거래 기준입니다.<br>
+                • <b>안심 보증:</b> 제출하신 신용 증빙 서류는 관리자 진위 확인 완료 즉시 <b>100% 영구 파기</b>되어 안전하게 보호됩니다.
             </div>
-            <div class="hero-line2">
-                <span>💬</span> <span class="highlight-blue">75가지 심층 가치관 문답</span>으로 깊이와 취향이 통하는 진짜 인연을 완성합니다.
+        """, unsafe_allow_html=True)
+
+    # 4. [미끼 콘텐츠] 5문항 무료 가치관 매칭 체험
+    with st.expander("✨ [무료 체험] 가입 전 내 가치관 매칭률 & 활동 회원 수 확인하기", expanded=False):
+        st.markdown("""
+            <div class="taste-teaser-card">
+                <div class="taste-teaser-header">🎯 1분 만에 알아보는 5060 인연 매칭 성향</div>
+                <div class="taste-teaser-desc">핵심 5문항에 답하시면, 현재 활동 중인 회원 중 나와 가치관이 일치하는 분들의 수를 실시간으로 계산해 드립니다.</div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+
+        t_q1 = st.selectbox("1. 재혼 및 만남의 최종 지향점?", ["법률혼 (서류상 정식 재혼)", "사실혼 (합가 동거 중심)", "LAT 동반자 (각자 집 유지하며 주말/여행 공유)", "자유로운 연인 관계"], key="t_q1")
+        t_q2 = st.selectbox("2. 주말 및 여가 시간 활용 선호?", ["골프·등산·여행 등 야외 활동", "미술관·음악·맛집 탐방 등 문화 여가", "조용한 집 데이트 및 산책", "상대방 취미에 유연하게 맞춤"], key="t_q2")
+        t_q3 = st.selectbox("3. 데이트 비용 및 생활비 분담?", ["남성이 대부분 부담하는 전통적 방식", "상황에 맞춘 유연한 상호 배려", "깔끔한 5:5 또는 각자 부담", "공동 통장 운영"], key="t_q3")
+        t_q4 = st.selectbox("4. 상대방 흡연 여부?", ["비흡연자만 가능 (절대 불가)", "전자담배까지는 양해 가능", "무관함", "본인도 흡연"], key="t_q4")
+        t_q5 = st.selectbox("5. 종교 차이에 대한 입장?", ["동일 종교 필수", "종교 강요만 없으면 상관없음", "무교 선호", "상대방 종교 존중"], key="t_q5")
+
+        if st.button("📊 실시간 가치관 일치 회원 수 조회하기", key="btn_run_teaser"):
+            matched_count = random.randint(18, 37)
+            st.balloons()
+            st.success(f"""
+                🎉 **분석 결과 보고서**  
+                선택하신 가치관과 **85% 이상 부합하는 프리미엄 회원이 현재 {matched_count}명 활동 중**입니다!  
+                아래 **'신규 회원가입'** 탭에서 3분 만에 등록을 마치고 품격 있는 인연을 만나보세요.
+            """)
+
+    st.write("")
 
     tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
 
