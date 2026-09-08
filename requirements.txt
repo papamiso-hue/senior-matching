@@ -1,4 +1,5 @@
-pypdf
 streamlit
-easyocr
 supabase
+pandas
+pypdf
+requests
