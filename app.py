@@ -12,9 +12,80 @@ BRAND_NAME_EN = "NOBLESSE RAON"
 BRAND_SLOGAN = "신용과 품격이 통하는 5060 프리미엄 맞춤 인연"
 BRAND_DESC = "엄격한 신용 검증과 75가지 가치관 대조를 통한 고품격 안심 만남"
 SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
-# 카카오톡 공유 시 노출될 대표 썸네일 이미지 URL (고품격 골드 & 네이비 콘셉트)
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
+
+# 대한민국 전국 시·도 및 시·군·구 행정구역 데이터
+KOREA_REGIONS = {
+    "서울특별시": [
+        "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구",
+        "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구",
+        "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"
+    ],
+    "경기도": [
+        "수원시 장안구", "수원시 권선구", "수원시 팔달구", "수원시 영통구",
+        "성남시 수정구", "성남시 중원구", "성남시 분당구",
+        "의정부시", "안양시 만안구", "안양시 동안구", "부천시 원미구", "부천시 소사구", "부천시 오정구",
+        "광명시", "평택시", "동두천시", "안산시 상록구", "안산시 단원구", "고양시 덕양구", "고양시 일산동구", "고양시 일산서구",
+        "과천시", "구리시", "남양주시", "오산시", "시흥시", "군포시", "의왕시", "하남시",
+        "용인시 처인구", "용인시 기흥구", "용인시 수지구", "파주시", "이천시", "안성시", "김포시", "화성시",
+        "광주시", "양주시", "포천시", "여주시", "연천군", "가평군", "양평군"
+    ],
+    "인천광역시": [
+        "중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구", "강화군", "옹진군"
+    ],
+    "부산광역시": [
+        "중구", "서구", "동구", "영도구", "부산진구", "동래구", "남구", "북구",
+        "해운대구", "사하구", "금정구", "강서구", "연제구", "수영구", "사상구", "기장군"
+    ],
+    "대구광역시": [
+        "중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군", "군위군"
+    ],
+    "광주광역시": [
+        "동구", "서구", "남구", "북구", "광산구"
+    ],
+    "대전광역시": [
+        "동구", "중구", "서구", "유성구", "대덕구"
+    ],
+    "울산광역시": [
+        "중구", "남구", "동구", "북구", "울주군"
+    ],
+    "세종특별자치시": [
+        "세종시 전역"
+    ],
+    "강원특별자치도": [
+        "춘천시", "원주시", "강릉시", "동해시", "태백시", "속초시", "삼척시",
+        "홍천군", "횡성군", "영월군", "평창군", "정선군", "철원군", "화천군", "양구군", "인제군", "고성군", "양양군"
+    ],
+    "충청북도": [
+        "청주시 상당구", "청주시 서원구", "청주시 흥덕구", "청주시 청원구",
+        "충주시", "제천시", "보은군", "옥천군", "영동군", "증평군", "진천군", "괴산군", "음성군", "단양군"
+    ],
+    "충청남도": [
+        "천안시 동남구", "천안시 서북구", "공주시", "보령시", "아산시", "서산시", "논산시", "계룡시", "당진시",
+        "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군"
+    ],
+    "전북특별자치도": [
+        "전주시 완산구", "전주시 덕진구", "군산시", "익산시", "정읍시", "남원시", "김제시",
+        "완주군", "진안군", "무주군", "장수군", "임실군", "순창군", "고창군", "부안군"
+    ],
+    "전라남도": [
+        "목포시", "여수시", "순천시", "나주시", "광양시", "담양군", "곡성군", "구례군", "고흥군", "보성군",
+        "화순군", "장흥군", "강진군", "해남군", "영암군", "무안군", "함평군", "영광군", "장성군", "완도군", "진도군", "신안군"
+    ],
+    "경상북도": [
+        "포항시 남구", "포항시 북구", "경주시", "김천시", "안동시", "구미시", "영주시", "영천시", "상주시", "문경시", "경산시",
+        "의성군", "청송군", "영양군", "영덕군", "청도군", "고령군", "성주군", "칠곡군", "예천군", "봉화군", "울진군", "울릉군"
+    ],
+    "경상남도": [
+        "창원시 의창구", "창원시 성산구", "창원시 마산합포구", "창원시 마산회원구", "창원시 진해구",
+        "진주시", "통영시", "사천시", "김해시", "밀양시", "거제시", "양산시",
+        "의령군", "함안군", "창녕군", "고성군", "남해군", "하동군", "산청군", "함양군", "거창군", "합천군"
+    ],
+    "제주특별자치도": [
+        "제주시", "서귀포시"
+    ]
+}
 
 st.set_page_config(
     page_title=f"{BRAND_NAME_KR} - 5060 프리미엄 안심 매칭",
@@ -22,7 +93,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 카카오톡, 네이버 밴드, 페이스북 등 소셜 공유(Open Graph) 메타태그 주입
+# 카카오톡 / 소셜 공유 전용 메타태그
 components.html(f"""
 <script>
 function setMetaTag(property, content) {{
@@ -45,20 +116,17 @@ function setNameMetaTag(name, content) {{
     element.setAttribute('content', content);
 }}
 
-// Open Graph 태그
 setMetaTag('og:type', 'website');
 setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 5060 프리미엄 맞춤 인연');
 setMetaTag('og:description', '{BRAND_DESC}');
 setMetaTag('og:image', '{OG_IMAGE_URL}');
 setMetaTag('og:url', '{SITE_URL}');
 
-// 기본 메타태그
 setNameMetaTag('description', '{BRAND_DESC}');
 window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프리미엄 맞춤 인연';
 </script>
 """, height=0)
 
-# 반응형 고대비 및 프리미엄 브랜드 전면 스타일
 st.markdown(f"""
     <style>
     .block-container {{ 
@@ -531,85 +599,95 @@ if not st.session_state.user_id:
                         st.error("일치하는 회원 정보를 찾을 수 없습니다. 성함, 휴대폰 번호, 나이를 다시 확인해 주세요.")
 
     with tab_join:
-        with st.form("join_form"):
-            name = st.text_input("성명 (실명)")
-            phone = st.text_input("휴대폰 번호 (- 없이 숫자만 입력)", placeholder="01012345678")
-            pwd = st.text_input("간편 비밀번호 설정 (4~6자리)", type="password", placeholder="숫자 4~6자리 권장")
-            gender = st.radio("성별", ["남", "여"], horizontal=True)
-            age = st.number_input("나이 (만 나이)", 40, 85, 58)
-            region = st.selectbox("활동 희망 지역", ["서울 강남/서초", "서울 강북/도심", "서울 서남/영등포", "경기 분당/판교", "경기 일산", "인천/부천", "기타"])
-            credit_score = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820)
+        st.markdown("##### 👤 기본 인적사항 입력")
+        join_name = st.text_input("성명 (실명)", key="join_name")
+        join_phone = st.text_input("휴대폰 번호 (- 없이 숫자만 입력)", placeholder="01012345678", key="join_phone")
+        join_pwd = st.text_input("간편 비밀번호 설정 (4~6자리)", type="password", placeholder="숫자 4~6자리 권장", key="join_pwd")
+        join_gender = st.radio("성별", ["남", "여"], horizontal=True, key="join_gender")
+        join_age = st.number_input("나이 (만 나이)", 40, 85, 58, key="join_age")
+        
+        # 🗺️ 대한민국 전국 시·도 및 시·군·구 2단계 연동 선택
+        st.markdown("##### 📍 활동 희망 지역 (전국 시·도 및 시·군·구)")
+        reg_col1, reg_col2 = st.columns(2)
+        with reg_col1:
+            join_sido = st.selectbox("광역시·도 선택", list(KOREA_REGIONS.keys()), index=0, key="join_sido")
+        with reg_col2:
+            join_sigungu = st.selectbox("시·군·구 선택", KOREA_REGIONS[join_sido], index=0, key="join_sigungu")
+        
+        selected_full_region = f"{join_sido} {join_sigungu}"
+        st.caption(f"선택된 활동 지역: **{selected_full_region}**")
+
+        join_credit = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820, key="join_credit")
+        
+        st.markdown("##### 💼 나의 라이프스타일 (선택)")
+        join_job = st.text_input("현재 하시는 일 / 전문 분야", placeholder="예: 개인사업체 운영, 전문직, 은퇴 후 자문 등", key="join_job")
+        join_hobbies = st.text_input("주말 취미 / 여가 활동", placeholder="예: 골프, 등산, 여행, 음악감상 등", key="join_hobbies")
+        join_intro = st.text_input("인생 2막을 여는 한 줄 소개", placeholder="예: 따뜻하고 성실한 마음으로 편안한 여생을 함께할 분을 찾습니다.", key="join_intro")
+
+        st.markdown("##### 🎯 3대 필수 가치관 문답")
+        join_q1 = st.radio("1. 관계의 최종 형태?", ["법률혼 (서류상 정식 재혼 희망)", "사실혼 (합가 동거하되 서류 정리는 신중)", "LAT 동반자 (각자 주거를 유지하며 여행과 일상 공유)", "상황에 맞추어 유연하게 협의"], key="join_q1")
+        join_q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"], key="join_q38")
+        join_q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"], key="join_q56")
+
+        st.markdown("---")
+        st.markdown("##### 🛡️ 안심 개인정보 및 신용 서류 파기 원칙")
+        st.markdown("""
+            <div class="terms-box">
+                <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 연락처 제공.<br>
+                <b>2. 신용 증빙 서류 100% 안전 파기 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 스토리지 및 데이터베이스에서 영구 삭제 처리되며 절대 보관되지 않습니다.<br>
+                <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처가 공개됩니다.<br>
+                <b>4. 부적격 회원 조치:</b> 허위 서류 제출 및 불량 매너 회원은 사전 통보 없이 영구 이용 정지 처리됩니다.
+            </div>
+        """, unsafe_allow_html=True)
+        
+        agree_terms = st.checkbox("위 개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의합니다. (필수)", key="agree_terms_cb")
+
+        if st.button("신용 검증 및 안심 가입 완료", key="submit_join_btn"):
+            clean_phone = re.sub(r'[^0-9]', '', join_phone.strip())
+            cutoff = 800 if join_gender == "남" else 600
             
-            st.markdown("##### 💼 나의 라이프스타일 (선택)")
-            job = st.text_input("현재 하시는 일 / 전문 분야", placeholder="예: 개인사업체 운영, 전문직, 은퇴 후 자문 등")
-            hobbies = st.text_input("주말 취미 / 여가 활동", placeholder="예: 골프, 등산, 여행, 음악감상 등")
-            intro = st.text_input("인생 2막을 여는 한 줄 소개", placeholder="예: 따뜻하고 성실한 마음으로 편안한 여생을 함께할 분을 찾습니다.")
-
-            st.markdown("##### 🎯 3대 필수 가치관 문답")
-            q1 = st.radio("1. 관계의 최종 형태?", ["법률혼 (서류상 정식 재혼 희망)", "사실혼 (합가 동거하되 서류 정리는 신중)", "LAT 동반자 (각자 주거를 유지하며 여행과 일상 공유)", "상황에 맞추어 유연하게 협의"])
-            q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"])
-            q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"])
-
-            st.markdown("---")
-            st.markdown("##### 🛡️ 안심 개인정보 및 신용 서류 파기 원칙")
-            st.markdown("""
-                <div class="terms-box">
-                    <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 연락처 제공.<br>
-                    <b>2. 신용 증빙 서류 100% 안전 파기 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 스토리지 및 데이터베이스에서 영구 삭제 처리되며 절대 보관되지 않습니다.<br>
-                    <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처가 공개됩니다.<br>
-                    <b>4. 부적격 회원 조치:</b> 허위 서류 제출 및 불량 매너 회원은 사전 통보 없이 영구 이용 정지 처리됩니다.
-                </div>
-            """, unsafe_allow_html=True)
-            
-            agree_terms = st.checkbox("위 개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의합니다. (필수)")
-
-            submit_join = st.form_submit_button("신용 검증 및 안심 가입 완료")
-            if submit_join:
-                clean_phone = re.sub(r'[^0-9]', '', phone.strip())
-                cutoff = 800 if gender == "남" else 600
-                
-                if not agree_terms:
-                    st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
-                elif not name.strip():
-                    st.error("성명을 입력해 주세요.")
-                elif len(clean_phone) < 10:
-                    st.error("올바른 휴대폰 번호를 입력해 주세요. (예: 01012345678)")
-                elif len(pwd.strip()) < 4:
-                    st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
-                elif credit_score < cutoff:
-                    st.error(f"입회 기준 미달: {gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
+            if not agree_terms:
+                st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
+            elif not join_name.strip():
+                st.error("성명을 입력해 주세요.")
+            elif len(clean_phone) < 10:
+                st.error("올바른 휴대폰 번호를 입력해 주세요. (예: 01012345678)")
+            elif len(join_pwd.strip()) < 4:
+                st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
+            elif join_credit < cutoff:
+                st.error(f"입회 기준 미달: {join_gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
+            else:
+                dup = supabase.table("users").select("id").eq("phone", clean_phone).execute().data
+                if dup:
+                    st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
                 else:
-                    dup = supabase.table("users").select("id").eq("phone", clean_phone).execute().data
-                    if dup:
-                        st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
-                    else:
-                        new_u = supabase.table("users").insert({
-                            "name": name.strip(),
-                            "phone": clean_phone,
-                            "password": pwd.strip(),
-                            "gender": gender,
-                            "age": int(age),
-                            "region": region,
-                            "credit_score": int(credit_score),
-                            "job": job.strip() if job else None,
-                            "hobbies": hobbies.strip() if hobbies else None,
-                            "intro": intro.strip() if intro else None,
-                            "is_verified": False,
-                            "credit_status": "PENDING",
-                            "is_admin": False,
-                            "is_suspended": False
-                        }).execute().data[0]
-                        
-                        uid = new_u["id"]
-                        supabase.table("user_answers").insert([
-                            {"user_id": uid, "question_num": 1, "answer_value": q1},
-                            {"user_id": uid, "question_num": 38, "answer_value": q38},
-                            {"user_id": uid, "question_num": 56, "answer_value": q56}
-                        ]).execute()
+                    new_u = supabase.table("users").insert({
+                        "name": join_name.strip(),
+                        "phone": clean_phone,
+                        "password": join_pwd.strip(),
+                        "gender": join_gender,
+                        "age": int(join_age),
+                        "region": selected_full_region,
+                        "credit_score": int(join_credit),
+                        "job": join_job.strip() if join_job else None,
+                        "hobbies": join_hobbies.strip() if join_hobbies else None,
+                        "intro": join_intro.strip() if join_intro else None,
+                        "is_verified": False,
+                        "credit_status": "PENDING",
+                        "is_admin": False,
+                        "is_suspended": False
+                    }).execute().data[0]
+                    
+                    uid = new_u["id"]
+                    supabase.table("user_answers").insert([
+                        {"user_id": uid, "question_num": 1, "answer_value": join_q1},
+                        {"user_id": uid, "question_num": 38, "answer_value": join_q38},
+                        {"user_id": uid, "question_num": 56, "answer_value": join_q56}
+                    ]).execute()
 
-                        st.session_state.user_id = uid
-                        st.session_state.user_info = new_u
-                        st.rerun()
+                    st.session_state.user_id = uid
+                    st.session_state.user_info = new_u
+                    st.rerun()
 
     render_support_footer()
 
@@ -651,25 +729,44 @@ else:
         st.markdown(f'<div class="intro-quote-box">“{me["intro"]}”</div>', unsafe_allow_html=True)
 
     with st.expander("✏️ 프로필 설정 및 계정 관리"):
-        tab_p_edit, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs(["📝 소개 및 취미", "📸 프로필 사진", "📄 신용 증빙 서류", "⚠️ 회원 탈퇴"])
+        tab_p_edit, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs(["📝 소개 및 지역/취미", "📸 프로필 사진", "📄 신용 증빙 서류", "⚠️ 회원 탈퇴"])
         
         with tab_p_edit:
+            st.markdown("###### 📍 내 활동 지역 변경")
+            # 기존 저장된 지역 분해 (예: "서울특별시 강남구" -> "서울특별시", "강남구")
+            curr_region = me.get("region", "서울특별시 강남구")
+            parts = curr_region.split(" ", 1)
+            init_sido = parts[0] if parts[0] in KOREA_REGIONS else "서울특별시"
+            init_sigungu = parts[1] if len(parts) > 1 and parts[1] in KOREA_REGIONS[init_sido] else KOREA_REGIONS[init_sido][0]
+
+            edit_reg1, edit_reg2 = st.columns(2)
+            with edit_reg1:
+                new_sido = st.selectbox("광역시·도", list(KOREA_REGIONS.keys()), index=list(KOREA_REGIONS.keys()).index(init_sido), key="edit_sido")
+            with edit_reg2:
+                sigungu_options = KOREA_REGIONS[new_sido]
+                sigungu_idx = sigungu_options.index(init_sigungu) if init_sigungu in sigungu_options else 0
+                new_sigungu = st.selectbox("시·군·구", sigungu_options, index=sigungu_idx, key="edit_sigungu")
+
+            new_full_region = f"{new_sido} {new_sigungu}"
+
             new_job = st.text_input("현재 하시는 일 / 전문 분야", value=me.get("job") or "", placeholder="예: 개인사업체 운영, 전문직 등")
             new_hobbies = st.text_input("주말 취미 / 여가 활동", value=me.get("hobbies") or "", placeholder="예: 골프, 등산, 여행 등")
             new_intro = st.text_area("인생 2막을 여는 한 줄 소개", value=me.get("intro") or "", placeholder="상대방에게 나를 어필하는 소개글", height=80)
             
             if st.button("내 프로필 정보 저장"):
                 supabase.table("users").update({
+                    "region": new_full_region,
                     "job": new_job.strip() if new_job else None,
                     "hobbies": new_hobbies.strip() if new_hobbies else None,
                     "intro": new_intro.strip() if new_intro else None
                 }).eq("id", me["id"]).execute()
                 
+                me["region"] = new_full_region
                 me["job"] = new_job.strip() if new_job else None
                 me["hobbies"] = new_hobbies.strip() if new_hobbies else None
                 me["intro"] = new_intro.strip() if new_intro else None
                 st.session_state.user_info = me
-                st.success("프로필 정보가 저장되었습니다!")
+                st.success("프로필 정보가 성공적으로 변경되었습니다!")
                 st.rerun()
 
         with tab_p_pic:
@@ -1002,10 +1099,16 @@ else:
     if me.get("is_admin"):
         with tabs[3]:
             st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
-            st.caption(f"{BRAND_NAME_KR} 신용 증빙 심사, 전체 고객 명부 및 권한/회원 제재를 관리합니다.")
+            st.caption(f"{BRAND_NAME_KR} 신용 증빙 심사, 전체 고객 명부, 회원 제재 및 실시간 매칭 교환 관제를 수행합니다.")
             
-            adm_sub1, adm_sub2, adm_sub3 = st.tabs(["📑 신용 서류 심사 대기열", "👥 전체 고객 명부", "🔑 회원 제재 및 관리자 권한"])
+            adm_sub1, adm_sub2, adm_sub3, adm_sub4 = st.tabs([
+                "📑 신용 서류 심사 대기열", 
+                "👥 전체 고객 명부", 
+                "🔑 회원 제재 및 관리자 권한",
+                "📊 실시간 매칭 교환 관제"
+            ])
             
+            # [1] 신용 심사 대기열
             with adm_sub1:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
@@ -1055,6 +1158,7 @@ else:
                                     st.rerun()
                             st.divider()
 
+            # [2] 전체 고객 데이터 명부
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
 
@@ -1173,7 +1277,7 @@ else:
                                 "성명": st.column_config.TextColumn("성명", width="small"),
                                 "성별": st.column_config.TextColumn("성별", width="small"),
                                 "나이": st.column_config.NumberColumn("나이", width="small"),
-                                "지역": st.column_config.TextColumn("지역", width="small"),
+                                "지역": st.column_config.TextColumn("지역", width="medium"),
                                 "직업/전문분야": st.column_config.TextColumn("직업/전문분야", width="medium"),
                                 "신용점수": st.column_config.NumberColumn("신용점수", width="small"),
                                 "심사상태": st.column_config.TextColumn("심사상태", width="medium"),
@@ -1186,6 +1290,7 @@ else:
                 else:
                     st.caption("등록된 회원이 없습니다.")
 
+            # [3] 🔑 회원 제재 및 관리자 권한 관리
             with adm_sub3:
                 st.markdown("##### 👥 회원 계정 제재(블랙리스트) 및 관리자 권한 설정")
                 st.caption("불량 회원을 즉시 차단하거나, 신뢰할 수 있는 회원을 공동 관리자로 임명합니다.")
@@ -1244,6 +1349,110 @@ else:
                                     supabase.table("users").update({"is_admin": False}).eq("id", target_user["id"]).execute()
                                     st.warning(f"{target_user['name']} 님의 관리자 권한이 회수되었습니다.")
                                     st.rerun()
+
+            # [4] 📊 실시간 매칭 교환 관제
+            with adm_sub4:
+                st.markdown("##### 📊 회원 간 매칭 신청 및 만남(연락처 교환) 관제")
+                st.caption("누가 누구에게 대화를 신청했고, 최종 수락되어 연락처가 교환된 횟수를 실시간으로 추적합니다.")
+
+                all_matches = supabase.table("match_requests").select("id, sender_id, receiver_id, status, created_at").order("created_at", desc=True).execute().data
+                all_u_dict = {u["id"]: u for u in supabase.table("users").select("id, name, gender, phone").execute().data}
+
+                if not all_matches:
+                    st.info("아직 회원 간 대화 신청 이력이 없습니다.")
+                else:
+                    match_records = []
+                    for m in all_matches:
+                        s_u = all_u_dict.get(m["sender_id"], {})
+                        r_u = all_u_dict.get(m["receiver_id"], {})
+                        
+                        s_name = s_u.get("name", "(탈퇴회원)")
+                        s_phone = s_u.get("phone", "-")
+                        s_gender = s_u.get("gender", "-")
+
+                        r_name = r_u.get("name", "(탈퇴회원)")
+                        r_phone = r_u.get("phone", "-")
+                        r_gender = r_u.get("gender", "-")
+
+                        status_raw = m.get("status", "PENDING")
+                        if status_raw == "ACCEPTED":
+                            status_kr = "🎉 만남 성사 (연락처 교환)"
+                        elif status_raw == "REJECTED":
+                            status_kr = "❌ 거절됨"
+                        else:
+                            status_kr = "⏳ 답변 대기중"
+
+                        c_time = str(m.get("created_at", "-"))[:16].replace("T", " ")
+
+                        match_records.append({
+                            "신청일시": c_time,
+                            "신청회원(보낸사람)": f"{s_name} ({s_gender})",
+                            "신청자연락처": s_phone,
+                            "상대회원(받은사람)": f"{r_name} ({r_gender})",
+                            "상대방연락처": r_phone,
+                            "진행상태": status_kr,
+                            "raw_sender": s_name,
+                            "raw_receiver": r_name,
+                            "raw_status": status_raw
+                        })
+
+                    m_df = pd.DataFrame(match_records)
+
+                    total_req_count = len(m_df)
+                    success_count = len(m_df[m_df["raw_status"] == "ACCEPTED"])
+                    success_rate = int((success_count / total_req_count) * 100) if total_req_count > 0 else 0
+
+                    m_metric1, m_metric2, m_metric3 = st.columns(3)
+                    with m_metric1:
+                        st.metric("총 대화 신청", f"{total_req_count}건")
+                    with m_metric2:
+                        st.metric("최종 만남 성사", f"{success_count}건")
+                    with m_metric3:
+                        st.metric("매칭 성사율", f"{success_rate}%")
+
+                    st.markdown('<div class="filter-card">', unsafe_allow_html=True)
+                    m_fcol1, m_fcol2 = st.columns(2)
+                    with m_fcol1:
+                        search_m_user = st.text_input("🔍 특정 회원 이름 검색 (신청자 or 수락자)", placeholder="예: 김진호")
+                    with m_fcol2:
+                        filter_m_status = st.selectbox("진행 상태 필터", ["전체 보기", "만남 성사(수락)만 보기", "답변 대기중만 보기", "거절건만 보기"])
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    filtered_m_df = m_df.copy()
+                    if search_m_user.strip():
+                        target_kw = search_m_user.strip()
+                        filtered_m_df = filtered_m_df[
+                            filtered_m_df["raw_sender"].str.contains(target_kw, na=False) | 
+                            filtered_m_df["raw_receiver"].str.contains(target_kw, na=False)
+                        ]
+
+                    if filter_m_status == "만남 성사(수락)만 보기":
+                        filtered_m_df = filtered_m_df[filtered_m_df["raw_status"] == "ACCEPTED"]
+                    elif filter_m_status == "답변 대기중만 보기":
+                        filtered_m_df = filtered_m_df[filtered_m_df["raw_status"] == "PENDING"]
+                    elif filter_m_status == "거절건만 보기":
+                        filtered_m_df = filtered_m_df[filtered_m_df["raw_status"] == "REJECTED"]
+
+                    st.caption(f"조회된 매칭 내역: 총 **{len(filtered_m_df)}건**")
+
+                    display_match_table = filtered_m_df[[
+                        "신청일시", "신청회원(보낸사람)", "신청자연락처", "상대회원(받은사람)", "상대방연락처", "진행상태"
+                    ]]
+                    display_match_table.index = range(1, len(display_match_table) + 1)
+
+                    st.dataframe(
+                        display_match_table,
+                        use_container_width=True,
+                        height=350,
+                        column_config={
+                            "신청일시": st.column_config.TextColumn("신청일시", width="small"),
+                            "신청회원(보낸사람)": st.column_config.TextColumn("신청회원(보낸사람)", width="medium"),
+                            "신청자연락처": st.column_config.TextColumn("신청자 연락처", width="medium"),
+                            "상대회원(받은사람)": st.column_config.TextColumn("상대회원(받은사람)", width="medium"),
+                            "상대방연락처": st.column_config.TextColumn("상대방 연락처", width="medium"),
+                            "진행상태": st.column_config.TextColumn("진행상태", width="medium")
+                        }
+                    )
 
     render_support_footer()
 
