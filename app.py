@@ -17,7 +17,6 @@ SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
-# [알리고 SMS 설정 정보]
 ALIGO_API_KEY = "a2d6ej9asoilb20w66tmw6zw3qqp7shk"
 ALIGO_USER_ID = "equivision"
 ALIGO_SENDER = "01030383349"
@@ -99,7 +98,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# PWA 메타태그 및 설치 감지 스크립트
 components.html(f"""
 <script>
 function setMetaTag(property, content) {{
@@ -384,6 +382,75 @@ st.markdown(f"""
         box-shadow: 0 2px 5px rgba(0,0,0,0.15);
     }}
 
+    /* 안심 매칭 듀얼 브릿지 박스 (안심 전화번호 + 공식 카톡 브릿지) */
+    .match-success-bridge-box {{
+        background: linear-gradient(135deg, #090E17 0%, #1E293B 100%);
+        border: 1.5px solid #D4AF37;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 10px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }}
+    .bridge-badge {{
+        display: inline-block;
+        background: #0284C7;
+        color: #FFFFFF;
+        font-size: 0.74rem;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-bottom: 6px;
+    }}
+    .bridge-title {{
+        font-size: 1.02rem;
+        font-weight: 900;
+        color: #FDE047;
+        line-height: 1.4;
+    }}
+    .bridge-desc {{
+        font-size: 0.86rem;
+        color: #CBD5E1;
+        margin-top: 4px;
+        line-height: 1.5;
+    }}
+    .bridge-btn-group {{
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }}
+    .bridge-phone-btn {{
+        flex: 1;
+        min-width: 140px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #0284C7;
+        color: #FFFFFF !important;
+        font-weight: 800;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+    }}
+    .bridge-kakao-btn {{
+        flex: 1.2;
+        min-width: 170px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #FEE500;
+        color: #191919 !important;
+        font-weight: 800;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(254, 229, 0, 0.25);
+    }}
+
     .intro-quote-box {{
         background: #1E293B !important;
         border-left: 4px solid #38BDF8 !important;
@@ -514,7 +581,6 @@ def get_supabase_client() -> Client:
 
 supabase = get_supabase_client()
 
-# [알리고 SMS 인증번호 발송 함수]
 def send_aligo_sms(receiver_phone, auth_code):
     try:
         url = "https://apis.aligo.in/send/"
@@ -628,6 +694,29 @@ def delete_file_from_storage(bucket_name, file_url):
     except Exception as e:
         print(f"File deletion error: {e}")
 
+# 안심 전화번호 & 공식 카톡 브릿지 렌더러
+def render_dual_safe_bridge(target_user, role_prefix=""):
+    name = target_user.get("name", "회원")
+    phone = target_user.get("phone", "")
+    
+    st.markdown(f"""
+        <div class="match-success-bridge-box">
+            <span class="bridge-badge">🤝 대화 성사 완료</span>
+            <div class="bridge-title">🎉 {role_prefix} <b>{name}</b> 님과의 소통 채널이 열렸습니다!</div>
+            <div class="bridge-desc">
+                직접 통화가 편하신 분은 <b>안심 전화</b>로, 조심스럽게 첫 인사를 나누고 싶으신 분은 <b>전담 안심 카톡 브릿지</b>로 입장해 주세요.
+            </div>
+            <div class="bridge-btn-group">
+                <a href="tel:{phone}" class="bridge-phone-btn">
+                    📞 {phone} 안심 전화 연결
+                </a>
+                <a href="{KAKAO_CHAT_URL}" target="_blank" class="bridge-kakao-btn">
+                    💬 안심 카카오톡 브릿지 입장
+                </a>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
 def render_support_footer():
     st.markdown(f"""
         <div class="support-footer-card">
@@ -643,13 +732,11 @@ def render_support_footer():
         </div>
     """, unsafe_allow_html=True)
 
-# 세션 상태 초기화
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
 
-# SMS 인증 세션 상태
 if "sms_auth_code" not in st.session_state:
     st.session_state.sms_auth_code = None
 if "sms_verified_phone" not in st.session_state:
@@ -702,7 +789,7 @@ if not st.session_state.user_id:
             <div class="privacy-card">
                 <div class="privacy-icon">🔒</div>
                 <div class="privacy-title">가입 100% 비공개</div>
-                <div class="privacy-desc">양측 수락 시만 번호교환</div>
+                <div class="privacy-desc">양측 수락 시만 안심연결</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -824,7 +911,6 @@ if not st.session_state.user_id:
         st.markdown("##### 👤 기본 인적사항 입력")
         join_name = st.text_input("성명 (실명)", key="join_name")
         
-        # [알리고 SMS 실시간 본인인증 UI]
         st.markdown("###### 📱 휴대폰 본인확인 (SMS 인증)")
         col_phone_input, col_send_btn = st.columns([2.5, 1.2])
         with col_phone_input:
@@ -843,7 +929,6 @@ if not st.session_state.user_id:
                 if dup_check:
                     st.error("이미 등록된 휴대폰 번호입니다. 기존 회원 로그인을 이용해 주세요.")
                 else:
-                    # 6자리 인증 난수 생성
                     gen_code = str(random.randint(100000, 999999))
                     st.session_state.sms_auth_code = gen_code
                     st.session_state.sms_verified_phone = clean_target_phone
@@ -851,11 +936,10 @@ if not st.session_state.user_id:
 
                     ok, msg = send_aligo_sms(clean_target_phone, gen_code)
                     if ok:
-                        st.success(f"문자가 전송되었습니다! 수신된 6자리 번호를 입력해 주세요.")
+                        st.success("문자가 전송되었습니다! 수신된 6자리 번호를 입력해 주세요.")
                     else:
                         st.error(msg)
 
-        # 인증번호 검증 필드 (인증번호가 생성되었거나 인증 대기 중일 때 표시)
         if st.session_state.sms_auth_code:
             col_code_input, col_verify_btn = st.columns([2.5, 1.2])
             with col_code_input:
@@ -908,9 +992,9 @@ if not st.session_state.user_id:
         st.markdown("##### 🛡️ 안심 개인정보 및 신용 서류 파기 원칙")
         st.markdown("""
             <div class="terms-box">
-                <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 연락처 제공.<br>
+                <b>1. 개인정보 수집 및 이용 목적:</b> 본인 확인, 신용점수 기준 충족 여부 심사, 상호 동의 시에 한한 안심 연락처 제공.<br>
                 <b>2. 신용 증빙 서류 100% 안전 파기 원칙:</b> 제출된 증빙 서류는 관리자 진위 확인 완료 즉시 스토리지 및 데이터베이스에서 영구 삭제 처리되며 절대 보관되지 않습니다.<br>
-                <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처가 공개됩니다.<br>
+                <b>3. 제3자 제공 동의:</b> 양측 모두 대화를 '수락'한 경우에만 상대방에게 안심 연락처 및 공식 카톡 브릿지가 공개됩니다.<br>
                 <b>4. 부적격 회원 조치:</b> 허위 서류 제출 및 불량 매너 회원은 사전 통보 없이 영구 이용 정지 처리됩니다.
             </div>
         """, unsafe_allow_html=True)
@@ -1235,8 +1319,7 @@ else:
                     if req_status == "PENDING":
                         st.button(f"⏳ 답변을 기다리는 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
                     elif req_status == "ACCEPTED":
-                        cand_phone = cand.get("phone", "연락처 미등록")
-                        st.success(f"🎉 대화 성사! {cand['name']} 님 연락처: **{cand_phone}**")
+                        render_dual_safe_bridge(cand)
                     else:
                         if st.button(f"💌 {cand['name']} 님에게 대화 신청", key=f"btn_{cand['id']}"):
                             supabase.table("match_requests").insert({
@@ -1312,7 +1395,7 @@ else:
                         rcv = rcv_user[0]
                         status_kr = get_match_status_text(req['status'])
                         if req['status'] == 'ACCEPTED':
-                            st.write(f"• **{rcv['name']}** 님 | 상태: `{status_kr}` | 📞 연락처: **{rcv.get('phone', '미등록')}**")
+                            render_dual_safe_bridge(rcv, f"내가 신청한")
                         else:
                             st.write(f"• **{rcv['name']}** 님에게 보낸 신청 | 상태: `{status_kr}`")
 
@@ -1329,7 +1412,7 @@ else:
                         u_answers = {item["question_num"]: item["answer_value"] for item in u_ans_data}
 
                         common_keys = set(my_answers.keys()).intersection(set(u_answers.keys()))
-                        score = int((sum(1 for k in common_keys if my_answers[k] == cand_answers[k]) / len(common_keys)) * 100) if common_keys else 0
+                        score = int((sum(1 for k in common_keys if my_answers[k] == u_answers[k]) / len(common_keys)) * 100) if common_keys else 0
 
                         rcv_c_img, rcv_c_info, rcv_c_score = st.columns([1, 2.5, 1])
                         with rcv_c_img:
@@ -1383,7 +1466,7 @@ else:
                                     st.write("")
 
                         if req['status'] == 'ACCEPTED':
-                            st.success(f"대화 성사 완료! 📞 연락처: **{u.get('phone', '미등록')}**")
+                            render_dual_safe_bridge(u, f"나에게 신청한")
                         elif req['status'] == 'REJECTED':
                             st.caption("정중히 거절된 신청입니다.")
                         else:
@@ -1393,7 +1476,7 @@ else:
                                     supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
                                     sender_phone = u.get("phone")
                                     if sender_phone:
-                                        send_aligo_notice_sms(sender_phone, f"축하합니다! {me['name']} 님과의 대화가 성사되었습니다. 웹사이트에서 연락처를 확인해 보세요.")
+                                        send_aligo_notice_sms(sender_phone, f"축하합니다! {me['name']} 님과의 대화가 성사되었습니다. 웹사이트 보관함에서 안심 연락처를 확인해 보세요.")
                                     st.rerun()
                             with col_rej:
                                 if st.button("거절", key=f"rej_{req['id']}"):
