@@ -580,12 +580,12 @@ if not st.session_state.user_id:
     # 2. 📱 스마트폰 홈 화면 앱 바로가기 설치 안내 카드
     with st.expander("📲 [필독] 이 사이트를 휴대폰 '앱'처럼 바탕화면에 저장하는 법", expanded=False):
         st.markdown("""
-            <div style="font-size:0.92rem; color:#1E293B; line-height:1.6; padding: 4px 6px;">
-                매번 주소를 입력하거나 카카오톡 링크를 찾을 필요 없이, 스마트폰 바탕화면에 <b>노블레스 라온 전용 앱 아이콘</b>으로 만들어 둘 수 있습니다.<br><br>
-                <b>📌 갤럭시 (삼성 인터넷 / 크롬):</b><br>
-                화면 우측 하단 또는 상단의 <b>[점 3개 ⋮ 또는 메뉴 ≡]</b> 터치 ➔ <b>[현재 페이지 추가]</b> 또는 <b>[홈 화면에 추가]</b> 선택 ➔ <b>[추가]</b> 완료<br><br>
-                <b>📌 아이폰 (Safari 사파리):</b><br>
-                화면 맨 하단 가운데 <b>[공유 버튼 ↑]</b> 터치 ➔ 메뉴를 위로 올려 <b>[홈 화면에 추가]</b> 터치 ➔ 우측 상단 <b>[추가]</b> 완료
+            <div style="font-size:0.95rem; color:#F8FAFC !important; line-height:1.7; padding: 8px 10px; background: rgba(255,255,255,0.06); border-radius: 8px; border: 1px solid #475569;">
+                매번 주소를 입력할 필요 없이, 스마트폰 바탕화면에 <b style="color:#FDE047 !important;">노블레스 라온 앱 아이콘</b>을 만들어 바로 접속하세요.<br><br>
+                <b style="color:#38BDF8 !important;">📌 갤럭시 (삼성인터넷 / 크롬):</b><br>
+                화면 우측 하단(또는 상단) <b>[점 3개 ⋮ / 메뉴 ≡]</b> ➔ <b>[현재 페이지 추가 / 홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료<br><br>
+                <b style="color:#38BDF8 !important;">📌 아이폰 (Safari 사파리):</b><br>
+                화면 하단 중앙 <b>[공유 버튼 ↑]</b> ➔ 메뉴를 올려 <b>[홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료
             </div>
         """, unsafe_allow_html=True)
 
@@ -620,7 +620,7 @@ if not st.session_state.user_id:
     
     with st.expander("❓ 왜 남성 800점 / 여성 600점 기준인가요? (합리적 기준 안내)"):
         st.markdown("""
-            <div style="font-size:0.88rem; color:#475569; line-height:1.6; padding: 4px 6px;">
+            <div style="font-size:0.88rem; color:#F8FAFC !important; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px; border: 1px solid #475569; line-height:1.6; padding: 4px 6px;">
                 <b>대한민국 5060 세대의 사회적 금융 환경을 반영한 균형 기준입니다.</b><br>
                 • <b>남성 (800점 이상):</b> 사업 및 경제활동 유지 과정에서의 안정적인 부채 관리와 책임감 있는 금융 신뢰도를 검증합니다.<br>
                 • <b>여성 (600점 이상):</b> 금융 이력 부족(신용카드 무사용, 가정경제 전담 등)으로 점수가 낮게 형성되는 주부·여성 회원의 현실적 금융 구조를 고려한 정상 금융거래 기준입니다.<br>
