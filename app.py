@@ -17,6 +17,11 @@ SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
+# [알리고 SMS 설정 정보]
+ALIGO_API_KEY = "a2d6ej9asoilb20w66tmw6zw3qqp7shk"
+ALIGO_USER_ID = "equivision"
+ALIGO_SENDER = "01030383349"
+
 KOREA_REGIONS = {
     "서울특별시": [
         "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구",
@@ -94,7 +99,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# [PWA 시스템 설치 팝업 유도 및 메타태그]
+# PWA 메타태그 및 설치 감지 스크립트
 components.html(f"""
 <script>
 function setMetaTag(property, content) {{
@@ -126,7 +131,6 @@ setMetaTag('og:url', '{SITE_URL}');
 setNameMetaTag('description', '대중 앱스토어 비공개 · 100% 프라이빗 시크릿 멤버십');
 window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프라이빗 시크릿 클럽';
 
-// 모바일 브라우저 자체 PWA 설치 이벤트 감지 및 세련된 하단 미니 바 제어
 let deferredPrompt;
 window.parent.addEventListener('beforeinstallprompt', (e) => {{
     e.preventDefault();
@@ -151,7 +155,7 @@ window.parent.installNoblesseApp = function() {{
 }};
 </script>
 
-<div id="pwa-mini-install-bar" style="display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:90%; max-width:440px; background:#0F172A; border:1.5px solid #D4AF37; border-radius:12px; padding:10px 16px; z-index:999999; box-shadow:0 8px 24px rgba(0,0,0,0.5); align-items:center; justify-content:space-between; animation:slideUp 0.3s ease-out;">
+<div id="pwa-mini-install-bar" style="display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:90%; max-width:440px; background:#0F172A; border:1.5px solid #D4AF37; border-radius:12px; padding:10px 16px; z-index:999999; box-shadow:0 8px 24px rgba(0,0,0,0.5); align-items:center; justify-content:space-between;">
     <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:1.2rem;">👑</span>
         <div style="display:flex; flex-direction:column;">
@@ -173,7 +177,6 @@ st.markdown(f"""
         max-width: 780px; 
     }}
     
-    /* 럭셔리 마스터 히어로 배너 */
     .premium-master-hero {{
         background: linear-gradient(135deg, #090E17 0%, #131D2E 50%, #0B111D 100%);
         border: 2px solid #D4AF37;
@@ -235,7 +238,6 @@ st.markdown(f"""
         margin-right: 2px;
     }}
 
-    /* 프라이빗 시크릿 클럽 한 줄 안내 */
     .secret-club-notice {{
         text-align: center;
         margin-bottom: 1rem;
@@ -248,7 +250,6 @@ st.markdown(f"""
         color: #D4AF37;
     }}
 
-    /* 프라이버시 안심 보장 3단 배너 */
     .privacy-promise-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -280,7 +281,6 @@ st.markdown(f"""
         font-weight: 600;
     }}
 
-    /* 신용 기준 바 */
     .badge-box {{
         background: linear-gradient(135deg, #162032 0%, #0B111E 100%);
         padding: 14px 18px;
@@ -315,7 +315,6 @@ st.markdown(f"""
         font-weight: 900;
     }}
 
-    /* 미끼 콘텐츠 카드 */
     .taste-teaser-card {{
         background: #1E293B !important;
         border: 2px dashed #D4AF37 !important;
@@ -337,7 +336,6 @@ st.markdown(f"""
         line-height: 1.5;
     }}
 
-    /* 약관 안내 상자 */
     .terms-box {{
         background-color: #1E293B !important;
         border: 1.5px solid #475569 !important;
@@ -350,7 +348,6 @@ st.markdown(f"""
         margin-bottom: 12px;
     }}
 
-    /* 고객센터 푸터 */
     .support-footer-card {{
         background-color: #1E293B !important;
         border: 1.5px solid #475569 !important;
@@ -387,7 +384,6 @@ st.markdown(f"""
         box-shadow: 0 2px 5px rgba(0,0,0,0.15);
     }}
 
-    /* 피드 내 한 줄 소개 및 태그 */
     .intro-quote-box {{
         background: #1E293B !important;
         border-left: 4px solid #38BDF8 !important;
@@ -412,7 +408,6 @@ st.markdown(f"""
         border: 1px solid #475569 !important;
     }}
 
-    /* 탭 스타일 */
     div[data-baseweb="tab-list"] {{
         gap: 8px;
         background-color: transparent;
@@ -519,6 +514,29 @@ def get_supabase_client() -> Client:
 
 supabase = get_supabase_client()
 
+# [알리고 SMS 인증번호 발송 함수]
+def send_aligo_sms(receiver_phone, auth_code):
+    try:
+        url = "https://apis.aligo.in/send/"
+        payload = {
+            "key": ALIGO_API_KEY,
+            "user_id": ALIGO_USER_ID,
+            "sender": ALIGO_SENDER,
+            "receiver": receiver_phone,
+            "msg": f"[{BRAND_NAME_KR}] 본인확인 인증번호 [{auth_code}]를 입력해 주세요. (타인 노출 금지)",
+            "testmode_yn": "N"
+        }
+        res = requests.post(url, data=payload, timeout=6)
+        if res.status_code == 200:
+            res_json = res.json()
+            if res_json.get("result_code") == "1":
+                return True, "인증번호가 발송되었습니다. 문자를 확인해 주세요."
+            else:
+                return False, f"문자 발송 실패: {res_json.get('message', '통신 오류')}"
+        return False, "알리고 서버 통신 지연"
+    except Exception as e:
+        return False, f"SMS 발송 오류: {e}"
+
 CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
 
 def extract_text_lightweight_api(file_bytes, ext):
@@ -610,10 +628,19 @@ def render_support_footer():
         </div>
     """, unsafe_allow_html=True)
 
+# 세션 상태 초기화
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
+
+# SMS 인증 세션 상태
+if "sms_auth_code" not in st.session_state:
+    st.session_state.sms_auth_code = None
+if "sms_verified_phone" not in st.session_state:
+    st.session_state.sms_verified_phone = None
+if "sms_is_verified" not in st.session_state:
+    st.session_state.sms_is_verified = False
 
 qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
@@ -636,18 +663,15 @@ if not st.session_state.user_id:
     </script>
     """, height=0)
 
-    # 1. 럭셔리 마케팅 메인 히어로 배너
     hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # 2. 프라이빗 시크릿 클럽 한 줄 안내 (스토어 비공개의 정당성 부여)
     st.markdown("""
         <div class="secret-club-notice">
             🔒 본 클럽은 철저한 프라이버시 보호를 위해 <span>대중 앱스토어에 노출되지 않는 비공개 프라이빗 웹 멤버십</span>으로 운영됩니다.
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. 5060 프라이버시 안심 보장 3단 배너
     st.markdown("""
         <div class="privacy-promise-grid">
             <div class="privacy-card">
@@ -668,7 +692,6 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
-    # 4. 신용점수 기준 바 및 정당성 안내
     st.markdown("""
         <div class="badge-box">
             <span class="badge-tag">엄격한 신용 보증제</span>
@@ -686,7 +709,6 @@ if not st.session_state.user_id:
             </div>
         """, unsafe_allow_html=True)
 
-    # 5. 5문항 무료 가치관 매칭 체험
     with st.expander("✨ [무료 체험] 가입 전 내 가치관 매칭률 & 활동 회원 수 확인하기", expanded=False):
         st.markdown("""
             <div class="taste-teaser-card">
@@ -786,7 +808,57 @@ if not st.session_state.user_id:
     with tab_join:
         st.markdown("##### 👤 기본 인적사항 입력")
         join_name = st.text_input("성명 (실명)", key="join_name")
-        join_phone = st.text_input("휴대폰 번호 (- 없이 숫자만 입력)", placeholder="01012345678", key="join_phone")
+        
+        # [알리고 SMS 실시간 본인인증 UI]
+        st.markdown("###### 📱 휴대폰 본인확인 (SMS 인증)")
+        col_phone_input, col_send_btn = st.columns([2.5, 1.2])
+        with col_phone_input:
+            join_phone = st.text_input("휴대폰 번호 (- 없이 숫자만)", placeholder="01012345678", key="join_phone_sms")
+        with col_send_btn:
+            st.write("")
+            send_sms_btn = st.button("인증번호 발송", key="btn_send_sms")
+            
+        clean_target_phone = re.sub(r'[^0-9]', '', join_phone.strip())
+
+        if send_sms_btn:
+            if len(clean_target_phone) < 10:
+                st.error("올바른 휴대폰 번호를 입력해 주세요.")
+            else:
+                dup_check = supabase.table("users").select("id").eq("phone", clean_target_phone).execute().data
+                if dup_check:
+                    st.error("이미 등록된 휴대폰 번호입니다. 기존 회원 로그인을 이용해 주세요.")
+                else:
+                    # 6자리 인증 난수 생성
+                    gen_code = str(random.randint(100000, 999999))
+                    st.session_state.sms_auth_code = gen_code
+                    st.session_state.sms_verified_phone = clean_target_phone
+                    st.session_state.sms_is_verified = False
+
+                    ok, msg = send_aligo_sms(clean_target_phone, gen_code)
+                    if ok:
+                        st.success(f"문자가 전송되었습니다! 수신된 6자리 번호를 입력해 주세요.")
+                    else:
+                        st.error(msg)
+
+        # 인증번호 검증 필드 (인증번호가 생성되었거나 인증 대기 중일 때 표시)
+        if st.session_state.sms_auth_code:
+            col_code_input, col_verify_btn = st.columns([2.5, 1.2])
+            with col_code_input:
+                input_auth_code = st.text_input("인증번호 6자리 입력", placeholder="예: 849201", key="join_auth_code_input")
+            with col_verify_btn:
+                st.write("")
+                verify_btn = st.button("인증 확인", key="btn_verify_code")
+
+            if verify_btn:
+                if input_auth_code.strip() == st.session_state.sms_auth_code:
+                    st.session_state.sms_is_verified = True
+                    st.success("✅ 휴대폰 본인 인증이 성공적으로 완료되었습니다!")
+                else:
+                    st.error("인증번호가 일치하지 않습니다. 다시 확인해 주세요.")
+
+        if st.session_state.sms_is_verified:
+            st.caption(f"🔒 인증 완료된 번호: **{st.session_state.sms_verified_phone}**")
+
         join_pwd = st.text_input("간편 비밀번호 설정 (4~6자리)", type="password", placeholder="숫자 4~6자리 권장", key="join_pwd")
         join_gender = st.radio("성별", ["남", "여"], horizontal=True, key="join_gender")
         join_age = st.number_input("나이 (만 나이)", 40, 85, 58, key="join_age")
@@ -838,8 +910,8 @@ if not st.session_state.user_id:
                 st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
             elif not join_name.strip():
                 st.error("성명을 입력해 주세요.")
-            elif len(clean_phone) < 10:
-                st.error("올바른 휴대폰 번호를 입력해 주세요. (예: 01012345678)")
+            elif not st.session_state.sms_is_verified or st.session_state.sms_verified_phone != clean_phone:
+                st.error("휴대폰 본인인증(SMS 인증)을 완료해 주세요.")
             elif len(join_pwd.strip()) < 4:
                 st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
             elif join_credit < cutoff:
@@ -893,7 +965,7 @@ if not st.session_state.user_id:
 
                             st.session_state.user_id = uid
                             st.session_state.user_info = new_u
-                            st.success("🎉 서류 키워드 확인 완료 및 가입 승인 대기열에 등록되었습니다!")
+                            st.success("🎉 서류 키워드 확인 및 SMS 본인인증 완료! 가입 승인 대기열에 등록되었습니다.")
                             st.rerun()
 
                         except Exception as e:
