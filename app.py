@@ -334,7 +334,96 @@ st.markdown(f"""
         line-height: 1.5;
     }}
 
-    /* 법적 분리 약관 박스 */
+    /* 멤버십 & 지갑 상태 바 */
+    .wallet-status-bar {{
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1.5px solid #D4AF37;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 1.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }}
+    .wallet-title {{
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #FFFFFF;
+    }}
+    .wallet-badge {{
+        background: #D4AF37;
+        color: #0F172A;
+        font-weight: 900;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+    }}
+
+    /* 요금제 카드 그리드 */
+    .pricing-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 10px;
+        margin-bottom: 14px;
+    }}
+    .pricing-card {{
+        background: #1E293B;
+        border: 1.5px solid #475569;
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+    }}
+    .pricing-card-vip {{
+        background: linear-gradient(135deg, #1E293B 0%, #2A1B0E 100%);
+        border: 2px solid #D4AF37;
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+        box-shadow: 0 4px 14px rgba(212, 175, 55, 0.2);
+    }}
+    .pricing-name {{
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #FFFFFF;
+        margin-bottom: 4px;
+    }}
+    .pricing-price {{
+        font-size: 1.18rem;
+        font-weight: 900;
+        color: #FDE047;
+        margin-bottom: 6px;
+    }}
+    .pricing-desc {{
+        font-size: 0.78rem;
+        color: #94A3B8;
+        line-height: 1.4;
+    }}
+
+    /* 후불 잠금 결제 카드 */
+    .postpay-lock-card {{
+        background: linear-gradient(135deg, #1E293B 0%, #2A151B 100%);
+        border: 2px solid #F43F5E;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 10px;
+        margin-bottom: 14px;
+        text-align: center;
+    }}
+    .postpay-title {{
+        font-size: 1.05rem;
+        font-weight: 900;
+        color: #FDA4AF;
+        margin-bottom: 4px;
+    }}
+    .postpay-desc {{
+        font-size: 0.86rem;
+        color: #E2E8F0;
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }}
+
     .terms-box {{
         background-color: #1E293B !important;
         border: 1.5px solid #475569 !important;
@@ -347,7 +436,6 @@ st.markdown(f"""
         margin-bottom: 10px;
     }}
 
-    /* 안심 매칭 듀얼 브릿지 박스 */
     .match-success-bridge-box {{
         background: linear-gradient(135deg, #090E17 0%, #1E293B 100%);
         border: 1.5px solid #D4AF37;
@@ -416,7 +504,6 @@ st.markdown(f"""
         box-shadow: 0 2px 8px rgba(254, 229, 0, 0.25);
     }}
 
-    /* 로맨스 스캠/금전요구 원스트라이크 아웃 경고 배너 */
     .scam-warning-banner {{
         background: rgba(225, 29, 72, 0.12);
         border: 1.5px solid #E11D48;
@@ -772,6 +859,28 @@ def render_dual_safe_bridge(target_user, role_prefix=""):
         </div>
     """, unsafe_allow_html=True)
 
+# [후불 잠금 결제 카드 렌더러]
+def render_postpay_lock_card(target_user, match_id):
+    name = target_user.get("name", "회원")
+    st.markdown(f"""
+        <div class="postpay-lock-card">
+            <div class="postpay-title">🔒 축하합니다! {name} 님과 상호 매칭이 성사되었습니다.</div>
+            <div class="postpay-desc">
+                양측 모두 대화를 희망하셨습니다. 품격 있는 소통을 위해 <b>안심 연락처 열람권(30,000원)</b>을 결제하시면<br>
+                상대방의 <b>안심 전화번호</b> 및 <b>노블레스 라온 1:1 카톡 브릿지</b>가 즉시 열립니다.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col_pay1, col_pay2 = st.columns([2, 1])
+    with col_pay1:
+        st.caption("💡 현재 시범 서비스 기간: 1:1 전담 컨시어지를 통해 입금 확인 후 즉시 잠금을 해제해 드립니다.")
+    with col_pay2:
+        if st.button(f"💳 열람권 결제 / 잠금해제 요청", key=f"btn_pay_{match_id}"):
+            supabase.table("match_requests").update({"payment_status": "PAID"}).eq("id", match_id).execute()
+            st.success("🎉 결제 및 안심 확인 완료! 소통 채널이 열렸습니다.")
+            st.rerun()
+
 def render_support_footer():
     st.markdown(f"""
         <div class="support-footer-card">
@@ -779,7 +888,7 @@ def render_support_footer():
                 <span>💬</span> <span>{BRAND_NAME_KR} 안심 전담 고객지원센터</span>
             </div>
             <div class="support-desc">
-                서류 심사 문의, 비밀번호 변경 지원, 불량 매너 회원 신고 등 불편하신 점은 언제든 1:1 상담창구로 말씀해 주세요.
+                서류 심사 문의, 멤버십 업그레이드, 불량 매너 회원 신고 등 불편하신 점은 언제든 1:1 상담창구로 말씀해 주세요.
             </div>
             <a href="{KAKAO_CHAT_URL}" target="_blank" class="support-kakao-btn">
                 💬 카카오톡 1:1 상담 및 불량회원 신고
@@ -1057,7 +1166,7 @@ if not st.session_state.user_id:
                 <div class="terms-box">
                     <b>제1조 (서비스의 본질 및 성격)</b><br>
                     본 플랫폼은 회원의 가치관과 금융 신용 지표를 바탕으로 상호 적합한 인연을 자율적으로 탐색하고 교류할 수 있도록 기술적 매칭 환경을 제공하는 <b>'소셜 데이팅 및 커뮤니티 정보 매개 서비스'</b>입니다.<br>
-                    본 서비스는 회원 간의 특정 성혼, 동거, 결합을 직접적으로 지목·주선하거나 법적으로 보증하는 '결혼중개업'이 아니며, 회원의 선택과 상호 동의에 의한 자율 소통을 원칙으로 합니다.
+                    본 서비스는 특정 성혼을 강제 주선하거나 보증하는 '결혼중개업'이 아니며, 회원의 선택과 상호 동의에 의한 자율 소통을 원칙으로 합니다.
                 </div>
             """, unsafe_allow_html=True)
 
@@ -1068,8 +1177,8 @@ if not st.session_state.user_id:
                 <div class="terms-box">
                     <b>제2조 (신용 서류 안전 관리 및 즉시 영구 파기 원칙)</b><br>
                     1. <b>수집 목적:</b> 남성 800점 / 여성 600점의 최소 신용 신뢰 기준 부합 여부 판정 목적에 한함.<br>
-                    2. <b>영구 파기 보증:</b> 회원이 제출한 신용 증빙 이미지 및 PDF 파일은 운영자 검토 판정 완료 즉시 클라우드 스토리지 및 데이터베이스에서 <b>복구 불가능한 방법으로 영구 파기(완전 삭제)</b>되며 절대 보관되지 않습니다.<br>
-                    3. 회원의 기본 인적사항(성명, 연락처, 나이, 지역)은 회원 탈퇴 시까지 본인 확인 및 서비스 제공 목적으로 안전하게 암호화 관리됩니다.
+                    2. <b>영구 파기 보증:</b> 제출된 증빙 파일은 운영자 검토 판정 완료 즉시 <b>복구 불가능한 방법으로 영구 파기(완전 삭제)</b>되며 절대 보관되지 않습니다.<br>
+                    3. 회원의 기본 정보는 회원 탈퇴 시까지 본인 확인 및 서비스 제공 목적으로 안전하게 암호화 관리됩니다.
                 </div>
             """, unsafe_allow_html=True)
 
@@ -1079,10 +1188,10 @@ if not st.session_state.user_id:
             st.markdown("""
                 <div class="terms-box">
                     <b>제3조 (개인정보의 제3자 제공 동의)</b><br>
-                    1. <b>제공 대상:</b> 회원이 상호 대화 신청을 전원 '수락'하여 매칭이 최종 성사된 상대방 회원.<br>
-                    2. <b>제공 항목:</b> 성명, 연락처, 활동 지역, 가치관 문답 응답 내용.<br>
+                    1. <b>제공 대상:</b> 상호 대화 신청을 전원 '수락'하여 매칭이 최종 성사된 상대방 회원.<br>
+                    2. <b>제공 항목:</b> 성명, 안심 연락처, 활동 지역, 가치관 문답 응답 내용.<br>
                     3. <b>제공 목적:</b> 매칭 성사 회원 간의 1:1 안심 연락처 교환 및 소통 개시.<br>
-                    4. <b>불법 행위 금지:</b> 교환된 연락처를 본래 만남 목적 외 상업적 홍보, 투자 권유, 금전 요구 등에 사용할 경우 즉시 강제 탈퇴 및 법적 고발 조치됩니다.
+                    4. <b>불법 행위 금지:</b> 교환된 연락처를 상업적 홍보, 투자 권유, 금전 요구 등에 사용할 경우 즉시 강제 탈퇴 및 법적 고발 조치됩니다.
                 </div>
             """, unsafe_allow_html=True)
 
@@ -1135,6 +1244,8 @@ if not st.session_state.user_id:
                                 "credit_doc_url": doc_url,
                                 "credit_status": "PENDING",
                                 "is_verified": False,
+                                "ticket_count": 2,
+                                "is_vip": False,
                                 "job": join_job.strip() if join_job else None,
                                 "hobbies": join_hobbies.strip() if join_hobbies else None,
                                 "intro": join_intro.strip() if join_intro else None,
@@ -1151,7 +1262,7 @@ if not st.session_state.user_id:
 
                             st.session_state.user_id = uid
                             st.session_state.user_info = new_u
-                            st.success("🎉 서류 키워드 확인 및 SMS 본인인증 완료! 가입 승인 대기열에 등록되었습니다.")
+                            st.success("🎉 서류 확인 및 본인인증 완료! 첫 만남 웰컴 티켓 2장이 지급되었습니다.")
                             st.rerun()
 
                         except Exception as e:
@@ -1167,6 +1278,18 @@ else:
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px;">
             <div style="font-size:1.1rem; font-weight:900; color:#FFFFFF;">👑 {BRAND_NAME_KR}</div>
             <div style="font-size:0.75rem; font-weight:800; color:#D4AF37; letter-spacing:1px;">{BRAND_NAME_EN}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # [멤버십 & 신청권 지갑 상태 바]
+    my_tickets = me.get("ticket_count", 0)
+    is_vip = bool(me.get("is_vip", False))
+    vip_badge_str = "👑 VIP 프리미엄 (무제한)" if is_vip else f"🎟️ 대화 신청권: {my_tickets}장"
+
+    st.markdown(f"""
+        <div class="wallet-status-bar">
+            <div class="wallet-title">내 멤버십 혜택 현황</div>
+            <div class="wallet-badge">{vip_badge_str}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1196,11 +1319,43 @@ else:
     if me.get("intro"):
         st.markdown(f'<div class="intro-quote-box">“{me["intro"]}”</div>', unsafe_allow_html=True)
 
+    with st.expander("💎 멤버십 충전 및 프리미엄 업그레이드"):
+        st.markdown("""
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-name">대화 신청권 5회권</div>
+                    <div class="pricing-price">25,000원</div>
+                    <div class="pricing-desc">무분별한 탐색 방지<br>가치관 일치 회원 신청권</div>
+                </div>
+                <div class="pricing-card-vip">
+                    <div class="pricing-name">👑 VIP 정기 멤버십</div>
+                    <div class="pricing-price">월 99,000원</div>
+                    <div class="pricing-desc">월간 신청권 무제한<br>성사 열람권 100% 면제</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("💳 현재 시범 운영 기간: 1:1 컨시어지 채널을 통해 신청권 충전 및 VIP 즉시 등록이 가능합니다.")
+        col_chg1, col_chg2 = st.columns(2)
+        with col_chg1:
+            if st.button("🎟️ 신청권 5장 충전 요청 (25,000원)"):
+                supabase.table("users").update({"ticket_count": my_tickets + 5}).eq("id", me["id"]).execute()
+                me["ticket_count"] = my_tickets + 5
+                st.session_state.user_info = me
+                st.success("신청권 5장이 성공적으로 충전되었습니다!")
+                st.rerun()
+        with col_chg2:
+            if st.button("👑 VIP 멤버십 즉시 활성화 (월 99,000원)"):
+                supabase.table("users").update({"is_vip": True}).eq("id", me["id"]).execute()
+                me["is_vip"] = True
+                st.session_state.user_info = me
+                st.success("축하합니다! VIP 프리미엄 멤버십이 활성화되었습니다.")
+                st.rerun()
+
     with st.expander("✏️ 프로필 설정 및 계정 관리"):
         tab_p_edit, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs(["📝 소개 및 지역/취미", "📸 프로필 사진", "📄 신용 증빙 서류", "⚠️ 회원 탈퇴"])
         
         with tab_p_edit:
-            st.markdown("###### 📍 내 활동 지역 변경")
             curr_region = me.get("region", "서울특별시 강남구")
             parts = curr_region.split(" ", 1)
             init_sido = parts[0] if parts[0] in KOREA_REGIONS else "서울특별시"
@@ -1332,8 +1487,8 @@ else:
         target_gender = "여" if me["gender"] == "남" else "남"
         candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
 
-        sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
-        sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
+        sent_reqs = supabase.table("match_requests").select("id, receiver_id, status, payment_status").eq("sender_id", me["id"]).execute().data
+        sent_dict = {req["receiver_id"]: req for req in sent_reqs}
 
         if not candidates:
             st.info("현재 매칭 가능한 회원이 없습니다.")
@@ -1402,23 +1557,41 @@ else:
                                 st.markdown(f"- **상대방 답변:** {cand_val}")
                                 st.write("")
 
-                    req_status = sent_dict.get(cand["id"])
-                    if req_status == "PENDING":
-                        st.button(f"⏳ 답변을 기다리는 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
-                    elif req_status == "ACCEPTED":
-                        render_dual_safe_bridge(cand)
+                    req_info = sent_dict.get(cand["id"])
+                    if req_info:
+                        status = req_info.get("status")
+                        pay_status = req_info.get("payment_status", "PAID")
+
+                        if status == "PENDING":
+                            st.button(f"⏳ 답변을 기다리는 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
+                        elif status == "ACCEPTED":
+                            if not is_vip and pay_status == "UNPAID":
+                                render_postpay_lock_card(cand, req_info["id"])
+                            else:
+                                render_dual_safe_bridge(cand)
                     else:
-                        if st.button(f"💌 {cand['name']} 님에게 대화 신청", key=f"btn_{cand['id']}"):
-                            supabase.table("match_requests").insert({
-                                "sender_id": me["id"],
-                                "receiver_id": cand["id"],
-                                "status": "PENDING"
-                            }).execute()
-                            cand_target_phone = cand.get("phone")
-                            if cand_target_phone:
-                                send_aligo_notice_sms(cand_target_phone, f"{me['name']} 님으로부터 가치관 기반 대화 신청이 도착했습니다. 보관함에서 확인해 보세요.")
-                            st.toast(f"{cand['name']} 님에게 대화 신청 및 알림 문자를 보냈습니다!")
-                            st.rerun()
+                        btn_label = f"💌 {cand['name']} 님에게 대화 신청 (보유 티켓 1장 차감)" if not is_vip else f"👑 {cand['name']} 님에게 대화 신청 (VIP 무제한)"
+                        if st.button(btn_label, key=f"btn_{cand['id']}"):
+                            if not is_vip and my_tickets <= 0:
+                                st.error("보유하신 대화 신청권이 모두 소진되었습니다. 상단 [멤버십 충전]에서 충전 후 이용해 주세요.")
+                            else:
+                                if not is_vip:
+                                    supabase.table("users").update({"ticket_count": my_tickets - 1}).eq("id", me["id"]).execute()
+                                    me["ticket_count"] = my_tickets - 1
+                                    st.session_state.user_info = me
+
+                                supabase.table("match_requests").insert({
+                                    "sender_id": me["id"],
+                                    "receiver_id": cand["id"],
+                                    "status": "PENDING",
+                                    "payment_status": "PAID" if is_vip else "UNPAID"
+                                }).execute()
+                                
+                                cand_target_phone = cand.get("phone")
+                                if cand_target_phone:
+                                    send_aligo_notice_sms(cand_target_phone, f"{me['name']} 님으로부터 가치관 기반 대화 신청이 도착했습니다. 보관함에서 확인해 보세요.")
+                                st.toast(f"{cand['name']} 님에게 대화 신청을 보냈습니다!")
+                                st.rerun()
 
                     st.divider()
 
@@ -1472,7 +1645,7 @@ else:
             return status
 
         with inbox_tab1:
-            sent_list = supabase.table("match_requests").select("id, receiver_id, status, created_at").eq("sender_id", me["id"]).execute().data
+            sent_list = supabase.table("match_requests").select("id, receiver_id, status, payment_status, created_at").eq("sender_id", me["id"]).execute().data
             if not sent_list:
                 st.caption("아직 보낸 대화 신청이 없습니다.")
             else:
@@ -1482,12 +1655,16 @@ else:
                         rcv = rcv_user[0]
                         status_kr = get_match_status_text(req['status'])
                         if req['status'] == 'ACCEPTED':
-                            render_dual_safe_bridge(rcv, f"내가 신청한")
+                            pay_status = req.get("payment_status", "PAID")
+                            if not is_vip and pay_status == "UNPAID":
+                                render_postpay_lock_card(rcv, req["id"])
+                            else:
+                                render_dual_safe_bridge(rcv, f"내가 신청한")
                         else:
                             st.write(f"• **{rcv['name']}** 님에게 보낸 신청 | 상태: `{status_kr}`")
 
         with inbox_tab2:
-            received_list = supabase.table("match_requests").select("id, sender_id, status, created_at").eq("receiver_id", me["id"]).execute().data
+            received_list = supabase.table("match_requests").select("id, sender_id, status, payment_status, created_at").eq("receiver_id", me["id"]).execute().data
             if not received_list:
                 st.caption("도착한 대화 신청이 없습니다.")
             else:
@@ -1563,7 +1740,7 @@ else:
                                     supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
                                     sender_phone = u.get("phone")
                                     if sender_phone:
-                                        send_aligo_notice_sms(sender_phone, f"축하합니다! {me['name']} 님과의 대화가 성사되었습니다. 웹사이트 보관함에서 안심 연락처를 확인해 보세요.")
+                                        send_aligo_notice_sms(sender_phone, f"축하합니다! {me['name']} 님과의 대화가 성사되었습니다. 웹사이트 보관함에서 후불 열람권을 확인해 보세요.")
                                     st.rerun()
                             with col_rej:
                                 if st.button("거절", key=f"rej_{req['id']}"):
@@ -1575,13 +1752,13 @@ else:
     if me.get("is_admin"):
         with tabs[3]:
             st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
-            st.caption(f"{BRAND_NAME_KR} 신용 증빙 심사, 전체 고객 명부, 회원 제재 및 실시간 매칭 교환 관제를 수행합니다.")
+            st.caption(f"{BRAND_NAME_KR} 신용 증빙 심사, 전체 고객 명부, 회원 제재 및 실시간 매칭/결제 관제를 수행합니다.")
             
             adm_sub1, adm_sub2, adm_sub3, adm_sub4 = st.tabs([
                 "📑 신용 서류 심사 대기열", 
                 "👥 전체 고객 명부", 
                 "🔑 회원 제재 및 관리자 권한",
-                "📊 실시간 매칭 교환 관제"
+                "📊 매칭/후불결제 실시간 관제"
             ])
             
             with adm_sub1:
@@ -1636,32 +1813,29 @@ else:
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
 
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
+                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, ticket_count, is_vip, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
 
                 if all_users:
                     raw_df = pd.DataFrame(all_users)
                     raw_df["phone"] = raw_df["phone"].fillna("-").astype(str)
-                    raw_df["job"] = raw_df["job"].fillna("-").astype(str)
-                    raw_df["hobbies"] = raw_df["hobbies"].fillna("-").astype(str)
-                    raw_df["intro"] = raw_df["intro"].fillna("-").astype(str)
+                    raw_df["ticket_count"] = raw_df["ticket_count"].fillna(0).astype(int)
                     raw_df["credit_score"] = raw_df["credit_score"].fillna(0).astype(int)
                     raw_df["age"] = raw_df["age"].fillna(0).astype(int)
                     raw_df["created_at"] = raw_df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
 
                     excel_export_df = raw_df.copy()
-                    excel_export_df["권한"] = excel_export_df["is_admin"].apply(lambda x: "관리자" if x else "일반회원")
+                    excel_export_df["멤버십"] = excel_export_df["is_vip"].apply(lambda v: "VIP" if v else "일반")
                     excel_export_df["계정상태"] = excel_export_df["is_suspended"].apply(lambda s: "이용정지" if s else "정상")
                     excel_export_df["신용심사상태"] = excel_export_df["credit_status"].apply(
                         lambda s: "공인인증완료" if s == "APPROVED" else ("서류반려" if s == "REJECTED" else "검토대기중")
                     )
 
                     export_cols = excel_export_df[[
-                        "name", "gender", "age", "region", "job", "hobbies", "intro",
-                        "credit_score", "신용심사상태", "계정상태", "phone", "권한", "created_at"
+                        "name", "gender", "age", "region", "credit_score", "신용심사상태",
+                        "멤버십", "ticket_count", "계정상태", "phone", "created_at"
                     ]].rename(columns={
                         "name": "성명", "gender": "성별", "age": "나이", "region": "활동지역",
-                        "job": "직업_전문분야", "hobbies": "취미_여가", "intro": "한줄소개",
-                        "credit_score": "신용점수", "phone": "연락처", "created_at": "가입일자"
+                        "credit_score": "신용점수", "ticket_count": "보유티켓", "phone": "연락처", "created_at": "가입일자"
                     })
 
                     csv_data = export_cols.to_csv(index=False, encoding="utf-8-sig")
@@ -1677,9 +1851,9 @@ else:
                         st.markdown('<div class="filter-card">', unsafe_allow_html=True)
                         f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
                         with f_col1:
-                            search_name = st.text_input("🔍 성명 검색", placeholder="이름 입력 (예: 김진호)")
+                            search_name = st.text_input("🔍 성명 검색", placeholder="이름 입력")
                         with f_col2:
-                            search_phone4 = st.text_input("📱 전화번호 뒷 4자리", placeholder="뒷 4자리 (예: 2222)")
+                            search_phone4 = st.text_input("📱 전화번호 뒷 4자리", placeholder="뒷 4자리")
                         with f_col3:
                             sort_option = st.selectbox(
                                 "📊 정렬 기준",
@@ -1728,203 +1902,107 @@ else:
                         end_idx = start_idx + page_size
                         page_df = df.iloc[start_idx:end_idx].copy()
 
-                        page_df["권한"] = page_df["is_admin"].apply(lambda x: "👑 관리자" if x else "일반회원")
+                        page_df["멤버십"] = page_df["is_vip"].apply(lambda v: "👑 VIP" if v else "일반")
                         page_df["계정상태"] = page_df["is_suspended"].apply(lambda s: "🚫 이용정지" if s else "정상")
                         page_df["심사상태"] = page_df["credit_status"].apply(
-                            lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "🛡️ 안심 서류 검토 중")
+                            lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "🛡️ 심사중")
                         )
 
                         display_df = page_df[[
-                            "name", "gender", "age", "region", "job", "credit_score", "심사상태", "계정상태", "phone", "권한", "created_at"
+                            "name", "gender", "age", "region", "credit_score", "심사상태", "멤버십", "ticket_count", "계정상태", "phone", "created_at"
                         ]].rename(columns={
-                            "name": "성명", "gender": "성별", "age": "나이", "region": "지역", "job": "직업/전문분야",
-                            "credit_score": "신용점수", "phone": "휴대폰 번호", "created_at": "가입일"
+                            "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
+                            "credit_score": "신용점수", "ticket_count": "잔여티켓", "phone": "휴대폰 번호", "created_at": "가입일"
                         })
 
                         display_df.index = range(start_idx + 1, start_idx + len(display_df) + 1)
-
-                        st.dataframe(
-                            display_df,
-                            use_container_width=True,
-                            height=380,
-                            column_config={
-                                "성명": st.column_config.TextColumn("성명", width="small"),
-                                "성별": st.column_config.TextColumn("성별", width="small"),
-                                "나이": st.column_config.NumberColumn("나이", width="small"),
-                                "지역": st.column_config.TextColumn("지역", width="medium"),
-                                "직업/전문분야": st.column_config.TextColumn("직업/전문분야", width="medium"),
-                                "신용점수": st.column_config.NumberColumn("신용점수", width="small"),
-                                "심사상태": st.column_config.TextColumn("심사상태", width="medium"),
-                                "계정상태": st.column_config.TextColumn("계정상태", width="small"),
-                                "휴대폰 번호": st.column_config.TextColumn("휴대폰 번호", width="medium"),
-                                "권한": st.column_config.TextColumn("권한", width="small"),
-                                "가입일": st.column_config.TextColumn("가입일", width="small")
-                            }
-                        )
+                        st.dataframe(display_df, use_container_width=True, height=380)
                 else:
                     st.caption("등록된 회원이 없습니다.")
 
             with adm_sub3:
-                st.markdown("##### 👥 회원 계정 제재(블랙리스트) 및 관리자 권한 설정")
-                st.caption("불량 회원을 즉시 차단하거나, 신뢰할 수 있는 회원을 공동 관리자로 임명합니다.")
-                
-                users_list = supabase.table("users").select("id, name, phone, is_admin, is_suspended").order("name").execute().data
+                st.markdown("##### 👥 회원 제재 및 티켓·멤버십 수동 부여")
+                users_list = supabase.table("users").select("id, name, phone, ticket_count, is_vip, is_admin, is_suspended").order("name").execute().data
                 
                 if users_list:
                     def make_label(u):
-                        status_str = "🚫이용정지" if u.get("is_suspended") else "정상"
-                        role_str = "👑관리자" if u.get("is_admin") else "일반회원"
-                        return f"{u['name']} ({u['phone']}) - [{status_str} / {role_str}]"
+                        status_str = "🚫정지" if u.get("is_suspended") else "정상"
+                        vip_str = "👑VIP" if u.get("is_vip") else f"티켓:{u.get('ticket_count',0)}장"
+                        return f"{u['name']} ({u['phone']}) - [{status_str} / {vip_str}]"
 
                     user_options = {make_label(u): u for u in users_list}
                     selected_label = st.selectbox("대상 회원 선택", list(user_options.keys()))
                     target_user = user_options[selected_label]
                     
                     st.write("")
-                    st.markdown("###### 1. 계정 이용 상태 제어 (블랙리스트)")
+                    col_t1, col_t2 = st.columns(2)
+                    with col_t1:
+                        if st.button(f"🎟️ {target_user['name']} 님에게 티켓 5장 추가 지급"):
+                            new_cnt = target_user.get("ticket_count", 0) + 5
+                            supabase.table("users").update({"ticket_count": new_cnt}).eq("id", target_user["id"]).execute()
+                            st.success(f"{target_user['name']} 님에게 티켓 5장이 지급되었습니다. (현재 {new_cnt}장)")
+                            st.rerun()
+                    with col_t2:
+                        vip_act_label = "❌ VIP 해제" if target_user.get("is_vip") else "👑 VIP 강제 활성화"
+                        if st.button(vip_act_label):
+                            supabase.table("users").update({"is_vip": not target_user.get("is_vip")}).eq("id", target_user["id"]).execute()
+                            st.success(f"{target_user['name']} 님의 VIP 상태가 변경되었습니다.")
+                            st.rerun()
+
+                    st.divider()
                     col_ban1, col_ban2 = st.columns(2)
                     with col_ban1:
-                        if not target_user.get("is_suspended"):
-                            if target_user["id"] == me["id"]:
-                                st.caption("본인 계정은 정지할 수 없습니다.")
-                            else:
-                                if st.button(f"🚫 {target_user['name']} 회원 이용 정지 (차단)", key=f"ban_{target_user['id']}"):
-                                    supabase.table("users").update({"is_suspended": True}).eq("id", target_user["id"]).execute()
-                                    st.warning(f"{target_user['name']} 회원이 이용 정지(차단) 처리되었습니다.")
-                                    st.rerun()
-                        else:
-                            st.info("현재 이용 정지(차단) 상태입니다.")
+                        if not target_user.get("is_suspended") and target_user["id"] != me["id"]:
+                            if st.button(f"🚫 {target_user['name']} 회원 이용 정지", key=f"ban_{target_user['id']}"):
+                                supabase.table("users").update({"is_suspended": True}).eq("id", target_user["id"]).execute()
+                                st.warning(f"{target_user['name']} 회원이 이용 정지 처리되었습니다.")
+                                st.rerun()
                     with col_ban2:
                         if target_user.get("is_suspended"):
-                            if st.button(f"✅ {target_user['name']} 회원 정지 해제 (정상 복원)", key=f"unban_{target_user['id']}"):
+                            if st.button(f"✅ {target_user['name']} 회원 정지 해제", key=f"unban_{target_user['id']}"):
                                 supabase.table("users").update({"is_suspended": False}).eq("id", target_user["id"]).execute()
-                                st.success(f"{target_user['name']} 회원의 이용 정지가 해제되었습니다.")
+                                st.success(f"{target_user['name']} 회원의 정지가 해제되었습니다.")
                                 st.rerun()
-
-                    st.markdown("---")
-                    st.markdown("###### 2. 관리자 권한 위임 및 회수")
-                    col_adm_btn1, col_adm_btn2 = st.columns(2)
-                    with col_adm_btn1:
-                        if not target_user.get("is_admin"):
-                            if st.button(f"👑 {target_user['name']} 님을 관리자로 임명"):
-                                supabase.table("users").update({"is_admin": True}).eq("id", target_user["id"]).execute()
-                                st.success(f"{target_user['name']} 님이 새로운 관리자로 임명되었습니다!")
-                                st.rerun()
-                        else:
-                            st.info("이미 관리자 권한을 보유하고 있습니다.")
-
-                    with col_adm_btn2:
-                        if target_user.get("is_admin"):
-                            if target_user["id"] == me["id"]:
-                                st.caption("⚠️ 현재 로그인된 본인 계정은 관리자 해제할 수 없습니다.")
-                            else:
-                                if st.button(f"❌ {target_user['name']} 님 관리자 권한 회수"):
-                                    supabase.table("users").update({"is_admin": False}).eq("id", target_user["id"]).execute()
-                                    st.warning(f"{target_user['name']} 님의 관리자 권한이 회수되었습니다.")
-                                    st.rerun()
 
             with adm_sub4:
-                st.markdown("##### 📊 회원 간 매칭 신청 및 만남(연락처 교환) 관제")
-                st.caption("누가 누구에게 대화를 신청했고, 최종 수락되어 연락처가 교환된 횟수를 실시간으로 추적합니다.")
-
-                all_matches = supabase.table("match_requests").select("id, sender_id, receiver_id, status, created_at").order("created_at", desc=True).execute().data
+                st.markdown("##### 📊 실시간 매칭 신청 및 후불 결제 관리")
+                all_matches = supabase.table("match_requests").select("id, sender_id, receiver_id, status, payment_status, created_at").order("created_at", desc=True).execute().data
                 all_u_dict = {u["id"]: u for u in supabase.table("users").select("id, name, gender, phone").execute().data}
 
                 if not all_matches:
-                    st.info("아직 회원 간 대화 신청 이력이 없습니다.")
+                    st.info("아직 매칭 이력이 없습니다.")
                 else:
                     match_records = []
                     for m in all_matches:
                         s_u = all_u_dict.get(m["sender_id"], {})
                         r_u = all_u_dict.get(m["receiver_id"], {})
                         
-                        s_name = s_u.get("name", "(탈퇴회원)")
-                        s_phone = s_u.get("phone", "-")
-                        s_gender = s_u.get("gender", "-")
-
-                        r_name = r_u.get("name", "(탈퇴회원)")
-                        r_phone = r_u.get("phone", "-")
-                        r_gender = r_u.get("gender", "-")
-
+                        s_name = s_u.get("name", "(탈퇴)")
+                        r_name = r_u.get("name", "(탈퇴)")
+                        
                         status_raw = m.get("status", "PENDING")
+                        pay_status = m.get("payment_status", "PAID")
+                        
                         if status_raw == "ACCEPTED":
-                            status_kr = "🎉 만남 성사 (연락처 교환)"
+                            status_kr = "🎉 열람 가능(결제완료)" if pay_status == "PAID" else "🔒 후불 결제 대기중"
                         elif status_raw == "REJECTED":
                             status_kr = "❌ 거절됨"
                         else:
-                            status_kr = "⏳ 답변 대기중"
+                            status_kr = "⏳ 신청 답변 대기중"
 
                         c_time = str(m.get("created_at", "-"))[:16].replace("T", " ")
 
                         match_records.append({
                             "신청일시": c_time,
-                            "신청회원(보낸사람)": f"{s_name} ({s_gender})",
-                            "신청자연락처": s_phone,
-                            "상대회원(받은사람)": f"{r_name} ({r_gender})",
-                            "상대방연락처": r_phone,
-                            "진행상태": status_kr,
-                            "raw_sender": s_name,
-                            "raw_receiver": r_name,
-                            "raw_status": status_raw
+                            "신청회원": f"{s_name} ({s_u.get('phone', '-')})",
+                            "상대회원": f"{r_name} ({r_u.get('phone', '-')})",
+                            "매칭상태": status_kr,
+                            "결제상태": pay_status,
+                            "match_id": m["id"]
                         })
 
                     m_df = pd.DataFrame(match_records)
-
-                    total_req_count = len(m_df)
-                    success_count = len(m_df[m_df["raw_status"] == "ACCEPTED"])
-                    success_rate = int((success_count / total_req_count) * 100) if total_req_count > 0 else 0
-
-                    m_metric1, m_metric2, m_metric3 = st.columns(3)
-                    with m_metric1:
-                        st.metric("총 대화 신청", f"{total_req_count}건")
-                    with m_metric2:
-                        st.metric("최종 만남 성사", f"{success_count}건")
-                    with m_metric3:
-                        st.metric("매칭 성사율", f"{success_rate}%")
-
-                    st.markdown('<div class="filter-card">', unsafe_allow_html=True)
-                    m_fcol1, m_fcol2 = st.columns(2)
-                    with m_fcol1:
-                        search_m_user = st.text_input("🔍 특정 회원 이름 검색 (신청자 or 수락자)", placeholder="예: 김진호")
-                    with m_fcol2:
-                        filter_m_status = st.selectbox("진행 상태 필터", ["전체 보기", "만남 성사(수락)만 보기", "답변 대기중만 보기", "거절건만 보기"])
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                    filtered_m_df = m_df.copy()
-                    if search_m_user.strip():
-                        target_kw = search_m_user.strip()
-                        filtered_m_df = filtered_m_df[
-                            filtered_m_df["raw_sender"].str.contains(target_kw, na=False) | 
-                            filtered_m_df["raw_receiver"].str.contains(target_kw, na=False)
-                        ]
-
-                    if filter_m_status == "만남 성사(수락)만 보기":
-                        filtered_m_df = filtered_m_df[filtered_m_df["raw_status"] == "ACCEPTED"]
-                    elif filter_m_status == "답변 대기중만 보기":
-                        filtered_m_df = filtered_m_df[filtered_m_df["raw_status"] == "PENDING"]
-                    elif filter_m_status == "거절건만 보기":
-                        filtered_m_df = filtered_m_df[filtered_m_df["raw_status"] == "REJECTED"]
-
-                    st.caption(f"조회된 매칭 내역: 총 **{len(filtered_m_df)}건**")
-
-                    display_match_table = filtered_m_df[[
-                        "신청일시", "신청회원(보낸사람)", "신청자연락처", "상대회원(받은사람)", "상대방연락처", "진행상태"
-                    ]]
-                    display_match_table.index = range(1, len(display_match_table) + 1)
-
-                    st.dataframe(
-                        display_match_table,
-                        use_container_width=True,
-                        height=350,
-                        column_config={
-                            "신청일시": st.column_config.TextColumn("신청일시", width="small"),
-                            "신청회원(보낸사람)": st.column_config.TextColumn("신청회원(보낸사람)", width="medium"),
-                            "신청자연락처": st.column_config.TextColumn("신청자 연락처", width="medium"),
-                            "상대회원(받은사람)": st.column_config.TextColumn("상대회원(받은사람)", width="medium"),
-                            "상대방연락처": st.column_config.TextColumn("상대방 연락처", width="medium"),
-                            "진행상태": st.column_config.TextColumn("진행상태", width="medium")
-                        }
-                    )
+                    st.dataframe(m_df[["신청일시", "신청회원", "상대회원", "매칭상태", "결제상태"]], use_container_width=True)
 
     render_support_footer()
 
