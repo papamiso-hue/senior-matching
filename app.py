@@ -1379,11 +1379,10 @@ else:
 
     top_col1, top_col2 = st.columns([1, 3])
     with top_col1:
-        if me.get("photo_url"):
-            st.markdown(f'<img src="{me["photo_url"]}" class="profile-avatar">', unsafe_allow_html=True)
-        else:
-            default_icon = "👨🏻‍💼" if me["gender"] == "남" else "👩🏻‍💼"
-            st.markdown(f'<div class="profile-placeholder">{default_icon}</div>', unsafe_allow_html=True)
+        my_img_url = me.get("photo_url")
+        if not my_img_url:
+            my_img_url = DEFAULT_MALE_BLUR if me["gender"] == "남" else DEFAULT_FEMALE_BLUR
+        st.markdown(f'<img src="{my_img_url}" class="profile-avatar" style="filter: blur(5px); transform: scale(0.96);">', unsafe_allow_html=True)
     with top_col2:
         st.markdown(f"#### **{me['name']}** 님 ({me['gender']}·{me['age']}세)")
         
@@ -1400,8 +1399,19 @@ else:
             sub_info += f" | 💼 {me['job']}"
         st.caption(sub_info)
 
-    if me.get("intro"):
-        st.markdown(f'<div class="intro-quote-box">“{me["intro"]}”</div>', unsafe_allow_html=True)
+    # [스마트 이용 가이드 및 안심 매칭 안내 배너]
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-radius: 10px; padding: 12px 14px; margin: 10px 0 14px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #FDE047; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+                <span>💡</span> <span>노블레스 라온 3단계 품격 이용 안내</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #E2E8F0; line-height: 1.6;">
+                1️⃣ <b>가치관 피드:</b> 상대방 프로필의 '문답 대조표'를 열어 혼인관·종교·취미 일치율 확인<br>
+                2️⃣ <b>대화 신청:</b> 마음에 드는 인연에게 신청 (상대방에게 즉시 알림 문자 발송)<br>
+                3️⃣ <b>안심 연결:</b> 상호 수락 시 <b>안심 전화</b> 또는 <b>1:1 카카오톡 브릿지</b>로 안전하게 소통
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
     with st.expander("💎 멤버십 충전 및 프리미엄 업그레이드"):
         st.markdown("""
