@@ -93,7 +93,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 카카오톡 / 소셜 공유 전용 메타태그
+# 카카오톡 / 소셜 공유 메타태그
 components.html(f"""
 <script>
 function setMetaTag(property, content) {{
@@ -450,6 +450,28 @@ qp = st.query_params
 saved_name_val = qp.get("saved_name", "")
 saved_phone_val = qp.get("saved_phone", "")
 
+# 신용 서류 유효성 검증 함수
+def validate_credit_doc(uploaded_file, max_size_mb=15):
+    if uploaded_file is None:
+        return False, "신용점수 증빙 서류(캡처 이미지 또는 PDF)를 반드시 첨부해 주세요."
+    
+    allowed_extensions = ["jpg", "jpeg", "png", "pdf"]
+    fname = uploaded_file.name.lower()
+    ext = fname.split(".")[-1] if "." in fname else ""
+    
+    if ext not in allowed_extensions:
+        return False, f"지원하지 않는 파일 형식입니다. (허용 형식: JPG, PNG, PDF / 입력 파일: {ext})"
+    
+    file_size_bytes = uploaded_file.size
+    max_bytes = max_size_mb * 1024 * 1024
+    if file_size_bytes > max_bytes:
+        return False, f"파일 용량이 너무 큽니다. {max_size_mb}MB 이하 파일만 업로드 가능합니다. (현재: {file_size_bytes / (1024 * 1024):.1f}MB)"
+    
+    if file_size_bytes == 0:
+        return False, "손상되었거나 내용이 없는 빈 파일입니다. 정상 파일을 업로드해 주세요."
+        
+    return True, ext
+
 def delete_file_from_storage(bucket_name, file_url):
     if not file_url:
         return
@@ -606,7 +628,6 @@ if not st.session_state.user_id:
         join_gender = st.radio("성별", ["남", "여"], horizontal=True, key="join_gender")
         join_age = st.number_input("나이 (만 나이)", 40, 85, 58, key="join_age")
         
-        # 🗺️ 대한민국 전국 시·도 및 시·군·구 2단계 연동 선택
         st.markdown("##### 📍 활동 희망 지역 (전국 시·도 및 시·군·구)")
         reg_col1, reg_col2 = st.columns(2)
         with reg_col1:
@@ -619,6 +640,11 @@ if not st.session_state.user_id:
 
         join_credit = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820, key="join_credit")
         
+        # 📄 공인 신용 증빙 서류 필수 첨부 UI
+        st.markdown("##### 📄 공인 신용점수 증빙 서류 첨부 (필수)")
+        st.caption("남성 800점 이상 / 여성 600점 이상의 토스, 카카오페이, 나이스, KCB 신용 캡처 또는 공식 보고서 PDF를 첨부해 주세요. (최대 15MB)")
+        join_credit_doc = st.file_uploader("증빙 파일 선택 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="join_credit_doc_file")
+
         st.markdown("##### 💼 나의 라이프스타일 (선택)")
         join_job = st.text_input("현재 하시는 일 / 전문 분야", placeholder="예: 개인사업체 운영, 전문직, 은퇴 후 자문 등", key="join_job")
         join_hobbies = st.text_input("주말 취미 / 여가 활동", placeholder="예: 골프, 등산, 여행, 음악감상 등", key="join_hobbies")
@@ -646,6 +672,9 @@ if not st.session_state.user_id:
             clean_phone = re.sub(r'[^0-9]', '', join_phone.strip())
             cutoff = 800 if join_gender == "남" else 600
             
+            # 서류 검증 실행
+            is_valid_doc, doc_result = validate_credit_doc(join_credit_doc, max_size_mb=15)
+
             if not agree_terms:
                 st.error("개인정보 처리방침 및 신용 서류 안전 관리 원칙에 동의해 주세요.")
             elif not join_name.strip():
@@ -656,38 +685,59 @@ if not st.session_state.user_id:
                 st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
             elif join_credit < cutoff:
                 st.error(f"입회 기준 미달: {join_gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
+            elif not is_valid_doc:
+                st.error(doc_result)
             else:
                 dup = supabase.table("users").select("id").eq("phone", clean_phone).execute().data
                 if dup:
                     st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
                 else:
-                    new_u = supabase.table("users").insert({
-                        "name": join_name.strip(),
-                        "phone": clean_phone,
-                        "password": join_pwd.strip(),
-                        "gender": join_gender,
-                        "age": int(join_age),
-                        "region": selected_full_region,
-                        "credit_score": int(join_credit),
-                        "job": join_job.strip() if join_job else None,
-                        "hobbies": join_hobbies.strip() if join_hobbies else None,
-                        "intro": join_intro.strip() if join_intro else None,
-                        "is_verified": False,
-                        "credit_status": "PENDING",
-                        "is_admin": False,
-                        "is_suspended": False
-                    }).execute().data[0]
+                    ext = doc_result
+                    doc_uuid = uuid.uuid4().hex[:8]
+                    storage_filename = f"signup_{clean_phone}_{doc_uuid}.{ext}"
+                    content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
                     
-                    uid = new_u["id"]
-                    supabase.table("user_answers").insert([
-                        {"user_id": uid, "question_num": 1, "answer_value": join_q1},
-                        {"user_id": uid, "question_num": 38, "answer_value": join_q38},
-                        {"user_id": uid, "question_num": 56, "answer_value": join_q56}
-                    ]).execute()
+                    try:
+                        file_bytes = join_credit_doc.read()
+                        supabase.storage.from_("credit-docs").upload(
+                            storage_filename, 
+                            file_bytes, 
+                            {"content-type": content_type}
+                        )
+                        doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{storage_filename}"
 
-                    st.session_state.user_id = uid
-                    st.session_state.user_info = new_u
-                    st.rerun()
+                        new_u = supabase.table("users").insert({
+                            "name": join_name.strip(),
+                            "phone": clean_phone,
+                            "password": join_pwd.strip(),
+                            "gender": join_gender,
+                            "age": int(join_age),
+                            "region": selected_full_region,
+                            "credit_score": int(join_credit),
+                            "credit_doc_url": doc_url,
+                            "credit_status": "PENDING",
+                            "is_verified": False,
+                            "job": join_job.strip() if join_job else None,
+                            "hobbies": join_hobbies.strip() if join_hobbies else None,
+                            "intro": join_intro.strip() if join_intro else None,
+                            "is_admin": False,
+                            "is_suspended": False
+                        }).execute().data[0]
+                        
+                        uid = new_u["id"]
+                        supabase.table("user_answers").insert([
+                            {"user_id": uid, "question_num": 1, "answer_value": join_q1},
+                            {"user_id": uid, "question_num": 38, "answer_value": join_q38},
+                            {"user_id": uid, "question_num": 56, "answer_value": join_q56}
+                        ]).execute()
+
+                        st.session_state.user_id = uid
+                        st.session_state.user_info = new_u
+                        st.success("🎉 가입이 완료되었습니다! 관리자 서류 심사 후 공인 배지가 부여됩니다.")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"서류 업로드 또는 회원가입 처리 중 오류가 발생했습니다: {e}")
 
     render_support_footer()
 
@@ -733,7 +783,6 @@ else:
         
         with tab_p_edit:
             st.markdown("###### 📍 내 활동 지역 변경")
-            # 기존 저장된 지역 분해 (예: "서울특별시 강남구" -> "서울특별시", "강남구")
             curr_region = me.get("region", "서울특별시 강남구")
             parts = curr_region.split(" ", 1)
             init_sido = parts[0] if parts[0] in KOREA_REGIONS else "서울특별시"
@@ -792,23 +841,27 @@ else:
                 st.caption("토스/카카오페이 캡처(JPG, PNG) 또는 공식 신용보고서(PDF)를 등록해 주세요. 확인 완료 즉시 안전 파기됩니다.")
                 up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
                 if up_doc and st.button("증빙 서류 제출하기"):
-                    ext = up_doc.name.split(".")[-1].lower()
-                    fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
-                    content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
-                    try:
-                        supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": content_type})
-                        url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
-                        supabase.table("users").update({
-                            "credit_doc_url": url,
-                            "credit_status": "PENDING"
-                        }).execute()
-                        me["credit_doc_url"] = url
-                        me["credit_status"] = "PENDING"
-                        st.session_state.user_info = me
-                        st.success("증빙 서류가 제출되었습니다. 심사 완료 즉시 안전하게 파기됩니다!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"서류 제출 실패: {e}")
+                    is_valid, doc_res = validate_credit_doc(up_doc, max_size_mb=15)
+                    if not is_valid:
+                        st.error(doc_res)
+                    else:
+                        ext = doc_res
+                        fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
+                        content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
+                        try:
+                            supabase.storage.from_("credit-docs").upload(fname, up_doc.read(), {"content-type": content_type})
+                            url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
+                            supabase.table("users").update({
+                                "credit_doc_url": url,
+                                "credit_status": "PENDING"
+                            }).execute()
+                            me["credit_doc_url"] = url
+                            me["credit_status"] = "PENDING"
+                            st.session_state.user_info = me
+                            st.success("증빙 서류가 제출되었습니다. 심사 완료 즉시 안전하게 파기됩니다!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"서류 제출 실패: {e}")
 
         with tab_p_delete:
             st.error("🚨 회원 탈퇴 시 모든 프로필 정보, 가치관 문답 답변, 매칭 대화 내역이 즉시 영구 파기되며 복구할 수 없습니다.")
@@ -1026,7 +1079,7 @@ else:
                         u_answers = {item["question_num"]: item["answer_value"] for item in u_ans_data}
 
                         common_keys = set(my_answers.keys()).intersection(set(u_answers.keys()))
-                        score = int((sum(1 for k in common_keys if my_answers[k] == u_answers[k]) / len(common_keys)) * 100) if common_keys else 0
+                        score = int((sum(1 for k in common_keys if my_answers[k] == cand_answers[k]) / len(common_keys)) * 100) if common_keys else 0
 
                         rcv_c_img, rcv_c_info, rcv_c_score = st.columns([1, 2.5, 1])
                         with rcv_c_img:
@@ -1108,7 +1161,6 @@ else:
                 "📊 실시간 매칭 교환 관제"
             ])
             
-            # [1] 신용 심사 대기열
             with adm_sub1:
                 pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
                 
@@ -1158,7 +1210,6 @@ else:
                                     st.rerun()
                             st.divider()
 
-            # [2] 전체 고객 데이터 명부
             with adm_sub2:
                 st.markdown("##### 👥 회원 조회 및 실시간 검색")
 
@@ -1290,7 +1341,6 @@ else:
                 else:
                     st.caption("등록된 회원이 없습니다.")
 
-            # [3] 🔑 회원 제재 및 관리자 권한 관리
             with adm_sub3:
                 st.markdown("##### 👥 회원 계정 제재(블랙리스트) 및 관리자 권한 설정")
                 st.caption("불량 회원을 즉시 차단하거나, 신뢰할 수 있는 회원을 공동 관리자로 임명합니다.")
@@ -1350,7 +1400,6 @@ else:
                                     st.warning(f"{target_user['name']} 님의 관리자 권한이 회수되었습니다.")
                                     st.rerun()
 
-            # [4] 📊 실시간 매칭 교환 관제
             with adm_sub4:
                 st.markdown("##### 📊 회원 간 매칭 신청 및 만남(연락처 교환) 관제")
                 st.caption("누가 누구에게 대화를 신청했고, 최종 수락되어 연락처가 교환된 횟수를 실시간으로 추적합니다.")
