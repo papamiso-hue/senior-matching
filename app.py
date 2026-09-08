@@ -135,6 +135,7 @@ st.markdown(f"""
         max-width: 780px; 
     }}
     
+    /* 럭셔리 마스터 히어로 배너 */
     .premium-master-hero {{
         background: linear-gradient(135deg, #090E17 0%, #131D2E 50%, #0B111D 100%);
         border: 2px solid #D4AF37;
@@ -159,7 +160,7 @@ st.markdown(f"""
     .noble-title-kr {{
         font-size: 2.1rem;
         font-weight: 900;
-        color: #FFFFFF;
+        color: #FFFFFF !important;
         letter-spacing: -1px;
         line-height: 1.2;
         margin-bottom: 10px;
@@ -167,7 +168,7 @@ st.markdown(f"""
     .noble-main-copy {{
         font-size: 1.15rem;
         font-weight: 800;
-        color: #F8FAFC;
+        color: #F8FAFC !important;
         letter-spacing: -0.4px;
         line-height: 1.5;
         margin-bottom: 10px;
@@ -178,8 +179,8 @@ st.markdown(f"""
         text-shadow: 0 0 10px rgba(246, 216, 150, 0.35);
     }}
     .noble-sub-policy-card {{
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(212, 175, 55, 0.35);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(212, 175, 55, 0.4);
         border-radius: 8px;
         padding: 7px 14px;
         display: inline-block;
@@ -188,14 +189,15 @@ st.markdown(f"""
     .noble-sub-policy-text {{
         font-size: 0.88rem;
         font-weight: 700;
-        color: #CBD5E1;
+        color: #E2E8F0 !important;
     }}
     .noble-policy-star {{
-        color: #F59E0B;
+        color: #F59E0B !important;
         font-weight: 900;
         margin-right: 2px;
     }}
 
+    /* 프라이버시 안심 보장 3단 배너 (다크모드 고대비 대응) */
     .privacy-promise-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -203,27 +205,31 @@ st.markdown(f"""
         margin-bottom: 1rem;
     }}
     .privacy-card {{
-        background: #F8FAFC;
-        border: 1.5px solid #E2E8F0;
+        background: #1E293B !important;
+        border: 1.5px solid #475569 !important;
         border-radius: 10px;
-        padding: 10px 8px;
+        padding: 12px 6px;
         text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }}
     .privacy-icon {{
-        font-size: 1.3rem;
+        font-size: 1.35rem;
         margin-bottom: 4px;
     }}
     .privacy-title {{
-        font-size: 0.84rem;
+        font-size: 0.86rem;
         font-weight: 800;
-        color: #0F172A;
+        color: #FFFFFF !important;
+        word-break: keep-all;
     }}
     .privacy-desc {{
         font-size: 0.74rem;
-        color: #64748B;
-        margin-top: 2px;
+        color: #94A3B8 !important;
+        margin-top: 3px;
+        font-weight: 600;
     }}
 
+    /* 신용 기준 바 */
     .badge-box {{
         background: linear-gradient(135deg, #162032 0%, #0B111E 100%);
         padding: 14px 18px;
@@ -258,26 +264,104 @@ st.markdown(f"""
         font-weight: 900;
     }}
 
+    /* 미끼 콘텐츠 카드 (다크모드 고대비 대응) */
     .taste-teaser-card {{
-        background: linear-gradient(135deg, #FFFDF7 0%, #FEF9EE 100%);
-        border: 2px dashed #D4AF37;
+        background: #1E293B !important;
+        border: 2px dashed #D4AF37 !important;
         border-radius: 12px;
-        padding: 14px 16px;
+        padding: 16px;
         margin-bottom: 1.2rem;
         text-align: center;
     }}
     .taste-teaser-header {{
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-weight: 800;
-        color: #B45309;
-        margin-bottom: 4px;
+        color: #FDE047 !important;
+        margin-bottom: 6px;
     }}
     .taste-teaser-desc {{
-        font-size: 0.86rem;
-        color: #475569;
-        margin-bottom: 10px;
+        font-size: 0.88rem;
+        color: #CBD5E1 !important;
+        margin-bottom: 12px;
+        line-height: 1.5;
     }}
 
+    /* 약관 안내 상자 (다크모드 고대비 대응) */
+    .terms-box {{
+        background-color: #1E293B !important;
+        border: 1.5px solid #475569 !important;
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 0.88rem;
+        color: #E2E8F0 !important;
+        line-height: 1.6;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }}
+
+    /* 고객센터 푸터 (다크모드 고대비 대응) */
+    .support-footer-card {{
+        background-color: #1E293B !important;
+        border: 1.5px solid #475569 !important;
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }}
+    .support-header {{
+        font-size: 1rem;
+        font-weight: 800;
+        color: #FFFFFF !important;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .support-desc {{
+        font-size: 0.88rem;
+        color: #94A3B8 !important;
+        line-height: 1.55;
+        margin-bottom: 12px;
+    }}
+    .support-kakao-btn {{
+        display: inline-block;
+        background-color: #FEE500;
+        color: #191919 !important;
+        font-weight: 800;
+        font-size: 0.9rem;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        border: 1px solid #E6CF00;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }}
+
+    /* 피드 내 한 줄 소개 및 태그 (다크모드 고대비 대응) */
+    .intro-quote-box {{
+        background: #1E293B !important;
+        border-left: 4px solid #38BDF8 !important;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 0.94rem;
+        color: #F8FAFC !important;
+        font-weight: 600;
+        margin: 8px 0 10px 0;
+        font-style: italic;
+    }}
+    .detail-tag {{
+        display: inline-block;
+        background: #334155 !important;
+        color: #F1F5F9 !important;
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        border: 1px solid #475569 !important;
+    }}
+
+    /* 탭 스타일 */
     div[data-baseweb="tab-list"] {{
         gap: 8px;
         background-color: transparent;
@@ -289,8 +373,8 @@ st.markdown(f"""
         height: 50px;
         border: 2px solid #CBD5E1 !important;
         border-radius: 10px !important;
-        background-color: #F1F5F9 !important;
-        color: #475569 !important;
+        background-color: #1E293B !important;
+        color: #CBD5E1 !important;
         font-weight: 700 !important;
         font-size: 0.95rem !important;
         display: flex;
@@ -322,14 +406,14 @@ st.markdown(f"""
         font-weight: 800; 
         height: 3.2rem;
         font-size: 1.05rem;
-        border: 2px solid #0F172A !important;
+        border: 2px solid #D4AF37 !important;
         background-color: #0F172A !important;
         color: #FFFFFF !important;
         transition: all 0.15s ease;
     }}
     .stButton>button:active {{
         transform: scale(0.98);
-        border-color: #D4AF37 !important;
+        border-color: #FDE047 !important;
     }}
 
     .profile-avatar {{
@@ -344,17 +428,17 @@ st.markdown(f"""
         width: 76px;
         height: 76px;
         border-radius: 50%;
-        background-color: #E2E8F0;
+        background-color: #334155;
         display: flex;
         justify-content: center;
         align-items: center;
         font-size: 2.2rem;
-        border: 2.5px solid #CBD5E1;
+        border: 2.5px solid #64748B;
     }}
 
     .filter-card {{
-        background-color: #F8FAFC;
-        border: 1.5px solid #CBD5E1;
+        background-color: #1E293B !important;
+        border: 1.5px solid #475569 !important;
         border-radius: 10px;
         padding: 14px 16px;
         margin-bottom: 1rem;
@@ -367,78 +451,6 @@ st.markdown(f"""
         margin-top: 8px;
         margin-bottom: 12px;
         background-color: #F1F5F9;
-    }}
-
-    .intro-quote-box {{
-        background: #F8FAFC;
-        border-left: 3.5px solid #3B82F6;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 0.92rem;
-        color: #1E293B;
-        font-weight: 600;
-        margin: 6px 0 8px 0;
-        font-style: italic;
-    }}
-    .detail-tag {{
-        display: inline-block;
-        background: #F1F5F9;
-        color: #334155;
-        font-size: 0.82rem;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 6px;
-        margin-right: 5px;
-        margin-bottom: 5px;
-        border: 1px solid #E2E8F0;
-    }}
-
-    .terms-box {{
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 12px 14px;
-        font-size: 0.85rem;
-        color: #475569;
-        line-height: 1.5;
-        margin-top: 10px;
-        margin-bottom: 12px;
-    }}
-
-    .support-footer-card {{
-        background-color: #F8FAFC;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 16px;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-    }}
-    .support-header {{
-        font-size: 0.98rem;
-        font-weight: 800;
-        color: #0F172A;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }}
-    .support-desc {{
-        font-size: 0.86rem;
-        color: #64748B;
-        line-height: 1.5;
-        margin-bottom: 10px;
-    }}
-    .support-kakao-btn {{
-        display: inline-block;
-        background-color: #FEE500;
-        color: #191919 !important;
-        font-weight: 800;
-        font-size: 0.88rem;
-        padding: 9px 18px;
-        border-radius: 6px;
-        text-decoration: none;
-        border: 1px solid #E6CF00;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }}
 
     #MainMenu {{visibility: hidden !important;}}
@@ -577,15 +589,15 @@ if not st.session_state.user_id:
     hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">사회적 활동 및 금융 환경을 고려한 합리적 매칭 기준</span></div></div>'''
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # 2. 📱 스마트폰 홈 화면 앱 바로가기 설치 안내 카드
+    # 2. 📱 스마트폰 홈 화면 앱 바로가기 설치 안내 (다크모드 선명화 완비)
     with st.expander("📲 [필독] 이 사이트를 휴대폰 '앱'처럼 바탕화면에 저장하는 법", expanded=False):
         st.markdown("""
-            <div style="font-size:0.95rem; color:#F8FAFC !important; line-height:1.7; padding: 8px 10px; background: rgba(255,255,255,0.06); border-radius: 8px; border: 1px solid #475569;">
-                매번 주소를 입력할 필요 없이, 스마트폰 바탕화면에 <b style="color:#FDE047 !important;">노블레스 라온 앱 아이콘</b>을 만들어 바로 접속하세요.<br><br>
+            <div style="font-size:0.95rem; color:#F8FAFC !important; line-height:1.7; padding: 10px 14px; background: rgba(255,255,255,0.08); border-radius: 8px; border: 1px solid #475569;">
+                매번 주소를 입력할 필요 없이, 스마트폰 바탕화면에 <b style="color:#FDE047 !important;">노블레스 라온 전용 앱</b>으로 바로가기 아이콘을 만들어 접속하세요.<br><br>
                 <b style="color:#38BDF8 !important;">📌 갤럭시 (삼성인터넷 / 크롬):</b><br>
                 화면 우측 하단(또는 상단) <b>[점 3개 ⋮ / 메뉴 ≡]</b> ➔ <b>[현재 페이지 추가 / 홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료<br><br>
                 <b style="color:#38BDF8 !important;">📌 아이폰 (Safari 사파리):</b><br>
-                화면 하단 중앙 <b>[공유 버튼 ↑]</b> ➔ 메뉴를 올려 <b>[홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료
+                화면 하단 중앙 <b>[공유 버튼 ↑]</b> ➔ 메뉴를 위로 올려 <b>[홈 화면에 추가]</b> ➔ <b>[추가]</b> 완료
             </div>
         """, unsafe_allow_html=True)
 
@@ -620,11 +632,11 @@ if not st.session_state.user_id:
     
     with st.expander("❓ 왜 남성 800점 / 여성 600점 기준인가요? (합리적 기준 안내)"):
         st.markdown("""
-            <div style="font-size:0.88rem; color:#F8FAFC !important; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px; border: 1px solid #475569; line-height:1.6; padding: 4px 6px;">
-                <b>대한민국 5060 세대의 사회적 금융 환경을 반영한 균형 기준입니다.</b><br>
-                • <b>남성 (800점 이상):</b> 사업 및 경제활동 유지 과정에서의 안정적인 부채 관리와 책임감 있는 금융 신뢰도를 검증합니다.<br>
-                • <b>여성 (600점 이상):</b> 금융 이력 부족(신용카드 무사용, 가정경제 전담 등)으로 점수가 낮게 형성되는 주부·여성 회원의 현실적 금융 구조를 고려한 정상 금융거래 기준입니다.<br>
-                • <b>안심 보증:</b> 제출하신 신용 증빙 서류는 관리자 진위 확인 완료 즉시 <b>100% 영구 파기</b>되어 안전하게 보호됩니다.
+            <div style="font-size:0.92rem; color:#F8FAFC !important; line-height:1.65; padding: 10px 14px; background: rgba(255,255,255,0.08); border-radius: 8px; border: 1px solid #475569;">
+                <b style="color:#FDE047 !important;">대한민국 5060 세대의 사회적 금융 환경을 반영한 균형 기준입니다.</b><br><br>
+                • <b style="color:#38BDF8 !important;">남성 (800점 이상):</b> 사업 및 경제활동 유지 과정에서의 안정적인 부채 관리와 책임감 있는 금융 신뢰도를 검증합니다.<br>
+                • <b style="color:#38BDF8 !important;">여성 (600점 이상):</b> 금융 이력 부족(신용카드 무사용, 가정경제 전담 등)으로 점수가 낮게 형성되는 주부·여성 회원의 현실적 금융 구조를 고려한 정상 금융거래 기준입니다.<br>
+                • <b style="color:#4ADE80 !important;">안심 보증:</b> 제출하신 신용 증빙 서류는 관리자 진위 확인 완료 즉시 <b>100% 영구 파기</b>되어 안전하게 보호됩니다.
             </div>
         """, unsafe_allow_html=True)
 
@@ -849,7 +861,7 @@ else:
 
     st.markdown(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px;">
-            <div style="font-size:1.1rem; font-weight:900; color:#0F172A;">👑 {BRAND_NAME_KR}</div>
+            <div style="font-size:1.1rem; font-weight:900; color:#FFFFFF;">👑 {BRAND_NAME_KR}</div>
             <div style="font-size:0.75rem; font-weight:800; color:#D4AF37; letter-spacing:1px;">{BRAND_NAME_EN}</div>
         </div>
     """, unsafe_allow_html=True)
@@ -866,11 +878,11 @@ else:
         
         c_status = me.get("credit_status", "PENDING")
         if c_status == "APPROVED":
-            st.markdown(f"🛡️ **<span style='color:#0284C7;'>공인 신용 인증 완료</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
+            st.markdown(f"🛡️ **<span style='color:#38BDF8;'>공인 신용 인증 완료</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
         elif c_status == "REJECTED":
             st.markdown(f"⚠️ **<span style='color:#EF4444;'>신용 증빙 서류 반려 (재제출 필요)</span>**", unsafe_allow_html=True)
         else:
-            st.markdown(f"🛡️ **<span style='color:#D97706;'>안심 서류 검토 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
+            st.markdown(f"🛡️ **<span style='color:#F59E0B;'>안심 서류 검토 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
         
         sub_info = f"📍 {me['region']}"
         if me.get("job"):
@@ -1285,7 +1297,7 @@ else:
                                         <iframe src="{doc_url}" width="100%" height="450px" style="border:none;"></iframe>
                                     </div>
                                 """, unsafe_allow_html=True)
-                                st.markdown(f'<a href="{doc_url}" target="_blank" style="display:inline-block; margin-bottom:12px; font-weight:800; color:#0284C7; text-decoration:none;">📄 PDF 새 창에서 크게 보기 & 다운로드</a>', unsafe_allow_html=True)
+                                st.markdown(f'<a href="{doc_url}" target="_blank" style="display:inline-block; margin-bottom:12px; font-weight:800; color:#38BDF8; text-decoration:none;">📄 PDF 새 창에서 크게 보기 & 다운로드</a>', unsafe_allow_html=True)
                             else:
                                 st.image(doc_url, caption=f"{pu['name']} 님의 제출 이미지", use_container_width=True)
                             
