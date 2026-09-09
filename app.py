@@ -12,6 +12,24 @@ import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
 
+# --- 1. 페이지 설정 및 모바일 PWA 메타태그 (최상단) ---
+st.set_page_config(
+    page_title="노블레스 라온",
+    page_icon="👑`NameError: name 'st' is not defined` 오류는 **Streamlit 라이브러리를 임포트(import)하지 않은 상태**에서 런타임/셀이 실행되었기 때문에 발생합니다.
+
+코드 최상단에 `import streamlit as st`를 추가하고 셀을 다시 실행하면 해결됩니다.
+
+```python
+import streamlit as st
+
+# --- PWA 모바일 앱 이름 및 아이콘 설정 ---
+st.markdown('''
+<head>
+    <title>노블레스 라온</title>
+    <meta name="apple-mobile-web-app-title" content="노블레스 라온">
+</head>
+''', unsafe_allow_html=True)
+
 # 1. 스트림릿 기본 페이지 설정 (반드시 최상단에 위치)
 st.set_page_config(
     page_title="노블레스 라온",
