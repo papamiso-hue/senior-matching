@@ -12,6 +12,26 @@ import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
 
+# 1. 스트림릿 기본 페이지 설정 (반드시 최상단에 위치)
+st.set_page_config(
+    page_title="노블레스 라온",
+    page_icon="👑",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# 2. PWA 모바일 앱 이름 및 홈 화면 아이콘 강제 적용
+st.markdown("""
+<head>
+    <title>노블레스 라온</title>
+    <meta name="apple-mobile-web-app-title" content="노블레스 라온">
+    <meta name="application-name" content="노블레스 라온">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1519741497674-611481863552?w=192&auto=format&fit=crop">
+    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1519741497674-611481863552?w=192&auto=format&fit=crop">
+</head>
+""", unsafe_allow_html=True)
+
+# 3. 기본 상수 정의
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON"
 SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
