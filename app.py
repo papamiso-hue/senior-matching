@@ -12,44 +12,28 @@ import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
 
-# --- 1. 페이지 설정 및 모바일 PWA 메타태그 (최상단) ---
+# 1. 스트림릿 기본 페이지 설정 (반드시 최상단 1회만 호출)
 st.set_page_config(
-    page_title="노블레스 라온",
-    page_icon="👑`NameError: name 'st' is not defined` 오류는 **Streamlit 라이브러리를 임포트(import)하지 않은 상태**에서 런타임/셀이 실행되었기 때문에 발생합니다.
-
-코드 최상단에 `import streamlit as st`를 추가하고 셀을 다시 실행하면 해결됩니다.
-
-```python
-import streamlit as st
-
-# --- PWA 모바일 앱 이름 및 아이콘 설정 ---
-st.markdown('''
-<head>
-    <title>노블레스 라온</title>
-    <meta name="apple-mobile-web-app-title" content="노블레스 라온">
-</head>
-''', unsafe_allow_html=True)
-
-# 1. 스트림릿 기본 페이지 설정 (반드시 최상단에 위치)
-st.set_page_config(
-    page_title="노블레스 라온",
+    page_title="노블레스 라온 - 5060 프라이빗 소셜 클럽",
     page_icon="👑",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# 2. PWA 모바일 앱 이름 및 홈 화면 아이콘 강제 적용
+# 2. PWA 모바일 앱 이름 및 바로가기 아이콘 메타태그 강제 주입
 st.markdown("""
 <head>
     <title>노블레스 라온</title>
     <meta name="apple-mobile-web-app-title" content="노블레스 라온">
     <meta name="application-name" content="노블레스 라온">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1519741497674-611481863552?w=192&auto=format&fit=crop">
     <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1519741497674-611481863552?w=192&auto=format&fit=crop">
 </head>
 """, unsafe_allow_html=True)
 
-# 3. 기본 상수 정의
+# 3. 기본 서비스 상수 정의
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON"
 SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
@@ -61,6 +45,7 @@ ALIGO_USER_ID = "equivision"
 ALIGO_SENDER = "01030383349"
 
 KOREA_REGIONS = {
+    # ... (이하 기존 KOREA_REGIONS 딕셔너리 및 전체 코드 유지)
     "서울특별시": [
         "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구",
         "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구",
