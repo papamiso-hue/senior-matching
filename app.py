@@ -404,7 +404,7 @@ if not st.session_state.user_id:
     st.markdown("""
         <div class="criteria-box">
             <span style="font-weight:800; font-size:0.84rem; color:#FDE047;">📌 5060 정회원 입회 기준</span>
-            <span style="font-weight:900; font-size:0.88rem; color:#6EE7B7;">만 40세 ~ 85세 (남 800 / 여 600점 이상)</span>
+            <span style="font-weight:900; font-size:0.88rem; color:#6EE7B7;">만 48세 ~ 75세 (남 800 / 여 600점 이상)</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -440,7 +440,7 @@ if not st.session_state.user_id:
                     st.error("일치하는 회원 정보를 찾을 수 없습니다.")
 
     with tab_join:
-        st.markdown("##### 👤 기본 인적사항 (만 40~85세 대상)")
+        st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
         j_name = st.text_input("실명", key="j_name")
         
         col_p1, col_p2 = st.columns([2.5, 1.2])
@@ -481,7 +481,7 @@ if not st.session_state.user_id:
 
         j_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", key="j_pwd")
         j_gender = st.radio("성별", ["남", "여"], horizontal=True, key="j_gender")
-        j_age = st.number_input("나이 (만 나이)", 40, 85, 58, key="j_age")
+        j_age = st.number_input("나이 (만 나이)", 48, 75, 58, key="j_age")
 
         r_col1, r_col2 = st.columns(2)
         with r_col1:
@@ -624,10 +624,11 @@ else:
 
     with tabs_main[0]:
         target_gender = "여" if me["gender"] == "남" else "남"
-        # 5060은 만 40세 이상만 추천 대상
+        # 5060 타깃: 만 48세 이상 75세 이하 회원만 매칭 추천 대상
         raw_candidates = supabase.table("users").select("*")\
             .eq("gender", target_gender)\
-            .gte("age", 40)\
+            .gte("age", 48)\
+            .lte("age", 75)\
             .eq("is_suspended", False)\
             .execute().data
 
