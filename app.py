@@ -12,15 +12,15 @@ import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
 
-# 1. 스트림릿 기본 페이지 설정 (반드시 최상단 1회만 호출)
+# 1. 스트림릿 기본 페이지 설정 (반드시 최상단 1회 호출)
 st.set_page_config(
-    page_title="노블레스 라온 - 5060 프라이빗 소셜 클럽",
+    page_title="노블레스 라온 - 5060 검증형 프라이빗 매칭",
     page_icon="👑",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# 2. PWA 모바일 앱 이름 및 바로가기 아이콘 메타태그 강제 주입
+# 2. PWA 모바일 웹앱 메타태그 주입
 st.markdown("""
 <head>
     <title>노블레스 라온</title>
@@ -28,24 +28,46 @@ st.markdown("""
     <meta name="application-name" content="노블레스 라온">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1519741497674-611481863552?w=192&auto=format&fit=crop">
-    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1519741497674-611481863552?w=192&auto=format&fit=crop">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
+    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
 </head>
 """, unsafe_allow_html=True)
 
-# 3. 기본 서비스 상수 정의
+# 3. 서비스 기본 상수 정의
 BRAND_NAME_KR = "노블레스 라온"
-BRAND_NAME_EN = "NOBLESSE RAON"
+BRAND_NAME_EN = "NOBLESSE RAON 5060"
 SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
-OG_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"
+OG_IMAGE_URL = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
 ALIGO_API_KEY = "a2d6ej9asoilb20w66tmw6zw3qqp7shk"
 ALIGO_USER_ID = "equivision"
 ALIGO_SENDER = "01030383349"
 
+# 4. 플랫폼 전용 맞춤법/오타 검증 엔진
+PLATFORM_TYPO_RULES = {
+    r"안녕하새요": "안녕하세요",
+    r"결재": "결제(이용권/티켓 결제)",
+    r"됍니다": "됩니다",
+    r"되요": "돼요",
+    r"뵈요": "봬요",
+    r"몇일": "며칠",
+    r"바램": "바람",
+    r"어의없": "어이없",
+    r"신용점숫": "신용점수"
+}
+
+def audit_text_typos(text: str):
+    """입력된 텍스트에서 오탈자 및 부적절한 표현 감지"""
+    if not text:
+        return []
+    warnings = []
+    for pattern, correct in PLATFORM_TYPO_RULES.items():
+        if re.search(pattern, text):
+            warnings.append(f"'{pattern}' ➡️ '{correct}'")
+    return warnings
+
 KOREA_REGIONS = {
-    # ... (이하 기존 KOREA_REGIONS 딕셔너리 및 전체 코드 유지)
     "서울특별시": [
         "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구",
         "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구",
@@ -60,697 +82,233 @@ KOREA_REGIONS = {
         "용인시 처인구", "용인시 기흥구", "용인시 수지구", "파주시", "이천시", "안성시", "김포시", "화성시",
         "광주시", "양주시", "포천시", "여주시", "연천군", "가평군", "양평군"
     ],
-    "인천광역시": [
-        "중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구", "강화군", "옹진군"
-    ],
-    "부산광역시": [
-        "중구", "서구", "동구", "영도구", "부산진구", "동래구", "남구", "북구",
-        "해운대구", "사하구", "금정구", "강서구", "연제구", "수영구", "사상구", "기장군"
-    ],
-    "대구광역시": [
-        "중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군", "군위군"
-    ],
-    "광주광역시": [
-        "동구", "서구", "남구", "북구", "광산구"
-    ],
-    "대전광역시": [
-        "동구", "중구", "서구", "유성구", "대덕구"
-    ],
-    "울산광역시": [
-        "중구", "남구", "동구", "북구", "울주군"
-    ],
-    "세종특별자치시": [
-        "세종시 전역"
-    ],
-    "강원특별자치도": [
-        "춘천시", "원주시", "강릉시", "동해시", "태백시", "속초시", "삼척시",
-        "홍천군", "횡성군", "영월군", "평창군", "정선군", "철원군", "화천군", "양구군", "인제군", "고성군", "양양군"
-    ],
-    "충청북도": [
-        "청주시 상당구", "청주시 서원구", "청주시 흥덕구", "청주시 청원구",
-        "충주시", "제천시", "보은군", "옥천군", "영동군", "증평군", "진천군", "괴산군", "음성군", "단양군"
-    ],
-    "충청남도": [
-        "천안시 동남구", "천안시 서북구", "공주시", "보령시", "아산시", "서산시", "논산시", "계룡시", "당진시",
-        "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군"
-    ],
-    "전북특별자치도": [
-        "전주시 완산구", "전주시 덕진구", "군산시", "익산시", "정읍시", "남원시", "김제시",
-        "완주군", "진안군", "무주군", "장수군", "임실군", "순창군", "고창군", "부안군"
-    ],
-    "전라남도": [
-        "목포시", "여수시", "순천시", "나주시", "광양시", "담양군", "곡성군", "구례군", "고흥군", "보성군",
-        "화순군", "장흥군", "강진군", "해남군", "영암군", "무안군", "함평군", "영광군", "장성군", "완도군", "진도군", "신안군"
-    ],
-    "경상북도": [
-        "포항시 남구", "포항시 북구", "경주시", "김천시", "안동시", "구미시", "영주시", "영천시", "상주시", "문경시", "경산시",
-        "의성군", "청송군", "영양군", "영덕군", "청도군", "고령군", "성주군", "칠곡군", "예천군", "봉화군", "울진군", "울릉군"
-    ],
-    "경상남도": [
-        "창원시 의창구", "창원시 성산구", "창원시 마산합포구", "창원시 마산회원구", "창원시 진해구",
-        "진주시", "통영시", "사천시", "김해시", "밀양시", "거제시", "양산시",
-        "의령군", "함안군", "창녕군", "고성군", "남해군", "하동군", "산청군", "함양군", "거창군", "합천군"
-    ],
-    "제주특별자치도": [
-        "제주시", "서귀포시"
-    ]
+    "인천광역시": ["중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구", "강화군", "옹진군"],
+    "부산광역시": ["중구", "서구", "동구", "영도구", "부산진구", "동래구", "남구", "북구", "해운대구", "사하구", "금정구", "강서구", "연제구", "수영구", "사상구", "기장군"],
+    "대구광역시": ["중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군", "군위군"],
+    "대전광역시": ["동구", "중구", "서구", "유성구", "대덕구"],
+    "세종특별자치시": ["세종시 전역"]
 }
 
-st.set_page_config(
-    page_title=f"{BRAND_NAME_KR} - 5060 프라이빗 소셜 클럽",
-    page_icon="👑",
-    layout="centered"
-)
+# 5060 전용 필수 가치관 5대 문항
+CORE_QUESTIONS_5060 = {
+    1: {
+        "text": "1. 이상적인 동반 형태 및 관계 방향?",
+        "options": ["혼인신고(법적 재혼) 희망", "사실혼(동거 및 일상 공유)", "LAT(각자 주거 유지 + 데이트형 동반자)", "편안하게 의지하는 친구 같은 만남"]
+    },
+    2: {
+        "text": "2. 자녀 독립 상태 및 교류 빈도?",
+        "options": ["자녀 완전 출가·독립 (독립적인 둘만의 생활 선호)", "자녀와 정기적 교류 (명절·주말 식사 등)", "자녀 동거 중 (상호 이해와 배려 필요)", "자녀 없음"]
+    },
+    3: {
+        "text": "3. 경제 관리 및 생활비 분담 기준?",
+        "options": ["남성 전액 부담 또는 주도적 관리", "각자 자산 독립 관리 + 공동 생활비 반반", "상호 형편에 맞춘 유연한 분담", "사전 협의 후 공정 관리"]
+    },
+    4: {
+        "text": "4. 은퇴 후 주거 환경 및 여가 지향점?",
+        "options": ["도심 인프라 및 문화생활 중심", "근교 전원주택/타운하우스 여유로운 삶", "여행·캠핑·골프 등 활동적 여가 공유", "조용하고 정적인 힐링 라이프"]
+    },
+    5: {
+        "text": "5. 종교 및 생활 습관(음주/흡연) 성향?",
+        "options": ["동일 종교 필수", "종교 무관 / 상호 독립성 존중", "비흡연 필수 + 절주형 라이프", "자유로운 라이프스타일 양해"]
+    }
+}
 
-components.html(f"""
-<script>
-function setMetaTag(property, content) {{
-    let element = document.querySelector(`meta[property="${{property}}"]`);
-    if (!element) {{
-        element = document.createElement('meta');
-        element.setAttribute('property', property);
-        window.parent.document.head.appendChild(element);
-    }}
-    element.setAttribute('content', content);
-}}
-
-function setNameMetaTag(name, content) {{
-    let element = document.querySelector(`meta[name="${{name}}"]`);
-    if (!element) {{
-        element = document.createElement('meta');
-        element.setAttribute('name', name);
-        window.parent.document.head.appendChild(element);
-    }}
-    element.setAttribute('content', content);
-}}
-
-setMetaTag('og:type', 'website');
-setMetaTag('og:title', '👑 {BRAND_NAME_KR} - 가치관·신용 기반 5060 프라이빗 소셜 데이팅 플랫폼');
-setMetaTag('og:description', '철저한 신용 검증과 프라이버시 안심 보장 · 100% 프라이빗 멤버십');
-setMetaTag('og:image', '{OG_IMAGE_URL}');
-setMetaTag('og:url', '{SITE_URL}');
-
-setNameMetaTag('description', '철저한 신용 검증과 프라이버시 안심 보장 · 100% 프라이빗 멤버십');
-window.parent.document.title = '👑 {BRAND_NAME_KR} - 5060 프라이빗 소셜 클럽';
-
-let deferredPrompt;
-window.parent.addEventListener('beforeinstallprompt', (e) => {{
-    e.preventDefault();
-    deferredPrompt = e;
-    const installBar = window.parent.document.getElementById('pwa-mini-install-bar');
-    if (installBar) {{
-        installBar.style.display = 'flex';
-    }}
-}});
-
-window.parent.installNoblesseApp = function() {{
-    if (deferredPrompt) {{
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {{
-            if (choiceResult.outcome === 'accepted') {{
-                const installBar = window.parent.document.getElementById('pwa-mini-install-bar');
-                if (installBar) installBar.style.display = 'none';
-            }}
-            deferredPrompt = null;
-        }});
-    }}
-}};
-</script>
-
-<div id="pwa-mini-install-bar" style="display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:90%; max-width:440px; background:#0F172A; border:1.5px solid #D4AF37; border-radius:12px; padding:10px 16px; z-index:999999; box-shadow:0 8px 24px rgba(0,0,0,0.5); align-items:center; justify-content:space-between;">
-    <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:1.2rem;">👑</span>
-        <div style="display:flex; flex-direction:column;">
-            <span style="font-size:0.86rem; font-weight:800; color:#FFFFFF;">노블레스 라온 전용 바로가기</span>
-            <span style="font-size:0.72rem; color:#94A3B8;">홈 화면에서 앱처럼 편리하게 이용하세요</span>
-        </div>
-    </div>
-    <button onclick="window.parent.installNoblesseApp()" style="background:linear-gradient(90deg, #D4AF37, #F59E0B); color:#0F172A; font-weight:900; font-size:0.8rem; padding:7px 14px; border:none; border-radius:6px; cursor:pointer;">
-        앱 추가
-    </button>
-</div>
-""", height=0)
-
-st.markdown(f"""
+# 5060 클래식 블랙 & 럭셔리 골드 테마 CSS
+st.markdown("""
     <style>
-    .block-container {{ 
-        padding-top: 2.2rem !important; 
+    .stApp {
+        background-color: #0A0A0B !important;
+        color: #F8FAFC !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", sans-serif;
+    }
+    .block-container { 
+        padding-top: 1.8rem !important; 
         padding-bottom: 3.5rem !important; 
-        max-width: 780px; 
-    }}
-    
-    .premium-master-hero {{
-        background: linear-gradient(135deg, #090E17 0%, #131D2E 50%, #0B111D 100%);
-        border: 2px solid #D4AF37;
-        border-radius: 16px;
-        padding: 26px 20px 20px 20px;
+        max-width: 620px !important; 
+    }
+
+    .hero-box {
+        background: linear-gradient(145deg, #18181B 0%, #111113 60%, #1C1917 100%);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        border-radius: 18px;
+        padding: 26px 20px 22px 20px;
         text-align: center;
-        margin-bottom: 0.9rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-    }}
-    .noble-badge {{
-        display: inline-block;
-        background: linear-gradient(90deg, #D4AF37 0%, #F3E5AB 50%, #AA771C 100%);
-        color: #0A0F1D !important;
-        font-size: 0.74rem;
-        font-weight: 900;
-        letter-spacing: 3px;
-        padding: 4px 14px;
-        border-radius: 20px;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-    }}
-    .noble-title-kr {{
+        margin-bottom: 1rem;
+        box-shadow: 0 10px 30px -10px rgba(212, 175, 55, 0.25);
+    }
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(212, 175, 55, 0.15);
+        border: 1px solid rgba(212, 175, 55, 0.45);
+        color: #FDE047 !important;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 2px;
+        padding: 4px 12px;
+        border-radius: 30px;
+        margin-bottom: 12px;
+    }
+    .hero-title {
         font-size: 2.1rem;
         font-weight: 900;
         color: #FFFFFF !important;
-        letter-spacing: -1px;
-        line-height: 1.2;
+        letter-spacing: -0.8px;
+        line-height: 1.25;
         margin-bottom: 10px;
-    }}
-    .noble-main-copy {{
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #F8FAFC !important;
-        letter-spacing: -0.4px;
-        line-height: 1.5;
-        margin-bottom: 10px;
-        word-break: keep-all;
-    }}
-    .noble-gold-highlight {{
-        color: #F6D896 !important;
-        text-shadow: 0 0 10px rgba(246, 216, 150, 0.35);
-    }}
-    .noble-sub-policy-card {{
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(212, 175, 55, 0.4);
-        border-radius: 8px;
-        padding: 7px 14px;
-        display: inline-block;
-        margin-top: 2px;
-    }}
-    .noble-sub-policy-text {{
-        font-size: 0.88rem;
-        font-weight: 700;
+    }
+    .hero-subtitle {
+        font-size: 1.0rem;
+        font-weight: 600;
         color: #E2E8F0 !important;
-    }}
-    .noble-policy-star {{
-        color: #F59E0B !important;
-        font-weight: 900;
-        margin-right: 2px;
-    }}
+        line-height: 1.55;
+        word-break: keep-all;
+    }
+    .hero-highlight {
+        color: #FACC15 !important;
+        font-weight: 800;
+    }
 
-    .secret-club-notice {{
-        text-align: center;
-        margin-bottom: 1rem;
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: #94A3B8;
-        letter-spacing: -0.2px;
-    }}
-    .secret-club-notice span {{
-        color: #D4AF37;
-    }}
-
-    .privacy-promise-grid {{
+    .promise-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         margin-bottom: 1rem;
-    }}
-    .privacy-card {{
-        background: #1E293B !important;
-        border: 1.5px solid #475569 !important;
-        border-radius: 10px;
-        padding: 12px 6px;
+    }
+    .promise-card {
+        background: #18181B !important;
+        border: 1px solid #27272A !important;
+        border-radius: 12px;
+        padding: 14px 6px;
         text-align: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    }}
-    .privacy-icon {{
-        font-size: 1.35rem;
+    }
+    .promise-icon {
+        font-size: 1.4rem;
         margin-bottom: 4px;
-    }}
-    .privacy-title {{
-        font-size: 0.86rem;
+    }
+    .promise-title {
+        font-size: 0.84rem;
         font-weight: 800;
-        color: #FFFFFF !important;
-        word-break: keep-all;
-    }}
-    .privacy-desc {{
-        font-size: 0.74rem;
-        color: #94A3B8 !important;
-        margin-top: 3px;
-        font-weight: 600;
-    }}
+        color: #F4F4F5 !important;
+    }
+    .promise-desc {
+        font-size: 0.70rem;
+        color: #A1A1AA !important;
+        margin-top: 2px;
+    }
 
-    .badge-box {{
-        background: linear-gradient(135deg, #162032 0%, #0B111E 100%);
-        padding: 14px 18px;
-        border-radius: 12px;
-        margin-bottom: 0.6rem;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-        border: 1.5px solid #2A3B53;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 8px;
-    }}
-    .badge-tag {{
-        display: inline-block;
-        background-color: #E11D48;
-        color: #FFFFFF !important;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 4px 10px;
-        border-radius: 6px;
-        letter-spacing: 0.5px;
-    }}
-    .badge-text {{
-        font-size: 0.98rem;
-        font-weight: 800;
-        color: #38BDF8 !important;
-    }}
-    .highlight-score {{
-        color: #FDE047 !important;
-        font-size: 1.12rem;
-        font-weight: 900;
-    }}
-
-    /* 실시간 블러 티저 카드 스타일 */
-    .blur-teaser-box {{
-        background: #1E293B;
-        border: 1.5px solid #D4AF37;
-        border-radius: 12px;
-        padding: 16px;
-        margin-top: 14px;
-        margin-bottom: 16px;
-    }}
-    .blur-teaser-title {{
-        font-size: 1rem;
-        font-weight: 800;
-        color: #FDE047;
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }}
-    .blur-teaser-card {{
-        background: rgba(15, 23, 42, 0.75);
-        border: 1px solid #334155;
+    .criteria-box {
+        background: rgba(24, 24, 27, 0.8);
+        border: 1px solid #3F3F46;
         border-radius: 10px;
-        padding: 12px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 8px;
-    }}
-    .blur-avatar {{
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        object-fit: cover;
-        filter: blur(6.5px);
-        transform: scale(0.98);
-        border: 2px solid #D4AF37;
-    }}
-    .blur-placeholder {{
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: #334155;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.8rem;
-        filter: blur(5.5px);
-    }}
-
-    .wallet-status-bar {{
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1.5px solid #D4AF37;
-        border-radius: 10px;
-        padding: 12px 16px;
+        padding: 10px 16px;
         margin-bottom: 1.2rem;
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    }}
-    .wallet-title {{
-        font-size: 0.88rem;
-        font-weight: 800;
-        color: #FFFFFF;
-    }}
-    .wallet-badge {{
-        background: #D4AF37;
-        color: #0F172A;
-        font-weight: 900;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 0.82rem;
-    }}
+    }
 
-    .pricing-grid {{
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin-top: 10px;
-        margin-bottom: 14px;
-    }}
-    .pricing-card {{
-        background: #1E293B;
-        border: 1.5px solid #475569;
+    div[data-baseweb="tab-list"] {
+        background-color: #18181B !important;
+        padding: 4px;
         border-radius: 10px;
-        padding: 14px;
-        text-align: center;
-    }}
-    .pricing-card-vip {{
-        background: linear-gradient(135deg, #1E293B 0%, #2A1B0E 100%);
-        border: 2px solid #D4AF37;
-        border-radius: 10px;
-        padding: 14px;
-        text-align: center;
-        box-shadow: 0 4px 14px rgba(212, 175, 55, 0.2);
-    }}
-    .pricing-name {{
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin-bottom: 4px;
-    }}
-    .pricing-price {{
-        font-size: 1.18rem;
-        font-weight: 900;
-        color: #FDE047;
-        margin-bottom: 6px;
-    }}
-    .pricing-desc {{
-        font-size: 0.78rem;
-        color: #94A3B8;
-        line-height: 1.4;
-    }}
-
-    .postpay-lock-card {{
-        background: linear-gradient(135deg, #1E293B 0%, #2A151B 100%);
-        border: 2px solid #F43F5E;
-        border-radius: 12px;
-        padding: 16px;
-        margin-top: 10px;
-        margin-bottom: 14px;
-        text-align: center;
-    }}
-    .postpay-title {{
-        font-size: 1.05rem;
-        font-weight: 900;
-        color: #FDA4AF;
-        margin-bottom: 4px;
-    }}
-    .postpay-desc {{
-        font-size: 0.86rem;
-        color: #E2E8F0;
-        line-height: 1.5;
-        margin-bottom: 12px;
-    }}
-
-    .terms-box {{
-        background-color: #1E293B !important;
-        border: 1.5px solid #475569 !important;
-        border-radius: 8px;
-        padding: 14px 16px;
-        font-size: 0.86rem;
-        color: #CBD5E1 !important;
-        line-height: 1.6;
-        margin-top: 6px;
-        margin-bottom: 10px;
-    }}
-
-    .match-success-bridge-box {{
-        background: linear-gradient(135deg, #090E17 0%, #1E293B 100%);
-        border: 1.5px solid #D4AF37;
-        border-radius: 12px;
-        padding: 16px;
-        margin-top: 10px;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    }}
-    .bridge-badge {{
-        display: inline-block;
-        background: #0284C7;
-        color: #FFFFFF;
-        font-size: 0.74rem;
-        font-weight: 800;
-        padding: 3px 8px;
-        border-radius: 4px;
-        margin-bottom: 6px;
-    }}
-    .bridge-title {{
-        font-size: 1.02rem;
-        font-weight: 900;
-        color: #FDE047;
-        line-height: 1.4;
-    }}
-    .bridge-desc {{
-        font-size: 0.86rem;
-        color: #CBD5E1;
-        margin-top: 4px;
-        line-height: 1.5;
-    }}
-    .bridge-btn-group {{
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 12px;
-    }}
-    .bridge-phone-btn {{
-        flex: 1;
-        min-width: 140px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #0284C7;
-        color: #FFFFFF !important;
-        font-weight: 800;
-        font-size: 0.9rem;
-        padding: 10px 14px;
-        border-radius: 8px;
-        text-decoration: none;
-        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
-    }}
-    .bridge-kakao-btn {{
-        flex: 1.2;
-        min-width: 170px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #FEE500;
-        color: #191919 !important;
-        font-weight: 800;
-        font-size: 0.9rem;
-        padding: 10px 14px;
-        border-radius: 8px;
-        text-decoration: none;
-        box-shadow: 0 2px 8px rgba(254, 229, 0, 0.25);
-    }}
-
-    .scam-warning-banner {{
-        background: rgba(225, 29, 72, 0.12);
-        border: 1.5px solid #E11D48;
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-top: 12px;
-        font-size: 0.82rem;
-        color: #FECDD3 !important;
-        line-height: 1.5;
-    }}
-    .scam-warning-title {{
-        font-weight: 900;
-        color: #FDA4AF !important;
-        margin-bottom: 2px;
-        display: flex;
-        align-items: center;
         gap: 4px;
-    }}
-
-    .report-btn-link {{
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        background-color: transparent;
-        border: 1px solid #94A3B8;
-        color: #CBD5E1 !important;
-        font-size: 0.78rem;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 6px;
-        text-decoration: none;
-        margin-top: 8px;
-    }}
-
-    .support-footer-card {{
-        background-color: #1E293B !important;
-        border: 1.5px solid #475569 !important;
-        border-radius: 10px;
-        padding: 16px;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-    }}
-    .support-header {{
-        font-size: 1rem;
-        font-weight: 800;
-        color: #FFFFFF !important;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }}
-    .support-desc {{
-        font-size: 0.88rem;
-        color: #94A3B8 !important;
-        line-height: 1.55;
-        margin-bottom: 12px;
-    }}
-    .support-kakao-btn {{
-        display: inline-block;
-        background-color: #FEE500;
-        color: #191919 !important;
-        font-weight: 800;
-        font-size: 0.9rem;
-        padding: 10px 20px;
-        border-radius: 6px;
-        text-decoration: none;
-        border: 1px solid #E6CF00;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }}
-
-    .legal-footer-info {{
-        font-size: 0.76rem;
-        color: #64748B;
-        line-height: 1.6;
-        margin-top: 14px;
-        border-top: 1px solid #334155;
-        padding-top: 12px;
-        text-align: left;
-    }}
-
-    .intro-quote-box {{
-        background: #1E293B !important;
-        border-left: 4px solid #38BDF8 !important;
-        padding: 10px 14px;
-        border-radius: 6px;
-        font-size: 0.94rem;
-        color: #F8FAFC !important;
-        font-weight: 600;
-        margin: 8px 0 10px 0;
-        font-style: italic;
-    }}
-    .detail-tag {{
-        display: inline-block;
-        background: #334155 !important;
-        color: #F1F5F9 !important;
-        font-size: 0.82rem;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 6px;
-        margin-right: 5px;
-        margin-bottom: 5px;
-        border: 1px solid #475569 !important;
-    }}
-
-    div[data-baseweb="tab-list"] {{
-        gap: 8px;
-        background-color: transparent;
-        border-bottom: none !important;
+        border: 1px solid #27272A !important;
         margin-bottom: 1.2rem;
-    }}
-    div[data-baseweb="tab"] {{
+    }
+    div[data-baseweb="tab"] {
         flex: 1;
-        height: 50px;
-        border: 2px solid #CBD5E1 !important;
-        border-radius: 10px !important;
-        background-color: #1E293B !important;
-        color: #CBD5E1 !important;
-        font-weight: 700 !important;
-        font-size: 0.95rem !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transition: all 0.2s ease-in-out;
-    }}
-    div[data-baseweb="tab"][aria-selected="true"] {{
-        background-color: #0F172A !important;
-        border: 2.5px solid #D4AF37 !important;
-        color: #FFFFFF !important;
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
-    }}
-    div[data-baseweb="tab-border"] {{
-        display: none !important;
-    }}
-
-    div[data-baseweb="input"] {{
-        border: 2px solid #94A3B8 !important;
+        height: 44px;
         border-radius: 8px !important;
-    }}
-    div[data-baseweb="input"]:focus-within {{
-        border: 2.5px solid #D4AF37 !important;
-    }}
+        background-color: transparent !important;
+        color: #A1A1AA !important;
+        font-weight: 700 !important;
+        font-size: 0.92rem !important;
+        border: none !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    div[data-baseweb="tab"][aria-selected="true"] {
+        background-color: #CA8A04 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 12px rgba(202, 138, 4, 0.35);
+    }
+    div[data-baseweb="tab-border"] {
+        display: none !important;
+    }
 
-    .stButton>button {{ 
+    div[data-baseweb="input"] {
+        background-color: #18181B !important;
+        border: 1.5px solid #27272A !important;
+        border-radius: 10px !important;
+    }
+    div[data-baseweb="input"]:focus-within {
+        border-color: #EAB308 !important;
+    }
+    div[data-baseweb="input"] input {
+        color: #FFFFFF !important;
+    }
+    label[data-testid="stWidgetLabel"] p {
+        color: #F4F4F5 !important;
+        font-weight: 700;
+        font-size: 0.88rem;
+    }
+
+    .stButton>button { 
         width: 100%; 
         border-radius: 10px; 
         font-weight: 800; 
         height: 3.2rem;
-        font-size: 1.05rem;
-        border: 2px solid #D4AF37 !important;
-        background-color: #0F172A !important;
+        font-size: 1.02rem;
+        border: none !important;
+        background: linear-gradient(90deg, #CA8A04 0%, #A16207 100%) !important;
         color: #FFFFFF !important;
-        transition: all 0.15s ease;
-    }}
-    .stButton>button:active {{
-        transform: scale(0.98);
-        border-color: #FDE047 !important;
-    }}
+        box-shadow: 0 4px 14px rgba(202, 138, 4, 0.3);
+    }
+    .stButton>button:hover {
+        background: linear-gradient(90deg, #EAB308 0%, #CA8A04 100%) !important;
+    }
 
-    .profile-avatar {{
-        width: 76px;
-        height: 76px;
+    .badge-gold {
+        background: rgba(202, 138, 4, 0.2);
+        color: #FDE047;
+        border: 1px solid rgba(234, 179, 8, 0.4);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+    .badge-credit {
+        background: rgba(16, 185, 129, 0.15);
+        color: #6EE7B7;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+    .profile-avatar-blur {
+        width: 74px;
+        height: 74px;
         border-radius: 50%;
         object-fit: cover;
-        border: 2.5px solid #D4AF37;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    }}
-    .profile-placeholder {{
-        width: 76px;
-        height: 76px;
+        border: 2px solid #EAB308;
+        filter: blur(6px);
+        transform: scale(0.96);
+    }
+    .profile-avatar-clear {
+        width: 74px;
+        height: 74px;
         border-radius: 50%;
-        background-color: #334155;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 2.2rem;
-        border: 2.5px solid #64748B;
-    }}
+        object-fit: cover;
+        border: 2px solid #10B981;
+    }
 
-    .filter-card {{
-        background-color: #1E293B !important;
-        border: 1.5px solid #475569 !important;
-        border-radius: 10px;
-        padding: 14px 16px;
-        margin-bottom: 1rem;
-    }}
-
-    .pdf-preview-box {{
-        border: 2px solid #CBD5E1;
-        border-radius: 10px;
-        overflow: hidden;
-        margin-top: 8px;
-        margin-bottom: 12px;
-        background-color: #F1F5F9;
-    }}
-
-    #MainMenu {{visibility: hidden !important;}}
-    footer {{visibility: hidden !important;}}
-    header {{visibility: hidden !important;}}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -771,19 +329,15 @@ def send_aligo_sms(receiver_phone, auth_code):
             "user_id": ALIGO_USER_ID,
             "sender": ALIGO_SENDER,
             "receiver": receiver_phone,
-            "msg": f"[{BRAND_NAME_KR}] 본인확인 인증번호 [{auth_code}]를 입력해 주세요. (타인 노출 금지)",
+            "msg": f"[{BRAND_NAME_KR}] 본인인증 번호는 [{auth_code}] 입니다. (타인 유출 주의)",
             "testmode_yn": "N"
         }
         res = requests.post(url, data=payload, timeout=6)
-        if res.status_code == 200:
-            res_json = res.json()
-            if res_json.get("result_code") == "1":
-                return True, "인증번호가 발송되었습니다. 문자를 확인해 주세요."
-            else:
-                return False, f"문자 발송 실패: {res_json.get('message', '통신 오류')}"
-        return False, "알리고 서버 통신 지연"
+        if res.status_code == 200 and res.json().get("result_code") == "1":
+            return True, "인증번호가 발송되었습니다."
+        return False, "인증문자 발송 실패"
     except Exception as e:
-        return False, f"SMS 발송 오류: {e}"
+        return False, f"SMS 오류: {e}"
 
 def send_aligo_notice_sms(receiver_phone, text_message):
     try:
@@ -797,169 +351,18 @@ def send_aligo_notice_sms(receiver_phone, text_message):
             "testmode_yn": "N"
         }
         requests.post(url, data=payload, timeout=6)
-    except Exception as e:
-        print(f"Notice SMS Error: {e}")
+    except Exception:
+        pass
 
-# [블러 프로필 기본 실물 이미지]
-DEFAULT_FEMALE_BLUR = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop"
-DEFAULT_MALE_BLUR = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop"
-
-CREDIT_KEYWORDS = ["신용", "점수", "NICE", "KCB", "올크레딧", "토스", "카카오페이", "평가", "점", "CREDIT", "SCORE"]
-
-def extract_text_lightweight_api(file_bytes, ext):
-    extracted_text = ""
-    if ext == "pdf":
-        try:
-            reader = PdfReader(io.BytesIO(file_bytes))
-            for page in reader.pages:
-                t = page.extract_text()
-                if t:
-                    extracted_text += " " + t
-        except Exception as e:
-            print(f"PDF extract error: {e}")
-        return extracted_text.upper()
-
-    try:
-        api_url = "https://api.ocr.space/parse/image"
-        files = {"file": ("doc." + ext, file_bytes)}
-        data = {
-            "apikey": "K87899142388957",
-            "language": "kor",
-            "isOverlayRequired": False
-        }
-        res = requests.post(api_url, files=files, data=data, timeout=7)
-        if res.status_code == 200:
-            result_json = res.json()
-            parsed_results = result_json.get("ParsedResults", [])
-            if parsed_results:
-                extracted_text = parsed_results[0].get("ParsedText", "")
-    except Exception as e:
-        print(f"Lightweight OCR API error: {e}")
-        return "신용 점수 PASS"
-
-    return extracted_text.upper()
-
-def validate_credit_doc(uploaded_file, max_size_mb=15):
-    if uploaded_file is None:
-        return False, "신용점수 증빙 서류(캡처 이미지 또는 PDF)를 반드시 첨부해 주세요.", None
-    
-    allowed_extensions = ["jpg", "jpeg", "png", "pdf"]
-    fname = uploaded_file.name.lower()
-    ext = fname.split(".")[-1] if "." in fname else ""
-    
-    if ext not in allowed_extensions:
-        return False, f"지원하지 않는 파일 형식입니다. (허용: JPG, PNG, PDF / 입력: {ext})", None
-    
-    file_bytes = uploaded_file.read()
-    uploaded_file.seek(0)
-    file_size_bytes = len(file_bytes)
-    max_bytes = max_size_mb * 1024 * 1024
-    
-    if file_size_bytes > max_bytes:
-        return False, f"파일 용량이 너무 큽니다. {max_size_mb}MB 이하 파일만 가능합니다.", None
-    
-    if file_size_bytes == 0:
-        return False, "내용이 없는 빈 파일입니다. 정상 파일을 업로드해 주세요.", None
-
-    with st.spinner("🔍 신용 증빙 서류의 진위 키워드를 클라우드 초경량 분석 중입니다..."):
-        text_content = extract_text_lightweight_api(file_bytes, ext)
-        matched = [kw for kw in CREDIT_KEYWORDS if kw in text_content]
-        
-        if not matched:
-            return False, "👉 신용점수 증빙 서류로 확인되지 않는 파일입니다. 신용점수가 명확히 보이는 캡처본(토스, 카카오페이, 올크레딧, NICE 등)을 등록해 주세요.", None
-
-    return True, ext, file_bytes
-
-def delete_file_from_storage(bucket_name, file_url):
-    if not file_url:
-        return
-    try:
-        fname = file_url.split(f"/{bucket_name}/")[-1]
-        if fname:
-            supabase.storage.from_(bucket_name).remove([fname])
-    except Exception as e:
-        print(f"File deletion error: {e}")
-
-# 안심 전화번호 & 공식 카톡 브릿지
-def render_dual_safe_bridge(target_user, role_prefix=""):
-    name = target_user.get("name", "회원")
-    phone = target_user.get("phone", "")
-    
-    st.markdown(f"""
-        <div class="match-success-bridge-box">
-            <span class="bridge-badge">🤝 대화 성사 완료</span>
-            <div class="bridge-title">🎉 {role_prefix} <b>{name}</b> 님과의 소통 채널이 열렸습니다!</div>
-            <div class="bridge-desc">
-                직접 통화가 편하신 분은 <b>안심 전화</b>로, 조심스럽게 첫 인사를 나누고 싶으신 분은 <b>전담 안심 카톡 브릿지</b>로 입장해 주세요.
-            </div>
-            <div class="bridge-btn-group">
-                <a href="tel:{phone}" class="bridge-phone-btn">
-                    📞 {phone} 안심 전화 연결
-                </a>
-                <a href="{KAKAO_CHAT_URL}" target="_blank" class="bridge-kakao-btn">
-                    💬 안심 카카오톡 브릿지 입장
-                </a>
-            </div>
-            <div class="scam-warning-banner">
-                <div class="scam-warning-title">🚨 회원 보호 및 안전 수칙 (원스트라이크 아웃제)</div>
-                본 서비스는 순수 소셜 교류 플랫폼입니다. 대화 도중 <b>금전 대여 요구, 사업/투자 권유, 가상화폐(코인)·주식 리딩방 가입 유도</b> 적발 시 즉시 영구 강제 탈퇴 및 관할 수사기관에 형사 고발 조치됩니다.
-            </div>
-            <div style="display:flex; justify-content:flex-end;">
-                <a href="{KAKAO_CHAT_URL}" target="_blank" class="report-btn-link">
-                    🚨 {name} 회원 비매너/사기의심 즉시 신고
-                </a>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-# 후불 잠금 결제 카드
-def render_postpay_lock_card(target_user, match_id):
-    name = target_user.get("name", "회원")
-    st.markdown(f"""
-        <div class="postpay-lock-card">
-            <div class="postpay-title">🔒 축하합니다! {name} 님과 상호 매칭이 성사되었습니다.</div>
-            <div class="postpay-desc">
-                양측 모두 대화를 희망하셨습니다. 품격 있는 소통을 위해 <b>안심 연락처 열람권(30,000원)</b>을 결제하시면<br>
-                상대방의 <b>안심 전화번호</b> 및 <b>노블레스 라온 1:1 카톡 브릿지</b>가 즉시 열립니다.
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    col_pay1, col_pay2 = st.columns([2, 1])
-    with col_pay1:
-        st.caption("💡 시범 서비스 기간: 1:1 컨시어지 채널을 통해 입금 확인 후 즉시 잠금을 해제해 드립니다.")
-    with col_pay2:
-        if st.button(f"💳 열람권 결제 / 잠금해제 요청", key=f"btn_pay_{match_id}"):
-            supabase.table("match_requests").update({"payment_status": "PAID"}).eq("id", match_id).execute()
-            st.success("🎉 결제 및 안심 확인 완료! 소통 채널이 열렸습니다.")
-            st.rerun()
-
-def render_support_footer():
-    st.markdown(f"""
-        <div class="support-footer-card">
-            <div class="support-header">
-                <span>💬</span> <span>{BRAND_NAME_KR} 안심 전담 고객지원센터</span>
-            </div>
-            <div class="support-desc">
-                서류 심사 문의, 멤버십 업그레이드, 불량 매너 회원 신고 등 불편하신 점은 언제든 1:1 상담창구로 말씀해 주세요.
-            </div>
-            <a href="{KAKAO_CHAT_URL}" target="_blank" class="support-kakao-btn">
-                💬 카카오톡 1:1 상담 및 불량회원 신고
-            </a>
-            <div class="legal-footer-info">
-                <b>서비스 법적 고지:</b><br>
-                1. {BRAND_NAME_KR}은 가치관 및 신용 정보 교류를 기반으로 하는 5060 프라이빗 소셜 네트워킹 플랫폼(통신판매중개)이며, 특정인의 혼인이나 결합을 일대일로 강제 주선하거나 성혼을 법적으로 보증하는 결혼중개업체가 아닙니다.<br>
-                2. 회원의 제출 신용 증빙 서류는 관리자 진위 확인 즉시 스토리지에서 기술적으로 복구 불가능하게 영구 파기되며 별도 보관되지 않습니다.<br>
-                3. 회원 상호 간 자율적 소통 과정에서 발생하는 사인 간의 거래 및 분쟁에 대해 플랫폼은 고의 또는 중과실이 없는 한 법적 책임을 지지 않습니다.
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+DEFAULT_AVATARS = {
+    "남": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=300&auto=format&fit=crop",
+    "여": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop"
+}
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
-
 if "sms_auth_code" not in st.session_state:
     st.session_state.sms_auth_code = None
 if "sms_verified_phone" not in st.session_state:
@@ -967,1255 +370,430 @@ if "sms_verified_phone" not in st.session_state:
 if "sms_is_verified" not in st.session_state:
     st.session_state.sms_is_verified = False
 
-qp = st.query_params
-saved_name_val = qp.get("saved_name", "")
-saved_phone_val = qp.get("saved_phone", "")
-
-# [1. 로그인/가입 메인 랜딩 화면]
+# --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
-    components.html("""
-    <script>
-    const savedName = localStorage.getItem('senior_match_name') || '';
-    const savedPhone = localStorage.getItem('senior_match_phone') || '';
-    const isRemembered = localStorage.getItem('senior_match_remember') === 'true';
-
-    const urlParams = new URLSearchParams(window.parent.location.search);
-    if (isRemembered && savedName && (!urlParams.get('saved_name') || !urlParams.get('saved_phone'))) {
-        urlParams.set('saved_name', savedName);
-        urlParams.set('saved_phone', savedPhone);
-        window.parent.location.search = urlParams.toString();
-    }
-    </script>
-    """, height=0)
-
-    hero_html = f'''<div class="premium-master-hero"><div class="noble-badge">5060 Private Noblesse Club</div><div class="noble-title-kr">👑 {BRAND_NAME_KR}</div><div class="noble-main-copy">“<span class="noble-gold-highlight">검증된 품격과 신용</span>, 우리 동네 5060 프리미엄 인연 찾기”</div><div class="noble-sub-policy-card"><span class="noble-policy-star">✦</span> <span class="noble-sub-policy-text">가치관 및 신용 기반 5060 프라이빗 소셜 데이팅 커뮤니티</span></div></div>'''
-    st.markdown(hero_html, unsafe_allow_html=True)
-
-    st.markdown("""
-        <div class="secret-club-notice">
-            🔒 본 클럽은 철저한 프라이버시 보호를 위해 <span>대중 앱스토어에 노출되지 않는 비공개 프라이빗 웹 멤버십</span>으로 운영됩니다.
+    st.markdown(f"""
+        <div class="hero-box">
+            <div class="hero-badge">👑 5060 NOBLESSE MATCHING</div>
+            <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
+            <div class="hero-subtitle">품격 있는 인생 2막을 함께할 진중한 동반자를 위한<br>
+            <span class="hero-highlight">신용·신원 검증 기반 시니어 프라이빗 살롱</span></div>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-        <div class="privacy-promise-grid">
-            <div class="privacy-card">
-                <div class="privacy-icon">🛡️</div>
-                <div class="privacy-title">서류 즉시 영구파기</div>
-                <div class="privacy-desc">승인 즉시 안전 삭제</div>
+        <div class="promise-grid">
+            <div class="promise-card">
+                <div class="promise-icon">🛡️</div>
+                <div class="promise-title">신용·자산 검증</div>
+                <div class="promise-desc">남 800 / 여 600점+</div>
             </div>
-            <div class="privacy-card">
-                <div class="privacy-icon">🚫</div>
-                <div class="privacy-title">지인 번호 완벽차단</div>
-                <div class="privacy-desc">상호 피드 영구 미노출</div>
+            <div class="promise-card">
+                <div class="promise-icon">🚫</div>
+                <div class="promise-title">지인 번호 완벽차단</div>
+                <div class="promise-desc">가족/지인 안심 미노출</div>
             </div>
-            <div class="privacy-card">
-                <div class="privacy-icon">🔒</div>
-                <div class="privacy-title">가입 100% 비공개</div>
-                <div class="privacy-desc">양측 수락 시만 안심연결</div>
+            <div class="promise-card">
+                <div class="promise-icon">🔒</div>
+                <div class="promise-title">안심 비공개 프로필</div>
+                <div class="promise-desc">상호 수락 시 연락처 공개</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-        <div class="badge-box">
-            <span class="badge-tag">엄격한 신용 보증제</span>
-            <div class="badge-text">남성 800점 이상 · 여성 600점 이상 <span class="highlight-score">공인 신용인증</span> 필수</div>
+        <div class="criteria-box">
+            <span style="font-weight:800; font-size:0.84rem; color:#FDE047;">📌 5060 정회원 입회 기준</span>
+            <span style="font-weight:900; font-size:0.88rem; color:#6EE7B7;">만 40세 ~ 85세 (남 800 / 여 600점 이상)</span>
         </div>
     """, unsafe_allow_html=True)
-    
-    with st.expander("❓ 왜 남성 800점 / 여성 600점 기준인가요? (합리적 기준 안내)"):
-        st.markdown("""
-            <div style="font-size:0.92rem; color:#F8FAFC !important; line-height:1.65; padding: 10px 14px; background: rgba(255,255,255,0.08); border-radius: 8px; border: 1px solid #475569;">
-                <b style="color:#FDE047 !important;">대한민국 5060 세대의 사회적 금융 환경을 반영한 균형 기준입니다.</b><br><br>
-                • <b style="color:#38BDF8 !important;">남성 (800점 이상):</b> 사업 및 경제활동 유지 과정에서의 안정적인 부채 관리와 책임감 있는 금융 신뢰도를 검증합니다.<br>
-                • <b style="color:#38BDF8 !important;">여성 (600점 이상):</b> 금융 이력 부족(신용카드 무사용, 가정경제 전담 등)으로 점수가 낮게 형성되는 주부·여성 회원의 현실적 금융 구조를 고려한 정상 금융거래 기준입니다.<br>
-                • <b style="color:#4ADE80 !important;">안심 보증:</b> 제출하신 신용 증빙 서류는 관리자 진위 확인 완료 즉시 <b>100% 영구 파기</b>되어 안전하게 보호됩니다.
-            </div>
-        """, unsafe_allow_html=True)
 
-    # [핵심 2: 가입 전환율을 높이는 실시간 피드 블러(Blur) 미리보기]
-    try:
-        sample_members = supabase.table("users").select("name, gender, age, region, job, credit_score, photo_url").eq("is_suspended", False).limit(3).execute().data
-    except Exception:
-        sample_members = []
-
-    if sample_members:
-        st.markdown(f"""
-            <div class="blur-teaser-box">
-                <div class="blur-teaser-title">
-                    <span>✨ 현재 활동 중인 검증 회원 실시간 프로필</span>
-                    <span style="font-size:0.75rem; color:#38BDF8; font-weight:700;">프라이버시 안심 블러 적용</span>
-                </div>
-        """, unsafe_allow_html=True)
-        
-        for sm in sample_members:
-            masked_name = sm['name'][0] + "*" + (sm['name'][-1] if len(sm['name']) > 1 else "")
-            job_str = sm.get("job") or "전문직 / 사업가"
-            photo = sm.get("photo_url")
-            
-            img_tag = f'<img src="{photo}" class="blur-avatar">' if photo else f'<div class="blur-placeholder">{"👩🏻‍💼" if sm["gender"]=="여" else "👨🏻‍💼"}</div>'
-            
-            st.markdown(f"""
-                <div class="blur-teaser-card">
-                    {img_tag}
-                    <div style="flex:1;">
-                        <div style="font-size:0.92rem; font-weight:800; color:#FFFFFF;">
-                            {masked_name} 회원 ({sm['gender']} · {sm['age']}세)
-                        </div>
-                        <div style="font-size:0.8rem; color:#94A3B8; margin-top:2px;">
-                            📍 {sm['region']} | 💼 {job_str}
-                        </div>
-                        <div style="font-size:0.78rem; color:#38BDF8; font-weight:700; margin-top:2px;">
-                            🛡️ 공인 신용점수 {sm['credit_score']}점 검증 통과
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-        st.markdown("""
-                <div style="font-size:0.78rem; color:#CBD5E1; text-align:center; margin-top:8px;">
-                    🔒 상세 프로필 및 가치관 일치율은 <b>정회원 가입 및 신용 심사 통과 후</b> 안전하게 열람하실 수 있습니다.
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    with st.expander("✨ [무료 체험] 가입 전 내 가치관 매칭률 & 활동 회원 수 확인하기", expanded=False):
-        st.markdown("""
-            <div class="taste-teaser-card">
-                <div class="taste-teaser-header">🎯 1분 만에 알아보는 5060 인연 매칭 성향</div>
-                <div class="taste-teaser-desc">핵심 5문항에 답하시면, 현재 활동 중인 회원 중 나와 가치관이 일치하는 분들의 수를 실시간으로 계산해 드립니다.</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        t_q1 = st.selectbox("1. 재혼 및 만남의 최종 지향점?", ["법률혼 (서류상 정식 재혼)", "사실혼 (합가 동거 중심)", "LAT 동반자 (각자 집 유지하며 주말/여행 공유)", "자유로운 연인 관계"], key="t_q1")
-        t_q2 = st.selectbox("2. 주말 및 여가 시간 활용 선호?", ["골프·등산·여행 등 야외 활동", "미술관·음악·맛집 탐방 등 문화 여가", "조용한 집 데이트 및 산책", "상대방 취미에 유연하게 맞춤"], key="t_q2")
-        t_q3 = st.selectbox("3. 데이트 비용 및 생활비 분담?", ["남성이 대부분 부담하는 전통적 방식", "상황에 맞춘 유연한 상호 배려", "깔끔한 5:5 또는 각자 부담", "공동 통장 운영"], key="t_q3")
-        t_q4 = st.selectbox("4. 상대방 흡연 여부?", ["비흡연자만 가능 (절대 불가)", "전자담배까지는 양해 가능", "무관함", "본인도 흡연"], key="t_q4")
-        t_q5 = st.selectbox("5. 종교 차이에 대한 입장?", ["동일 종교 필수", "종교 강요만 없으면 상관없음", "무교 선호", "상대방 종교 존중"], key="t_q5")
-
-        if st.button("📊 실시간 가치관 일치 회원 수 조회하기", key="btn_run_teaser"):
-            matched_count = random.randint(18, 37)
-            st.balloons()
-            st.success(f"""
-                🎉 **분석 결과 보고서**  
-                선택하신 가치관과 **85% 이상 부합하는 프리미엄 회원이 현재 {matched_count}명 활동 중**입니다!  
-                아래 **'신규 회원가입'** 탭에서 3분 만에 등록을 마치고 품격 있는 인연을 만나보세요.
-            """)
-
-    st.write("")
-
-    tab_login, tab_join = st.tabs(["🔑 기존 회원 로그인", "📝 신규 회원가입"])
+    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
     with tab_login:
-        login_name = st.text_input("가입하신 성함", value=saved_name_val, key="login_name")
-        login_phone = st.text_input("가입하신 휴대폰 번호 (- 없이 숫자만)", value=saved_phone_val, placeholder="01012345678", key="login_phone")
-        login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", placeholder="비밀번호 입력", key="login_pwd")
-        
-        remember_me = st.checkbox("성함 및 휴대폰 번호 기억하기", value=bool(saved_name_val and saved_phone_val))
+        login_name = st.text_input("성명", key="l_name")
+        login_phone = st.text_input("휴대폰 번호 (- 제외 숫자만)", placeholder="01012345678", key="l_phone")
+        login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", key="l_pwd")
 
-        if st.button("안심 본인인증 로그인"):
-            clean_lphone = re.sub(r'[^0-9]', '', login_phone.strip())
-            if not login_name.strip() or not clean_lphone or not login_pwd.strip():
-                st.error("성함, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
+        if st.button("안심 본인인증 로그인", key="btn_login"):
+            clean_p = re.sub(r'[^0-9]', '', login_phone.strip())
+            if not login_name.strip() or not clean_p or not login_pwd.strip():
+                st.error("성명, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
             else:
                 res = supabase.table("users").select("*")\
                     .eq("name", login_name.strip())\
-                    .eq("phone", clean_lphone)\
+                    .eq("phone", clean_p)\
                     .eq("password", login_pwd.strip())\
                     .execute()
                 if res.data:
-                    user_data = res.data[0]
-                    if user_data.get("is_suspended"):
-                        st.error("🚫 운영 정책 위반 또는 이용 제한 조치된 계정입니다. 고객센터에 문의해 주세요.")
+                    u = res.data[0]
+                    if u.get("is_suspended"):
+                        st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
                     else:
-                        # [핵심 3: 로그인 시 마지막 접속 일시(last_login_at) 실시간 갱신]
                         now_utc = datetime.now(timezone.utc).isoformat()
-                        supabase.table("users").update({"last_login_at": now_utc}).eq("id", user_data["id"]).execute()
-                        user_data["last_login_at"] = now_utc
-
-                        st.session_state.user_id = user_data["id"]
-                        st.session_state.user_info = user_data
-
-                        if remember_me:
-                            components.html(f"""
-                            <script>
-                            localStorage.setItem('senior_match_name', '{login_name.strip()}');
-                            localStorage.setItem('senior_match_phone', '{clean_lphone}');
-                            localStorage.setItem('senior_match_remember', 'true');
-                            </script>
-                            """, height=0)
-                        else:
-                            components.html("""
-                            <script>
-                            localStorage.removeItem('senior_match_name');
-                            localStorage.removeItem('senior_match_phone');
-                            localStorage.setItem('senior_match_remember', 'false');
-                            </script>
-                            """, height=0)
-
+                        supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
+                        u["last_login_at"] = now_utc
+                        st.session_state.user_id = u["id"]
+                        st.session_state.user_info = u
                         st.rerun()
                 else:
-                    st.error("회원 정보 또는 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
-
-        with st.expander("❓ 비밀번호를 잊으셨나요? (비밀번호 재설정)"):
-            st.caption("가입 시 등록하신 본인 정보(성함, 휴대폰 번호, 나이)를 확인 후 즉시 새 비밀번호로 변경합니다.")
-            reset_name = st.text_input("성함 확인", key="reset_name")
-            reset_phone = st.text_input("휴대폰 번호 확인 (- 없이 숫자만)", placeholder="01012345678", key="reset_phone")
-            reset_age = st.number_input("가입 시 등록한 나이 (만 나이)", 40, 85, 58, key="reset_age")
-            new_pwd = st.text_input("새로운 간편 비밀번호 (4~6자리)", type="password", placeholder="새 비밀번호 입력", key="new_pwd")
-
-            if st.button("비밀번호 즉시 변경하기"):
-                clean_rphone = re.sub(r'[^0-9]', '', reset_phone.strip())
-                if not reset_name.strip() or not clean_rphone or len(new_pwd.strip()) < 4:
-                    st.error("모든 항목을 올바르게 입력해 주세요. (비밀번호는 최소 4자리 이상)")
-                else:
-                    match_u = supabase.table("users").select("id, is_suspended").eq("name", reset_name.strip()).eq("phone", clean_rphone).eq("age", int(reset_age)).execute().data
-                    if match_u:
-                        if match_u[0].get("is_suspended"):
-                            st.error("이용이 제한된 계정은 비밀번호를 변경할 수 없습니다.")
-                        else:
-                            user_target_id = match_u[0]["id"]
-                            supabase.table("users").update({"password": new_pwd.strip()}).eq("id", user_target_id).execute()
-                            st.success("🎉 비밀번호가 성공적으로 변경되었습니다! 위 로그인 창에서 새 비밀번호로 로그인해 주세요.")
-                    else:
-                        st.error("일치하는 회원 정보를 찾을 수 없습니다. 성함, 휴대폰 번호, 나이를 다시 확인해 주세요.")
+                    st.error("일치하는 회원 정보를 찾을 수 없습니다.")
 
     with tab_join:
-        st.markdown("##### 👤 기본 인적사항 입력")
-        join_name = st.text_input("성명 (실명)", key="join_name")
+        st.markdown("##### 👤 기본 인적사항 (만 40~85세 대상)")
+        j_name = st.text_input("실명", key="j_name")
         
-        st.markdown("###### 📱 휴대폰 본인확인 (SMS 인증)")
-        col_phone_input, col_send_btn = st.columns([2.5, 1.2])
-        with col_phone_input:
-            join_phone = st.text_input("휴대폰 번호 (- 없이 숫자만)", placeholder="01012345678", key="join_phone_sms")
-        with col_send_btn:
+        col_p1, col_p2 = st.columns([2.5, 1.2])
+        with col_p1:
+            j_phone = st.text_input("휴대폰 번호 (- 제외)", placeholder="01012345678", key="j_phone")
+        with col_p2:
             st.write("")
-            send_sms_btn = st.button("인증번호 발송", key="btn_send_sms")
-            
-        clean_target_phone = re.sub(r'[^0-9]', '', join_phone.strip())
+            btn_sms = st.button("인증번호 발송", key="btn_sms")
 
-        if send_sms_btn:
-            if len(clean_target_phone) < 10:
+        clean_jp = re.sub(r'[^0-9]', '', j_phone.strip())
+        if btn_sms:
+            if len(clean_jp) < 10:
                 st.error("올바른 휴대폰 번호를 입력해 주세요.")
             else:
-                dup_check = supabase.table("users").select("id").eq("phone", clean_target_phone).execute().data
-                if dup_check:
-                    st.error("이미 등록된 휴대폰 번호입니다. 기존 회원 로그인을 이용해 주세요.")
+                dup = supabase.table("users").select("id").eq("phone", clean_jp).execute().data
+                if dup:
+                    st.error("이미 등록된 휴대폰 번호입니다.")
                 else:
-                    gen_code = str(random.randint(100000, 999999))
-                    st.session_state.sms_auth_code = gen_code
-                    st.session_state.sms_verified_phone = clean_target_phone
+                    code = str(random.randint(100000, 999999))
+                    st.session_state.sms_auth_code = code
+                    st.session_state.sms_verified_phone = clean_jp
                     st.session_state.sms_is_verified = False
-
-                    ok, msg = send_aligo_sms(clean_target_phone, gen_code)
-                    if ok:
-                        st.success("문자가 전송되었습니다! 수신된 6자리 번호를 입력해 주세요.")
-                    else:
-                        st.error(msg)
+                    send_aligo_sms(clean_jp, code)
+                    st.success("문자로 발송된 6자리 인증번호를 입력해 주세요.")
 
         if st.session_state.sms_auth_code:
-            col_code_input, col_verify_btn = st.columns([2.5, 1.2])
-            with col_code_input:
-                input_auth_code = st.text_input("인증번호 6자리 입력", placeholder="예: 849201", key="join_auth_code_input")
-            with col_verify_btn:
+            c_code, c_btn = st.columns([2.5, 1.2])
+            with c_code:
+                in_code = st.text_input("인증번호 6자리", key="in_sms_code")
+            with c_btn:
                 st.write("")
-                verify_btn = st.button("인증 확인", key="btn_verify_code")
-
-            if verify_btn:
-                if input_auth_code.strip() == st.session_state.sms_auth_code:
-                    st.session_state.sms_is_verified = True
-                    st.success("✅ 휴대폰 본인 인증이 성공적으로 완료되었습니다!")
-                else:
-                    st.error("인증번호가 일치하지 않습니다. 다시 확인해 주세요.")
-
-        if st.session_state.sms_is_verified:
-            st.caption(f"🔒 인증 완료된 번호: **{st.session_state.sms_verified_phone}**")
-
-        join_pwd = st.text_input("간편 비밀번호 설정 (4~6자리)", type="password", placeholder="숫자 4~6자리 권장", key="join_pwd")
-        join_gender = st.radio("성별", ["남", "여"], horizontal=True, key="join_gender")
-        join_age = st.number_input("나이 (만 나이)", 40, 85, 58, key="join_age")
-        
-        st.markdown("##### 📍 활동 희망 지역 (전국 시·도 및 시·군·구)")
-        reg_col1, reg_col2 = st.columns(2)
-        with reg_col1:
-            join_sido = st.selectbox("광역시·도 선택", list(KOREA_REGIONS.keys()), index=0, key="join_sido")
-        with reg_col2:
-            join_sigungu = st.selectbox("시·군·구 선택", KOREA_REGIONS[join_sido], index=0, key="join_sigungu")
-        
-        selected_full_region = f"{join_sido} {join_sigungu}"
-        st.caption(f"선택된 활동 지역: **{selected_full_region}**")
-
-        join_credit = st.number_input("신용점수 입력 (남성 800+ / 여성 600+)", 0, 1000, 820, key="join_credit")
-        
-        st.markdown("##### 📄 공인 신용점수 증빙 서류 첨부 (필수)")
-        st.caption("남성 800점 이상 / 여성 600점 이상의 토스, 카카오페이, 나이스, KCB 신용 캡처 또는 공식 보고서 PDF를 첨부해 주세요. (클라우드 키워드 자동 판별)")
-        join_credit_doc = st.file_uploader("증빙 파일 선택 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="join_credit_doc_file")
-
-        st.markdown("##### 💼 나의 라이프스타일 (선택)")
-        join_job = st.text_input("현재 하시는 일 / 전문 분야", placeholder="예: 개인사업체 운영, 전문직, 은퇴 후 자문 등", key="join_job")
-        join_hobbies = st.text_input("주말 취미 / 여가 활동", placeholder="예: 골프, 등산, 여행, 음악감상 등", key="join_hobbies")
-        join_intro = st.text_input("인생 2막을 여는 한 줄 소개", placeholder="예: 따뜻하고 성실한 마음으로 편안한 여생을 함께할 분을 찾습니다.", key="join_intro")
-
-        st.markdown("##### 🎯 3대 필수 가치관 문답")
-        join_q1 = st.radio("1. 관계의 최종 형태?", ["법률혼 (서류상 정식 재혼 희망)", "사실혼 (합가 동거하되 서류 정리는 신중)", "LAT 동반자 (각자 주거를 유지하며 여행과 일상 공유)", "상황에 맞추어 유연하게 협의"], key="join_q1")
-        join_q38 = st.radio("2. 상대방 흡연 기준?", ["비흡연자만 가능 (전자담배 포함 절대 불가)", "전자담배까지는 양해 가능", "실외 흡연자라면 무관", "본인도 흡연자이므로 흡연 선호"], key="join_q38")
-        join_q56 = st.radio("3. 종교 차이 입장?", ["동일 종교 필수 (함께 신앙생활 희망)", "종교가 달라도 강요나 터치가 없다면 무관", "무교 선호", "상대방 종교를 존중하며 맞춰줄 의향 있음"], key="join_q56")
-
-        st.markdown("---")
-        st.markdown("##### 🛡️ 이용약관 및 개인정보 안심 보증 (법적 고지)")
-
-        with st.expander("📄 [필독] 노블레스 라온 서비스 성격 및 면책 고지"):
-            st.markdown("""
-                <div class="terms-box">
-                    <b>제1조 (서비스의 본질 및 성격)</b><br>
-                    본 플랫폼은 회원의 가치관과 금융 신용 지표를 바탕으로 상호 적합한 인연을 자율적으로 탐색하고 교류할 수 있도록 기술적 매칭 환경을 제공하는 <b>'소셜 데이팅 및 커뮤니티 정보 매개 서비스'</b>입니다.<br>
-                    본 서비스는 특정 성혼을 강제 주선하거나 보증하는 '결혼중개업'이 아니며, 회원의 선택과 상호 동의에 의한 자율 소통을 원칙으로 합니다.
-                </div>
-            """, unsafe_allow_html=True)
-
-        agree_terms_service = st.checkbox("[필수] 소셜 커뮤니티 플랫폼 이용약관 및 면책 조항에 동의합니다.", key="agree_terms_service")
-
-        with st.expander("🔒 [필독] 신용 증빙 서류 100% 영구 파기 및 개인정보 처리방침"):
-            st.markdown("""
-                <div class="terms-box">
-                    <b>제2조 (신용 서류 안전 관리 및 즉시 영구 파기 원칙)</b><br>
-                    1. <b>수집 목적:</b> 남성 800점 / 여성 600점의 최소 신용 신뢰 기준 부합 여부 판정 목적에 한함.<br>
-                    2. <b>영구 파기 보증:</b> 제출된 증빙 파일은 운영자 검토 판정 완료 즉시 <b>복구 불가능한 방법으로 영구 파기(완전 삭제)</b>되며 절대 보관되지 않습니다.<br>
-                    3. 회원의 기본 정보는 회원 탈퇴 시까지 본인 확인 및 서비스 제공 목적으로 안전하게 암호화 관리됩니다.
-                </div>
-            """, unsafe_allow_html=True)
-
-        agree_terms_privacy = st.checkbox("[필수] 개인정보 처리방침 및 신용 증빙 서류 즉시 영구 파기 원칙에 동의합니다.", key="agree_terms_privacy")
-
-        with st.expander("🤝 [필독] 매칭 성사 시 개인정보 제3자 제공 동의"):
-            st.markdown("""
-                <div class="terms-box">
-                    <b>제3조 (개인정보의 제3자 제공 동의)</b><br>
-                    1. <b>제공 대상:</b> 상호 대화 신청을 전원 '수락'하여 매칭이 최종 성사된 상대방 회원.<br>
-                    2. <b>제공 항목:</b> 성명, 안심 연락처, 활동 지역, 가치관 문답 응답 내용.<br>
-                    3. <b>제공 목적:</b> 매칭 성사 회원 간의 1:1 안심 연락처 교환 및 소통 개시.<br>
-                    4. <b>불법 행위 금지:</b> 교환된 연락처를 상업적 홍보, 투자 권유, 금전 요구 등에 사용할 경우 즉시 강제 탈퇴 및 법적 고발 조치됩니다.
-                </div>
-            """, unsafe_allow_html=True)
-
-        agree_terms_thirdparty = st.checkbox("[필수] 상호 매칭 수락 시 상대방 회원에 대한 안심 연락처 제공에 동의합니다.", key="agree_terms_thirdparty")
-
-        if st.button("신용 검증 및 안심 가입 완료", key="submit_join_btn"):
-            clean_phone = re.sub(r'[^0-9]', '', join_phone.strip())
-            cutoff = 800 if join_gender == "남" else 600
-            
-            if not (agree_terms_service and agree_terms_privacy and agree_terms_thirdparty):
-                st.error("필수 이용약관, 개인정보 파기 원칙, 제3자 제공 동의에 모두 체크해 주세요.")
-            elif not join_name.strip():
-                st.error("성명을 입력해 주세요.")
-            elif not st.session_state.sms_is_verified or st.session_state.sms_verified_phone != clean_phone:
-                st.error("휴대폰 본인인증(SMS 인증)을 완료해 주세요.")
-            elif len(join_pwd.strip()) < 4:
-                st.error("비밀번호는 최소 4자리 이상 설정해 주세요.")
-            elif join_credit < cutoff:
-                st.error(f"입회 기준 미달: {join_gender}성은 신용점수 {cutoff}점 이상만 승인됩니다.")
-            else:
-                dup = supabase.table("users").select("id").eq("phone", clean_phone).execute().data
-                if dup:
-                    st.error("이미 등록된 휴대폰 번호입니다. '기존 회원 로그인'을 이용해 주세요.")
-                else:
-                    is_valid_doc, doc_msg, file_bytes = validate_credit_doc(join_credit_doc, max_size_mb=15)
-                    if not is_valid_doc:
-                        st.error(doc_msg)
+                if st.button("인증 확인", key="btn_confirm_sms"):
+                    if in_code.strip() == st.session_state.sms_auth_code:
+                        st.session_state.sms_is_verified = True
+                        st.success("✅ 휴대폰 인증이 완료되었습니다.")
                     else:
-                        ext = doc_msg
-                        doc_uuid = uuid.uuid4().hex[:8]
-                        storage_filename = f"signup_{clean_phone}_{doc_uuid}.{ext}"
-                        content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
-                        
-                        try:
-                            supabase.storage.from_("credit-docs").upload(
-                                storage_filename, 
-                                file_bytes, 
-                                {"content-type": content_type}
-                            )
-                            doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{storage_filename}"
+                        st.error("인증번호가 일치하지 않습니다.")
 
-                            now_utc_str = datetime.now(timezone.utc).isoformat()
+        j_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", key="j_pwd")
+        j_gender = st.radio("성별", ["남", "여"], horizontal=True, key="j_gender")
+        j_age = st.number_input("나이 (만 나이)", 40, 85, 58, key="j_age")
 
-                            new_u = supabase.table("users").insert({
-                                "name": join_name.strip(),
-                                "phone": clean_phone,
-                                "password": join_pwd.strip(),
-                                "gender": join_gender,
-                                "age": int(join_age),
-                                "region": selected_full_region,
-                                "credit_score": int(join_credit),
-                                "credit_doc_url": doc_url,
-                                "credit_status": "PENDING",
-                                "is_verified": False,
-                                "ticket_count": 2,
-                                "is_vip": False,
-                                "blocked_phones": [],
-                                "last_login_at": now_utc_str,
-                                "job": join_job.strip() if join_job else None,
-                                "hobbies": join_hobbies.strip() if join_hobbies else None,
-                                "intro": join_intro.strip() if join_intro else None,
-                                "is_admin": False,
-                                "is_suspended": False
-                            }).execute().data[0]
-                            
-                            uid = new_u["id"]
-                            supabase.table("user_answers").insert([
-                                {"user_id": uid, "question_num": 1, "answer_value": join_q1},
-                                {"user_id": uid, "question_num": 38, "answer_value": join_q38},
-                                {"user_id": uid, "question_num": 56, "answer_value": join_q56}
-                            ]).execute()
+        r_col1, r_col2 = st.columns(2)
+        with r_col1:
+            j_sido = st.selectbox("활동 광역시·도", list(KOREA_REGIONS.keys()), index=0, key="j_sido")
+        with r_col2:
+            j_sigungu = st.selectbox("시·군·구", KOREA_REGIONS[j_sido], index=0, key="j_sigungu")
+        j_region = f"{j_sido} {j_sigungu}"
 
-                            st.session_state.user_id = uid
-                            st.session_state.user_info = new_u
-                            st.success("🎉 서류 확인 및 본인인증 완료! 첫 만남 웰컴 티켓 2장이 지급되었습니다.")
-                            st.rerun()
+        st.markdown("##### 💼 경력 및 라이프스타일")
+        j_job = st.text_input("직업 또는 이전 경력", placeholder="예: 사업체 운영 / 전문직 퇴직 / 프리랜서", key="j_job")
+        job_typos = audit_text_typos(j_job)
+        if job_typos:
+            st.caption(f"💡 표현 교정 안내: {', '.join(job_typos)}")
 
-                        except Exception as e:
-                            st.error(f"서류 업로드 또는 회원가입 처리 중 오류가 발생했습니다: {e}")
+        j_hobbies = st.text_input("취미 및 여가 생활", placeholder="예: 골프, 전원생활, 등산, 클래식 감상", key="j_hobbies")
+        hobby_typos = audit_text_typos(j_hobbies)
+        if hobby_typos:
+            st.caption(f"💡 표현 교정 안내: {', '.join(hobby_typos)}")
 
-    render_support_footer()
+        j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="인생의 후반전을 서로 존중하며 따뜻하게 보낼 인연을 찾습니다.", key="j_intro")
+        intro_typos = audit_text_typos(j_intro)
+        if intro_typos:
+            st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
 
-# [2. 메인 대시보드]
+        st.markdown("##### 🛡️ 신용 검증 기준")
+        req_score = 800 if j_gender == "남" else 600
+        st.caption(f"ℹ️ {j_gender}성 입회 기준: 공인 신용점수 {req_score}점 이상")
+        j_credit = st.number_input(f"공인 신용점수 ({req_score}점 이상 필수)", 0, 1000, 820 if j_gender == "남" else 750, key="j_credit")
+        j_doc = st.file_uploader("신용 증빙 서류 첨부 (NICE/KCB 리포트 또는 토스 캡처)", type=["jpg", "png", "pdf"], key="j_doc")
+
+        st.markdown("##### 🎯 5060 필수 가치관 5대 문답")
+        a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], key="jq_1")
+        a2 = st.radio(CORE_QUESTIONS_5060[2]["text"], CORE_QUESTIONS_5060[2]["options"], key="jq_2")
+        a3 = st.radio(CORE_QUESTIONS_5060[3]["text"], CORE_QUESTIONS_5060[3]["options"], key="jq_3")
+        a4 = st.radio(CORE_QUESTIONS_5060[4]["text"], CORE_QUESTIONS_5060[4]["options"], key="jq_4")
+        a5 = st.radio(CORE_QUESTIONS_5060[5]["text"], CORE_QUESTIONS_5060[5]["options"], key="jq_5")
+
+        agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관 및 증빙서류 확인 즉시 파기에 동의합니다.", key="agree_terms")
+
+        if st.button("신원 검증 신청 및 가입 완료", key="btn_submit_join"):
+            if not agree_terms:
+                st.error("필수 이용약관에 동의해 주세요.")
+            elif not j_name.strip():
+                st.error("성명을 입력해 주세요.")
+            elif not st.session_state.sms_is_verified or st.session_state.sms_verified_phone != clean_jp:
+                st.error("휴대폰 SMS 인증을 완료해 주세요.")
+            elif len(j_pwd.strip()) < 4:
+                st.error("비밀번호는 최소 4자리 이상이어야 합니다.")
+            elif j_credit < req_score:
+                st.error(f"입회 기준 미달: 노블레스 라온은 {j_gender}성 기준 {req_score}점 이상만 승인됩니다.")
+            elif not j_doc:
+                st.error("신원 및 신용 증빙 서류를 첨부해 주세요.")
+            else:
+                doc_ext = j_doc.name.split(".")[-1].lower()
+                doc_name = f"verify_{clean_jp}_{uuid.uuid4().hex[:6]}.{doc_ext}"
+                try:
+                    supabase.storage.from_("credit-docs").upload(
+                        doc_name, 
+                        j_doc.read(), 
+                        {"content-type": "application/pdf" if doc_ext == "pdf" else f"image/{doc_ext}"}
+                    )
+                    doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{doc_name}"
+                    now_utc = datetime.now(timezone.utc).isoformat()
+
+                    new_u = supabase.table("users").insert({
+                        "name": j_name.strip(),
+                        "phone": clean_jp,
+                        "password": j_pwd.strip(),
+                        "gender": j_gender,
+                        "age": int(j_age),
+                        "region": j_region,
+                        "credit_score": int(j_credit),
+                        "credit_doc_url": doc_url,
+                        "credit_status": "PENDING",
+                        "is_verified": False,
+                        "ticket_count": 3,
+                        "is_vip": False,
+                        "blocked_phones": [],
+                        "last_login_at": now_utc,
+                        "job": j_job.strip() if j_job else "개인사업/전문직",
+                        "hobbies": j_hobbies.strip() if j_hobbies else "여가 생활",
+                        "intro": j_intro.strip(),
+                        "is_admin": False,
+                        "is_suspended": False
+                    }).execute().data[0]
+
+                    uid = new_u["id"]
+                    supabase.table("user_answers").insert([
+                        {"user_id": uid, "question_num": 1, "answer_value": a1},
+                        {"user_id": uid, "question_num": 2, "answer_value": a2},
+                        {"user_id": uid, "question_num": 3, "answer_value": a3},
+                        {"user_id": uid, "question_num": 4, "answer_value": a4},
+                        {"user_id": uid, "question_num": 5, "answer_value": a5}
+                    ]).execute()
+
+                    st.session_state.user_id = uid
+                    st.session_state.user_info = new_u
+                    st.success("🎉 서류 제출 및 가입이 완료되었습니다! 웰컴 티켓 3장이 지급되었습니다.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"가입 처리 중 오류 발생: {e}")
+
+# --- 2. 메인 대시보드 화면 ---
 else:
     me = st.session_state.user_info
 
     st.markdown(f"""
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px;">
-            <div style="font-size:1.1rem; font-weight:900; color:#FFFFFF;">👑 {BRAND_NAME_KR}</div>
-            <div style="font-size:0.75rem; font-weight:800; color:#D4AF37; letter-spacing:1px;">{BRAND_NAME_EN}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 2px solid #3F3F46; padding-bottom: 8px;">
+            <div style="font-size:1.1rem; font-weight:900; color:#FFFFFF;">🌟 {BRAND_NAME_KR}</div>
+            <div style="font-size:0.75rem; font-weight:800; color:#EAB308; letter-spacing:1px;">{BRAND_NAME_EN}</div>
         </div>
     """, unsafe_allow_html=True)
 
-    my_tickets = me.get("ticket_count", 0)
-    is_vip = bool(me.get("is_vip", False))
-    vip_badge_str = "👑 VIP 프리미엄 (무제한)" if is_vip else f"🎟️ 대화 신청권: {my_tickets}장"
+    t_col1, t_col2 = st.columns([1, 3])
+    with t_col1:
+        my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
+        st.markdown(f'<img src="{my_avatar}" class="profile-avatar-clear">', unsafe_allow_html=True)
+    with t_col2:
+        st.markdown(f"#### **{me['name']}** ({me['gender']} · {me['age']}세)")
+        st.markdown(f'<span class="badge-gold">💼 {me.get("job", "경력 인증")}</span> <span class="badge-credit">🛡️ 신용 {me["credit_score"]}점</span>', unsafe_allow_html=True)
+        st.caption(f"📍 {me['region']} | 🎟️ 보유 티켓: {me.get('ticket_count', 0)}장")
 
-    st.markdown(f"""
-        <div class="wallet-status-bar">
-            <div class="wallet-title">내 멤버십 혜택 현황</div>
-            <div class="wallet-badge">{vip_badge_str}</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    top_col1, top_col2 = st.columns([1, 3])
-    with top_col1:
-        my_img_url = me.get("photo_url")
-        if not my_img_url:
-            my_img_url = DEFAULT_MALE_BLUR if me["gender"] == "남" else DEFAULT_FEMALE_BLUR
-        st.markdown(f'<img src="{my_img_url}" class="profile-avatar" style="filter: blur(5px); transform: scale(0.96);">', unsafe_allow_html=True)
-    with top_col2:
-        st.markdown(f"#### **{me['name']}** 님 ({me['gender']}·{me['age']}세)")
-        
-        c_status = me.get("credit_status", "PENDING")
-        if c_status == "APPROVED":
-            st.markdown(f"🛡️ **<span style='color:#38BDF8;'>공인 신용 인증 완료</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
-        elif c_status == "REJECTED":
-            st.markdown(f"⚠️ **<span style='color:#EF4444;'>신용 증빙 서류 반려 (재제출 필요)</span>**", unsafe_allow_html=True)
-        else:
-            st.markdown(f"🛡️ **<span style='color:#F59E0B;'>안심 서류 검토 중</span>** ({me['credit_score']}점)", unsafe_allow_html=True)
-        
-        sub_info = f"📍 {me['region']}"
-        if me.get("job"):
-            sub_info += f" | 💼 {me['job']}"
-        st.caption(sub_info)
-
-    # [스마트 이용 가이드 및 안심 매칭 안내 배너]
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-radius: 10px; padding: 12px 14px; margin: 10px 0 14px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-            <div style="font-size: 0.85rem; font-weight: 800; color: #FDE047; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
-                <span>💡</span> <span>노블레스 라온 3단계 품격 이용 안내</span>
-            </div>
-            <div style="font-size: 0.8rem; color: #E2E8F0; line-height: 1.6;">
-                1️⃣ <b>가치관 피드:</b> 상대방 프로필의 '문답 대조표'를 열어 혼인관·종교·취미 일치율 확인<br>
-                2️⃣ <b>대화 신청:</b> 마음에 드는 인연에게 신청 (상대방에게 즉시 알림 문자 발송)<br>
-                3️⃣ <b>안심 연결:</b> 상호 수락 시 <b>안심 전화</b> 또는 <b>1:1 카카오톡 브릿지</b>로 안전하게 소통
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("💎 멤버십 충전 및 프리미엄 업그레이드"):
-        st.markdown("""
-            <div class="pricing-grid">
-                <div class="pricing-card">
-                    <div class="pricing-name">대화 신청권 5회권</div>
-                    <div class="pricing-price">25,000원</div>
-                    <div class="pricing-desc">무분별한 탐색 방지<br>가치관 일치 회원 신청권</div>
-                </div>
-                <div class="pricing-card-vip">
-                    <div class="pricing-name">👑 VIP 정기 멤버십</div>
-                    <div class="pricing-price">월 99,000원</div>
-                    <div class="pricing-desc">월간 신청권 무제한<br>성사 열람권 100% 면제</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.caption("💳 시범 운영 기간: 1:1 컨시어지 채널을 통해 신청권 충전 및 VIP 즉시 등록이 가능합니다.")
-        col_chg1, col_chg2 = st.columns(2)
-        with col_chg1:
-            if st.button("🎟️ 신청권 5장 충전 요청 (25,000원)"):
-                supabase.table("users").update({"ticket_count": my_tickets + 5}).eq("id", me["id"]).execute()
-                me["ticket_count"] = my_tickets + 5
+    with st.expander("🚫 아는 사람 / 지인 번호 차단 관리"):
+        curr_blocks = me.get("blocked_phones") or []
+        b_input = st.text_input("차단할 휴대폰 번호 (- 제외)", placeholder="예: 01098765432", key="in_block_p")
+        if st.button("차단 목록에 등록"):
+            clean_bp = re.sub(r'[^0-9]', '', b_input.strip())
+            if len(clean_bp) >= 10 and clean_bp not in curr_blocks:
+                curr_blocks.append(clean_bp)
+                supabase.table("users").update({"blocked_phones": curr_blocks}).eq("id", me["id"]).execute()
+                me["blocked_phones"] = curr_blocks
                 st.session_state.user_info = me
-                st.success("신청권 5장이 성공적으로 충전되었습니다!")
-                st.rerun()
-        with col_chg2:
-            if st.button("👑 VIP 멤버십 즉시 활성화 (월 99,000원)"):
-                supabase.table("users").update({"is_vip": True}).eq("id", me["id"]).execute()
-                me["is_vip"] = True
-                st.session_state.user_info = me
-                st.success("축하합니다! VIP 프리미엄 멤버십이 활성화되었습니다.")
+                st.success(f"{clean_bp} 번호가 상호 차단되었습니다.")
                 st.rerun()
 
-    # [프로필 관리 탭 + 핵심 1: 지인/아는 사람 차단 탭 추가]
-    with st.expander("✏️ 프로필 설정 및 지인 차단 관리"):
-        tab_p_edit, tab_p_block, tab_p_pic, tab_p_doc, tab_p_delete = st.tabs([
-            "📝 소개 및 지역/취미", 
-            "🚫 아는 사람 차단", 
-            "📸 프로필 사진", 
-            "📄 신용 증빙 서류", 
-            "⚠️ 회원 탈퇴"
-        ])
-        
-        with tab_p_edit:
-            curr_region = me.get("region", "서울특별시 강남구")
-            parts = curr_region.split(" ", 1)
-            init_sido = parts[0] if parts[0] in KOREA_REGIONS else "서울특별시"
-            init_sigungu = parts[1] if len(parts) > 1 and parts[1] in KOREA_REGIONS[init_sido] else KOREA_REGIONS[init_sido][0]
-
-            edit_reg1, edit_reg2 = st.columns(2)
-            with edit_reg1:
-                new_sido = st.selectbox("광역시·도", list(KOREA_REGIONS.keys()), index=list(KOREA_REGIONS.keys()).index(init_sido), key="edit_sido")
-            with edit_reg2:
-                sigungu_options = KOREA_REGIONS[new_sido]
-                sigungu_idx = sigungu_options.index(init_sigungu) if init_sigungu in sigungu_options else 0
-                new_sigungu = st.selectbox("시·군·구", sigungu_options, index=sigungu_idx, key="edit_sigungu")
-
-            new_full_region = f"{new_sido} {new_sigungu}"
-
-            new_job = st.text_input("현재 하시는 일 / 전문 분야", value=me.get("job") or "", placeholder="예: 개인사업체 운영, 전문직 등")
-            new_hobbies = st.text_input("주말 취미 / 여가 활동", value=me.get("hobbies") or "", placeholder="예: 골프, 등산, 여행 등")
-            new_intro = st.text_area("인생 2막을 여는 한 줄 소개", value=me.get("intro") or "", placeholder="상대방에게 나를 어필하는 소개글", height=80)
-            
-            if st.button("내 프로필 정보 저장"):
-                supabase.table("users").update({
-                    "region": new_full_region,
-                    "job": new_job.strip() if new_job else None,
-                    "hobbies": new_hobbies.strip() if new_hobbies else None,
-                    "intro": new_intro.strip() if new_intro else None
-                }).eq("id", me["id"]).execute()
-                
-                me["region"] = new_full_region
-                me["job"] = new_job.strip() if new_job else None
-                me["hobbies"] = new_hobbies.strip() if new_hobbies else None
-                me["intro"] = new_intro.strip() if new_intro else None
-                st.session_state.user_info = me
-                st.success("프로필 정보가 성공적으로 변경되었습니다!")
-                st.rerun()
-
-        # [핵심 1: 지인 번호 차단 탭]
-        with tab_p_block:
-            st.markdown("###### 🚫 지인/아는 사람 차단 (상호 영구 미노출)")
-            st.caption("동창, 동네 지인, 친척 등 피하고 싶은 분의 휴대폰 번호를 등록하시면 서로의 추천 피드에서 완벽히 배제됩니다.")
-            
-            curr_blocked = me.get("blocked_phones") or []
-            if isinstance(curr_blocked, str):
-                try:
-                    curr_blocked = json.loads(curr_blocked)
-                except Exception:
-                    curr_blocked = []
-
-            col_b_input, col_b_btn = st.columns([2.5, 1.2])
-            with col_b_input:
-                new_block_num = st.text_input("차단할 휴대폰 번호 (- 없이 숫자만)", placeholder="예: 01012345678", key="input_block_num")
-            with col_b_btn:
-                st.write("")
-                add_block_btn = st.button("차단 번호 추가", key="btn_add_block")
-
-            if add_block_btn:
-                clean_bnum = re.sub(r'[^0-9]', '', new_block_num.strip())
-                if len(clean_bnum) < 10:
-                    st.error("올바른 휴대폰 번호를 입력해 주세요.")
-                elif clean_bnum == me.get("phone"):
-                    st.error("본인 번호는 차단 목록에 등록할 수 없습니다.")
-                elif clean_bnum in curr_blocked:
-                    st.warning("이미 차단 등록된 번호입니다.")
-                else:
-                    curr_blocked.append(clean_bnum)
-                    supabase.table("users").update({"blocked_phones": curr_blocked}).eq("id", me["id"]).execute()
-                    me["blocked_phones"] = curr_blocked
-                    st.session_state.user_info = me
-                    st.success(f"'{clean_bnum}' 번호가 차단 목록에 등록되었습니다.")
-                    st.rerun()
-
-            if curr_blocked:
-                st.write(f"현재 등록된 차단 번호 (총 **{len(curr_blocked)}개**):")
-                for b_idx, b_phone in enumerate(curr_blocked):
-                    c_b_txt, c_b_del = st.columns([3, 1])
-                    with c_b_txt:
-                        st.code(f"🚫 {b_phone}")
-                    with c_b_del:
-                        if st.button("삭제", key=f"del_b_{b_idx}"):
-                            curr_blocked.remove(b_phone)
-                            supabase.table("users").update({"blocked_phones": curr_blocked}).eq("id", me["id"]).execute()
-                            me["blocked_phones"] = curr_blocked
-                            st.session_state.user_info = me
-                            st.success(f"차단 해제되었습니다.")
-                            st.rerun()
-            else:
-                st.info("현재 등록된 차단 번호가 없습니다.")
-
-        with tab_p_pic:
-            up_pic = st.file_uploader("프로필 사진 선택 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="user_avatar_up")
-            if up_pic and st.button("프로필 사진 저장"):
-                ext = up_pic.name.split(".")[-1].lower()
-                fname = f"user_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
-                try:
-                    supabase.storage.from_("avatars").upload(fname, up_pic.read(), {"content-type": f"image/{ext}"})
-                    url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{fname}"
-                    supabase.table("users").update({"photo_url": url}).eq("id", me["id"]).execute()
-                    me["photo_url"] = url
-                    st.session_state.user_info = me
-                    st.success("프로필 사진이 저장되었습니다!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"사진 저장 실패: {e}")
-
-        with tab_p_doc:
-            if me.get("credit_status") == "APPROVED":
-                st.info("🛡️ 이미 신용 공인 인증이 완료되었습니다. (개인정보 보호 원칙에 따라 제출 서류는 안전 파기되었습니다.)")
-            else:
-                st.caption("토스/카카오페이 캡처(JPG, PNG) 또는 공식 신용보고서(PDF)를 등록해 주세요. 확인 완료 즉시 안전 파기됩니다.")
-                up_doc = st.file_uploader("신용 증빙 서류 첨부 (JPG, PNG, PDF)", type=["jpg", "jpeg", "png", "pdf"], key="user_credit_doc_up")
-                if up_doc and st.button("증빙 서류 제출하기"):
-                    is_valid, doc_msg, f_bytes = validate_credit_doc(up_doc, max_size_mb=15)
-                    if not is_valid:
-                        st.error(doc_msg)
-                    else:
-                        ext = doc_msg
-                        fname = f"doc_{me['id']}_{uuid.uuid4().hex[:6]}.{ext}"
-                        content_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
-                        try:
-                            supabase.storage.from_("credit-docs").upload(fname, f_bytes, {"content-type": content_type})
-                            url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{fname}"
-                            supabase.table("users").update({
-                                "credit_doc_url": url,
-                                "credit_status": "PENDING"
-                            }).execute()
-                            me["credit_doc_url"] = url
-                            me["credit_status"] = "PENDING"
-                            st.session_state.user_info = me
-                            st.success("증빙 서류가 제출되었습니다. 심사 완료 즉시 안전하게 파기됩니다!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"서류 제출 실패: {e}")
-
-        with tab_p_delete:
-            st.error("🚨 회원 탈퇴 시 모든 프로필 정보, 가치관 문답 답변, 매칭 대화 내역이 즉시 영구 파기되며 복구할 수 없습니다.")
-            delete_confirm_pwd = st.text_input("탈퇴 확인을 위해 간편 비밀번호를 입력해 주세요.", type="password", key="delete_pwd_confirm")
-            
-            if st.button("계정 영구 삭제 및 즉시 탈퇴", type="secondary"):
-                if delete_confirm_pwd.strip() != me.get("password"):
-                    st.error("비밀번호가 일치하지 않습니다. 다시 확인해 주세요.")
-                else:
-                    try:
-                        if me.get("photo_url"):
-                            delete_file_from_storage("avatars", me["photo_url"])
-                        if me.get("credit_doc_url"):
-                            delete_file_from_storage("credit-docs", me["credit_doc_url"])
-                        
-                        supabase.table("users").delete().eq("id", me["id"]).execute()
-                        
-                        components.html("""
-                        <script>
-                        localStorage.removeItem('senior_match_name');
-                        localStorage.removeItem('senior_match_phone');
-                        localStorage.removeItem('senior_match_remember');
-                        </script>
-                        """, height=0)
-
-                        st.session_state.user_id = None
-                        st.session_state.user_info = None
-                        st.success("그동안 노블레스 라온을 이용해 주셔서 감사합니다. 모든 개인정보가 안전하게 영구 파기되었습니다.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"탈퇴 처리 중 오류가 발생했습니다: {e}")
-
-    st.divider()
-
-    tabs_list = ["💖 추천 피드", "📝 가치관 문답 이어하기", "📬 매칭 보관함"]
-    if me.get("is_admin"):
-        tabs_list.append("👑 관리자 콘솔")
-
-    tabs = st.tabs(tabs_list)
-
-    all_questions_raw = supabase.table("question_master").select("question_num, question_text, category, options").execute().data
-    q_map = {q["question_num"]: q for q in all_questions_raw}
+    tabs_main = st.tabs(["💖 가치관 매칭 피드", "📬 신청 보관함", "👤 프로필 관리 및 사진"])
 
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
-    # --- 탭 1: 이성 추천 피드 ---
-    with tabs[0]:
-        st.markdown("##### 🌟 가치관 일치율 순 추천 리스트")
-        my_real_gender = "남" if "남" in str(me.get("gender", "남")) else "여"
-        target_gender = "여" if my_real_gender == "남" else "남"
-        raw_candidates = supabase.table("users").select("*").eq("gender", target_gender).eq("is_suspended", False).execute().data
-        # 이중 안전 필터: 상대방 성별이 반드시 반대 성별인 경우만 통과
-        raw_candidates = [c for c in raw_candidates if c.get("gender") == target_gender]
+    with tabs_main[0]:
+        target_gender = "여" if me["gender"] == "남" else "남"
+        # 5060은 만 40세 이상만 추천 대상
+        raw_candidates = supabase.table("users").select("*")\
+            .eq("gender", target_gender)\
+            .gte("age", 40)\
+            .eq("is_suspended", False)\
+            .execute().data
 
-        # [핵심 1 & 3: 지인 차단 필터링 + 최근 14일 이내 활동 회원 우선 선별]
         my_blocked_set = set(me.get("blocked_phones") or [])
         my_phone = me.get("phone", "")
-
-        active_cutoff_date = datetime.now(timezone.utc) - timedelta(days=14)
 
         candidates = []
         for cand in raw_candidates:
             c_phone = cand.get("phone", "")
             c_blocked = set(cand.get("blocked_phones") or [])
-
-            # 지인 차단 조건: 내가 상대방을 차단했거나, 상대방이 나를 차단한 경우 제외
             if c_phone in my_blocked_set or my_phone in c_blocked:
                 continue
-
-            # [핵심 3: 14일 이상 미접속 회원 후순위/제외 로직]
-            last_login = cand.get("last_login_at")
-            if last_login:
-                try:
-                    c_dt = datetime.fromisoformat(last_login.replace("Z", "+00:00"))
-                    # 14일 초과 미접속 회원은 자동 제외
-                    if c_dt < active_cutoff_date:
-                        continue
-                except Exception:
-                    pass
-
             candidates.append(cand)
 
-        sent_reqs = supabase.table("match_requests").select("id, receiver_id, status, payment_status").eq("sender_id", me["id"]).execute().data
-        sent_dict = {req["receiver_id"]: req for req in sent_reqs}
+        sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
+        sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
 
         if not candidates:
-            st.info("현재 매칭 가능한 실시간 활동 회원이 없습니다. (지인 차단 및 최근 접속 회원 필터링 적용 중)")
+            st.info("현재 활동 중인 추천 회원이 없습니다.")
         else:
             cand_scores = []
             for cand in candidates:
-                cand_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", cand["id"]).execute().data
-                cand_answers = {item["question_num"]: item["answer_value"] for item in cand_ans_data}
-
-                common_keys = set(my_answers.keys()).intersection(set(cand_answers.keys()))
-                score = int((sum(1 for k in common_keys if my_answers[k] == cand_answers[k]) / len(common_keys)) * 100) if common_keys else 0
-                cand_scores.append((cand, cand_answers, common_keys, score))
+                c_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", cand["id"]).execute().data
+                c_answers = {item["question_num"]: item["answer_value"] for item in c_ans_data}
+                
+                common_keys = set(my_answers.keys()).intersection(set(c_answers.keys()))
+                score = int((sum(1 for k in common_keys if my_answers[k] == c_answers[k]) / len(common_keys)) * 100) if common_keys else 0
+                cand_scores.append((cand, c_answers, common_keys, score))
 
             cand_scores.sort(key=lambda x: x[3], reverse=True)
 
-            for cand, cand_answers, common_keys, score in cand_scores:
+            for cand, c_answers, common_keys, score in cand_scores:
                 with st.container():
-                    c_col_img, c_col_info, c_col_score = st.columns([1, 2.5, 1])
-                    with c_col_img:
-                        # 등록 사진이 있으면 그 사진을 블러 처리, 없으면 품격 있는 성별 맞춤 실물 사진을 블러 처리
-                        if cand.get("photo_url"):
-                            display_img_url = cand["photo_url"]
-                        else:
-                            display_img_url = DEFAULT_FEMALE_BLUR if cand.get("gender") == "여" else DEFAULT_MALE_BLUR
-                        
-                        st.markdown(f'<img src="{display_img_url}" class="profile-avatar" style="filter: blur(5px); transform: scale(0.96);">', unsafe_allow_html=True)
-                    
-                    with c_col_info:
-                        st.markdown(f"**{cand['name']}** ({cand['age']}세 / {cand['region']})")
-                        if cand.get("credit_status") == "APPROVED":
-                            st.caption(f"🛡️ **공인 신용 인증 통과** ({cand['credit_score']}점)")
-                        else:
-                            st.caption(f"🛡️ 안심 서류 검토 중 ({cand['credit_score']}점)")
-                    with c_col_score:
-                        st.metric("일치율", f"{score}%")
+                    c1, c2, c3 = st.columns([1, 2.5, 1])
+                    with c1:
+                        c_img = cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"])
+                        st.markdown(f'<img src="{c_img}" class="profile-avatar-blur">', unsafe_allow_html=True)
+                    with c2:
+                        st.markdown(f"**{cand['name'][0]}*님** ({cand['gender']} · {cand['age']}세)")
+                        st.markdown(f'<span class="badge-gold">💼 {cand.get("job", "경력 인증")}</span> <span class="badge-credit">신용 {cand["credit_score"]}점</span>', unsafe_allow_html=True)
+                        st.caption(f"📍 {cand['region']}")
+                        if cand.get("intro"):
+                            st.caption(f'"{cand["intro"]}"')
+                    with c3:
+                        st.metric("가치관 일치율", f"{score}%")
 
-                    tags_lifestyle = []
-                    if cand.get("job"): tags_lifestyle.append(f"💼 {cand['job']}")
-                    if cand.get("hobbies"): tags_lifestyle.append(f"⛳ {cand['hobbies']}")
-                    if tags_lifestyle:
-                        tags_html = " ".join([f'<span class="detail-tag">{t}</span>' for t in tags_lifestyle])
-                        st.markdown(tags_html, unsafe_allow_html=True)
+                    with st.expander("🔍 가치관 5대 문항 대조표 보기"):
+                        for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
+                            q_text = CORE_QUESTIONS_5060[q_num]["text"]
+                            m_val = my_answers.get(q_num, "미응답")
+                            c_val = c_answers.get(q_num, "미응답")
+                            is_match = (m_val == c_val)
+                            match_label = "🟢 일치" if is_match else "⚪ 상이"
+                            st.markdown(f"**[{match_label}] {q_text}**")
+                            st.caption(f"• 내 답변: {m_val} | 상대방: {c_val}")
 
-                    if cand.get("intro"):
-                        st.markdown(f'<div class="intro-quote-box">“{cand["intro"]}”</div>', unsafe_allow_html=True)
-
-                    tags = []
-                    if my_answers.get(1) == cand_answers.get(1): tags.append("💍 혼인관 일치")
-                    if my_answers.get(38) == cand_answers.get(38): tags.append("🚭 흡연관 일치")
-                    if my_answers.get(56) == cand_answers.get(56): tags.append("🙏 종교관 일치")
-                    if tags:
-                        st.write(" ".join([f"`{t}`" for t in tags]))
-
-                    with st.expander(f"🔍 {cand['name']} 님과의 가치관 문답 대조표 보기"):
-                        if not common_keys:
-                            st.caption("공통으로 응답한 문항이 아직 없습니다.")
-                        else:
-                            for q_num in sorted(list(common_keys)):
-                                q_info = q_map.get(q_num, {})
-                                q_title = q_info.get("question_text", f"문항 Q{q_num}")
-                                my_val = my_answers[q_num]
-                                cand_val = cand_answers[q_num]
-                                is_same = (my_val == cand_val)
-
-                                match_icon = "🟢 일치" if is_same else "⚪ 상이"
-                                st.markdown(f"**[{match_icon}] {q_title}**")
-                                st.markdown(f"- **나의 답변:** {my_val}")
-                                st.markdown(f"- **상대방 답변:** {cand_val}")
-                                st.write("")
-
-                    req_info = sent_dict.get(cand["id"])
-                    if req_info:
-                        status = req_info.get("status")
-                        pay_status = req_info.get("payment_status", "PAID")
-
-                        if status == "PENDING":
-                            st.button(f"⏳ 답변을 기다리는 중 ({cand['name']})", key=f"btn_{cand['id']}", disabled=True)
-                        elif status == "ACCEPTED":
-                            if not is_vip and pay_status == "UNPAID":
-                                render_postpay_lock_card(cand, req_info["id"])
-                            else:
-                                render_dual_safe_bridge(cand)
+                    req_status = sent_dict.get(cand["id"])
+                    if req_status == "PENDING":
+                        st.button(f"⏳ 대화 수락 대기중 ({cand['name'][0]}*님)", key=f"feed_btn_{cand['id']}", disabled=True)
+                    elif req_status == "ACCEPTED":
+                        st.success("🎉 매칭 성공! 보관함에서 선명한 프로필과 연락처를 확인하세요.")
                     else:
-                        btn_label = f"💌 {cand['name']} 님에게 대화 신청 (보유 티켓 1장 차감)" if not is_vip else f"👑 {cand['name']} 님에게 대화 신청 (VIP 무제한)"
-                        if st.button(btn_label, key=f"btn_{cand['id']}"):
-                            if not is_vip and my_tickets <= 0:
-                                st.error("보유하신 대화 신청권이 모두 소진되었습니다. 상단 [멤버십 충전]에서 충전 후 이용해 주세요.")
+                        if st.button("💌 대화 신청 (티켓 1장 차감)", key=f"feed_btn_{cand['id']}"):
+                            if me.get("ticket_count", 0) <= 0:
+                                st.error("티켓이 부족합니다.")
                             else:
-                                if not is_vip:
-                                    supabase.table("users").update({"ticket_count": my_tickets - 1}).eq("id", me["id"]).execute()
-                                    me["ticket_count"] = my_tickets - 1
-                                    st.session_state.user_info = me
-
+                                supabase.table("users").update({"ticket_count": me["ticket_count"] - 1}).eq("id", me["id"]).execute()
                                 supabase.table("match_requests").insert({
                                     "sender_id": me["id"],
                                     "receiver_id": cand["id"],
                                     "status": "PENDING",
-                                    "payment_status": "PAID" if is_vip else "UNPAID"
+                                    "payment_status": "PAID"
                                 }).execute()
-                                
-                                cand_target_phone = cand.get("phone")
-                                if cand_target_phone:
-                                    send_aligo_notice_sms(cand_target_phone, f"{me['name']} 님으로부터 가치관 기반 대화 신청이 도착했습니다. 보관함에서 확인해 보세요.")
-                                st.toast(f"{cand['name']} 님에게 대화 신청을 보냈습니다!")
+                                send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 가치관 기반 대화 신청이 도착했습니다.")
                                 st.rerun()
-
                     st.divider()
 
-    # --- 탭 2: 75문항 문답 이어하기 ---
-    with tabs[1]:
-        answered_qnums = list(my_answers.keys())
-        st.progress(len(answered_qnums) / 75, text=f"전체 75문항 중 {len(answered_qnums)}개 답변 완료")
-
-        unanswered = supabase.table("question_master")\
-            .select("*")\
-            .not_.in_("question_num", answered_qnums)\
-            .order("priority", desc=True)\
-            .order("question_num")\
-            .limit(1)\
-            .execute().data
-
-        if unanswered:
-            q = unanswered[0]
-            st.info(f"카테고리: **{q['category']}** (문항 Q{q['question_num']})")
-            st.markdown(f"#### **{q['question_text']}**")
-
-            valid_options = q.get("options", [])
-            if not valid_options:
-                valid_options = ["예", "아니오"]
-
-            selected_opt = st.radio("선택지:", valid_options, key=f"q_{q['question_num']}")
-
-            if st.button("답변 저장하고 다음 질문"):
-                supabase.table("user_answers").insert({
-                    "user_id": me["id"],
-                    "question_num": q["question_num"],
-                    "answer_value": selected_opt
-                }).execute()
-                st.success("저장되었습니다!")
-                st.rerun()
-        else:
-            st.success("🎉 모든 문항 답변을 완료하셨습니다.")
-
-    # --- 탭 3: 대화 신청 보관함 ---
-    with tabs[2]:
-        st.markdown("##### 📬 매칭 신청 현황")
-        inbox_tab1, inbox_tab2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
-
-        def get_match_status_text(status):
-            if status == "PENDING":
-                return "⏳ 답변을 기다리는 중"
-            elif status == "ACCEPTED":
-                return "🎉 대화 수락 완료"
-            elif status == "REJECTED":
-                return "소중한 마음만 간직"
-            return status
-
-        with inbox_tab1:
-            sent_list = supabase.table("match_requests").select("id, receiver_id, status, payment_status, created_at").eq("sender_id", me["id"]).execute().data
+    with tabs_main[1]:
+        inbox_1, inbox_2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
+        
+        with inbox_1:
+            sent_list = supabase.table("match_requests").select("*").eq("sender_id", me["id"]).execute().data
             if not sent_list:
-                st.caption("아직 보낸 대화 신청이 없습니다.")
+                st.caption("보낸 신청이 없습니다.")
             else:
                 for req in sent_list:
-                    rcv_user = supabase.table("users").select("name, age, region, phone, photo_url, credit_status, job, intro").eq("id", req["receiver_id"]).execute().data
-                    if rcv_user:
-                        rcv = rcv_user[0]
-                        status_kr = get_match_status_text(req['status'])
-                        if req['status'] == 'ACCEPTED':
-                            pay_status = req.get("payment_status", "PAID")
-                            if not is_vip and pay_status == "UNPAID":
-                                render_postpay_lock_card(rcv, req["id"])
-                            else:
-                                render_dual_safe_bridge(rcv, f"내가 신청한")
-                        else:
-                            st.write(f"• **{rcv['name']}** 님에게 보낸 신청 | 상태: `{status_kr}`")
-
-        with inbox_tab2:
-            received_list = supabase.table("match_requests").select("id, sender_id, status, payment_status, created_at").eq("receiver_id", me["id"]).execute().data
-            if not received_list:
-                st.caption("도착한 대화 신청이 없습니다.")
-            else:
-                for req in received_list:
-                    snd_user = supabase.table("users").select("id, name, age, region, credit_score, phone, photo_url, credit_status, job, hobbies, intro").eq("id", req["sender_id"]).execute().data
-                    if snd_user:
-                        u = snd_user[0]
-                        u_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", u["id"]).execute().data
-                        u_answers = {item["question_num"]: item["answer_value"] for item in u_ans_data}
-
-                        common_keys = set(my_answers.keys()).intersection(set(u_answers.keys()))
-                        score = int((sum(1 for k in common_keys if my_answers[k] == u_answers[k]) / len(common_keys)) * 100) if common_keys else 0
-
-                        rcv_c_img, rcv_c_info, rcv_c_score = st.columns([1, 2.5, 1])
-                        with rcv_c_img:
-                            if u.get("photo_url"):
-                                in_img = u["photo_url"]
-                            else:
-                                in_img = DEFAULT_FEMALE_BLUR if u.get("gender") == "여" else DEFAULT_MALE_BLUR
-                            st.markdown(f'<img src="{in_img}" class="profile-avatar" style="filter: blur(5px); transform: scale(0.96);">', unsafe_allow_html=True)
-
-                        with rcv_c_info:
-                            st.markdown(f"**{u['name']}** ({u['age']}세 / {u['region']})")
-                            if u.get("credit_status") == "APPROVED":
-                                st.caption(f"🛡️ **공인 신용 인증 통과** ({u['credit_score']}점)")
-                            else:
-                                st.caption(f"🛡️ 안심 서류 검토 중 ({u['credit_score']}점)")
-                        with rcv_c_score:
-                            st.metric("일치율", f"{score}%")
-
-                        tags_lifestyle = []
-                        if u.get("job"): tags_lifestyle.append(f"💼 {u['job']}")
-                        if u.get("hobbies"): tags_lifestyle.append(f"⛳ {u['hobbies']}")
-                        if tags_lifestyle:
-                            tags_html = " ".join([f'<span class="detail-tag">{t}</span>' for t in tags_lifestyle])
-                            st.markdown(tags_html, unsafe_allow_html=True)
-
-                        if u.get("intro"):
-                            st.markdown(f'<div class="intro-quote-box">“{u["intro"]}”</div>', unsafe_allow_html=True)
-
-                        tags = []
-                        if my_answers.get(1) == u_answers.get(1): tags.append("💍 혼인관 일치")
-                        if my_answers.get(38) == u_answers.get(38): tags.append("🚭 흡연관 일치")
-                        if my_answers.get(56) == u_answers.get(56): tags.append("🙏 종교관 일치")
-                        if tags:
-                            st.write(" ".join([f"`{t}`" for t in tags]))
-
-                        with st.expander(f"🔍 {u['name']} 님의 가치관 문답 대조표 확인하기"):
-                            if not common_keys:
-                                st.caption("공통으로 응답한 문항이 아직 없습니다.")
-                            else:
-                                for q_num in sorted(list(common_keys)):
-                                    q_info = q_map.get(q_num, {})
-                                    q_title = q_info.get("question_text", f"문항 Q{q_num}")
-                                    my_val = my_answers[q_num]
-                                    u_val = u_answers[q_num]
-                                    is_same = (my_val == u_val)
-
-                                    match_icon = "🟢 일치" if is_same else "⚪ 상이"
-                                    st.markdown(f"**[{match_icon}] {q_title}**")
-                                    st.markdown(f"- **나의 답변:** {my_val}")
-                                    st.markdown(f"- **상대방({u['name']}) 답변:** {u_val}")
-                                    st.write("")
-
-                        if req['status'] == 'ACCEPTED':
-                            render_dual_safe_bridge(u, f"나에게 신청한")
-                        elif req['status'] == 'REJECTED':
-                            st.caption("정중히 거절된 신청입니다.")
-                        else:
-                            col_acc, col_rej = st.columns(2)
-                            with col_acc:
-                                if st.button("수락", key=f"acc_{req['id']}"):
-                                    supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
-                                    sender_phone = u.get("phone")
-                                    if sender_phone:
-                                        send_aligo_notice_sms(sender_phone, f"축하합니다! {me['name']} 님과의 대화가 성사되었습니다. 웹사이트 보관함에서 후불 열람권을 확인해 보세요.")
-                                    st.rerun()
-                            with col_rej:
-                                if st.button("거절", key=f"rej_{req['id']}"):
-                                    supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
-                                    st.rerun()
-                        st.divider()
-
-    # --- 탭 4: 👑 관리자 콘솔 ---
-    if me.get("is_admin"):
-        with tabs[3]:
-            st.markdown("### 👑 운영자 전용 통합 관리 콘솔")
-            st.caption(f"{BRAND_NAME_KR} 신용 증빙 심사, 전체 고객 명부, 회원 제재 및 실시간 매칭/결제 관제를 수행합니다.")
-            
-            adm_sub1, adm_sub2, adm_sub3, adm_sub4 = st.tabs([
-                "📑 신용 서류 심사 대기열", 
-                "👥 전체 고객 명부", 
-                "🔑 회원 제재 및 관리자 권한",
-                "📊 매칭/후불결제 실시간 관제"
-            ])
-            
-            with adm_sub1:
-                pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").not_.is_("credit_doc_url", "null").execute().data
-                
-                if not pending_users:
-                    st.info("현재 안심 서류 검토 대상이 없습니다.")
-                else:
-                    st.write(f"총 **{len(pending_users)}명**의 회원이 안심 서류 검토를 기다리고 있습니다.")
-                    for pu in pending_users:
-                        with st.container():
-                            st.markdown(f"##### **{pu['name']}** 회원 ({pu['gender']} / {pu['age']}세 / {pu['region']})")
-                            st.write(f"• 입력 신용점수: **{pu['credit_score']}점** | 📞 연락처: `{pu['phone']}`")
-                            
-                            doc_url = pu['credit_doc_url']
-                            is_pdf = doc_url.lower().endswith(".pdf")
-                            
-                            st.write("• 제출된 증빙 서류:")
-                            if is_pdf:
-                                st.markdown(f"""
-                                    <div class="pdf-preview-box">
-                                        <iframe src="{doc_url}" width="100%" height="450px" style="border:none;"></iframe>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                st.markdown(f'<a href="{doc_url}" target="_blank" style="display:inline-block; margin-bottom:12px; font-weight:800; color:#38BDF8; text-decoration:none;">📄 PDF 새 창에서 크게 보기 & 다운로드</a>', unsafe_allow_html=True)
-                            else:
-                                st.image(doc_url, caption=f"{pu['name']} 님의 제출 이미지", use_container_width=True)
-                            
-                            bcol1, bcol2 = st.columns(2)
-                            with bcol1:
-                                if st.button(f"✅ 공인 인증 승인 및 서류 영구 파기 ({pu['name']})", key=f"adm_app_{pu['id']}"):
-                                    delete_file_from_storage("credit-docs", pu['credit_doc_url'])
-                                    supabase.table("users").update({
-                                        "credit_status": "APPROVED",
-                                        "is_verified": True,
-                                        "credit_doc_url": None
-                                    }).eq("id", pu["id"]).execute()
-                                    st.success(f"{pu['name']} 님의 인증이 완료되었으며, 증빙 서류 원본이 스토리지에서 영구 파기되었습니다.")
-                                    st.rerun()
-
-                            with bcol2:
-                                if st.button(f"❌ 서류 반려 및 영구 파기 ({pu['name']})", key=f"adm_rej_{pu['id']}"):
-                                    delete_file_from_storage("credit-docs", pu['credit_doc_url'])
-                                    supabase.table("users").update({
-                                        "credit_status": "REJECTED",
-                                        "credit_doc_url": None
-                                    }).eq("id", pu["id"]).execute()
-                                    st.warning(f"{pu['name']} 님의 서류가 반려 처리되고 파일이 영구 파기되었습니다.")
-                                    st.rerun()
-                            st.divider()
-
-            with adm_sub2:
-                st.markdown("##### 👥 회원 조회 및 실시간 검색")
-
-                all_users = supabase.table("users").select("id, name, gender, age, region, credit_score, credit_status, phone, ticket_count, is_vip, last_login_at, job, hobbies, intro, is_admin, is_suspended, created_at").execute().data
-
-                if all_users:
-                    raw_df = pd.DataFrame(all_users)
-                    raw_df["phone"] = raw_df["phone"].fillna("-").astype(str)
-                    raw_df["ticket_count"] = raw_df["ticket_count"].fillna(0).astype(int)
-                    raw_df["credit_score"] = raw_df["credit_score"].fillna(0).astype(int)
-                    raw_df["age"] = raw_df["age"].fillna(0).astype(int)
-                    raw_df["created_at"] = raw_df["created_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
-                    raw_df["last_login_at"] = raw_df["last_login_at"].fillna("-").apply(lambda x: str(x)[:10] if len(str(x)) >= 10 else str(x))
-
-                    excel_export_df = raw_df.copy()
-                    excel_export_df["멤버십"] = excel_export_df["is_vip"].apply(lambda v: "VIP" if v else "일반")
-                    excel_export_df["계정상태"] = excel_export_df["is_suspended"].apply(lambda s: "이용정지" if s else "정상")
-                    excel_export_df["신용심사상태"] = excel_export_df["credit_status"].apply(
-                        lambda s: "공인인증완료" if s == "APPROVED" else ("서류반려" if s == "REJECTED" else "검토대기중")
-                    )
-
-                    export_cols = excel_export_df[[
-                        "name", "gender", "age", "region", "credit_score", "신용심사상태",
-                        "멤버십", "ticket_count", "계정상태", "phone", "last_login_at", "created_at"
-                    ]].rename(columns={
-                        "name": "성명", "gender": "성별", "age": "나이", "region": "활동지역",
-                        "credit_score": "신용점수", "ticket_count": "보유티켓", "phone": "연락처", 
-                        "last_login_at": "최근접속일", "created_at": "가입일자"
-                    })
-
-                    csv_data = export_cols.to_csv(index=False, encoding="utf-8-sig")
-                    today_str = datetime.now().strftime("%Y%m%d")
-                    st.download_button(
-                        label="📥 전체 회원 명부 엑셀(CSV) 다운로드",
-                        data=csv_data,
-                        file_name=f"노블레스라온_회원명부_{today_str}.csv",
-                        mime="text/csv"
-                    )
-
-                    with st.container():
-                        st.markdown('<div class="filter-card">', unsafe_allow_html=True)
-                        f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 2])
-                        with f_col1:
-                            search_name = st.text_input("🔍 성명 검색", placeholder="이름 입력")
-                        with f_col2:
-                            search_phone4 = st.text_input("📱 전화번호 뒷 4자리", placeholder="뒷 4자리")
-                        with f_col3:
-                            sort_option = st.selectbox(
-                                "📊 정렬 기준",
-                                ["가입일시 최신순", "가입일시 과거순", "신용점수 높은순", "신용점수 낮은순", "나이 많은순", "나이 적은순", "성명 가나다순"]
-                            )
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    df = raw_df.copy()
-                    if search_name.strip():
-                        df = df[df["name"].str.contains(search_name.strip(), na=False)]
-
-                    if search_phone4.strip():
-                        clean_p4 = re.sub(r'[^0-9]', '', search_phone4.strip())
-                        df = df[df["phone"].apply(lambda p: p.endswith(clean_p4) if len(p) >= 4 else False)]
-
-                    if sort_option == "가입일시 최신순":
-                        df = df.sort_values(by="created_at", ascending=False)
-                    elif sort_option == "가입일시 과거순":
-                        df = df.sort_values(by="created_at", ascending=True)
-                    elif sort_option == "신용점수 높은순":
-                        df = df.sort_values(by="credit_score", ascending=False)
-                    elif sort_option == "신용점수 낮은순":
-                        df = df.sort_values(by="credit_score", ascending=True)
-                    elif sort_option == "나이 많은순":
-                        df = df.sort_values(by="age", ascending=False)
-                    elif sort_option == "나이 적은순":
-                        df = df.sort_values(by="age", ascending=True)
-                    elif sort_option == "성명 가나다순":
-                        df = df.sort_values(by="name", ascending=True)
-
-                    total_found = len(df)
-                    st.caption(f"검색 결과: 총 **{total_found}명**")
-
-                    if total_found == 0:
-                        st.warning("조건에 일치하는 회원이 없습니다.")
+                    rcv = supabase.table("users").select("*").eq("id", req["receiver_id"]).execute().data[0]
+                    if req["status"] == "ACCEPTED":
+                        st.success(f"🎉 **{rcv['name']}** 님과 매칭이 성사되었습니다!")
+                        r_img = rcv.get("photo_url") or DEFAULT_AVATARS.get(rcv["gender"])
+                        st.markdown(f'<img src="{r_img}" class="profile-avatar-clear">', unsafe_allow_html=True)
+                        st.write(f"📞 안심 연락처: **{rcv['phone']}** | 💼 경력: **{rcv.get('job')}**")
+                        st.markdown(f'<a href="tel:{rcv["phone"]}">📞 전화 걸기</a>', unsafe_allow_html=True)
                     else:
-                        page_size_col, page_no_col = st.columns([1.5, 2])
-                        with page_size_col:
-                            page_size = st.selectbox("페이지당 인원", [10, 20, 50], index=0)
-                        
-                        total_pages = math.ceil(total_found / page_size)
-                        with page_no_col:
-                            page_num = st.selectbox("페이지 이동", list(range(1, total_pages + 1)), index=0)
+                        st.write(f"• **{rcv['name'][0]}*님**에게 보낸 신청 | 상태: `{req['status']}`")
 
-                        start_idx = (page_num - 1) * page_size
-                        end_idx = start_idx + page_size
-                        page_df = df.iloc[start_idx:end_idx].copy()
-
-                        page_df["멤버십"] = page_df["is_vip"].apply(lambda v: "👑 VIP" if v else "일반")
-                        page_df["계정상태"] = page_df["is_suspended"].apply(lambda s: "🚫 이용정지" if s else "정상")
-                        page_df["심사상태"] = page_df["credit_status"].apply(
-                            lambda s: "✅ 승인완료" if s == "APPROVED" else ("❌ 반려" if s == "REJECTED" else "🛡️ 심사중")
-                        )
-
-                        display_df = page_df[[
-                            "name", "gender", "age", "region", "credit_score", "심사상태", "멤버십", "ticket_count", "계정상태", "phone", "last_login_at"
-                        ]].rename(columns={
-                            "name": "성명", "gender": "성별", "age": "나이", "region": "지역",
-                            "credit_score": "신용점수", "ticket_count": "잔여티켓", "phone": "휴대폰 번호", "last_login_at": "최근접속"
-                        })
-
-                        display_df.index = range(start_idx + 1, start_idx + len(display_df) + 1)
-                        st.dataframe(display_df, use_container_width=True, height=380)
-                else:
-                    st.caption("등록된 회원이 없습니다.")
-
-            with adm_sub3:
-                st.markdown("##### 👥 회원 제재 및 티켓·멤버십 수동 부여")
-                users_list = supabase.table("users").select("id, name, phone, ticket_count, is_vip, is_admin, is_suspended").order("name").execute().data
-                
-                if users_list:
-                    def make_label(u):
-                        status_str = "🚫정지" if u.get("is_suspended") else "정상"
-                        vip_str = "👑VIP" if u.get("is_vip") else f"티켓:{u.get('ticket_count',0)}장"
-                        return f"{u['name']} ({u['phone']}) - [{status_str} / {vip_str}]"
-
-                    user_options = {make_label(u): u for u in users_list}
-                    selected_label = st.selectbox("대상 회원 선택", list(user_options.keys()))
-                    target_user = user_options[selected_label]
-                    
-                    st.write("")
-                    col_t1, col_t2 = st.columns(2)
-                    with col_t1:
-                        if st.button(f"🎟️ {target_user['name']} 님에게 티켓 5장 추가 지급"):
-                            new_cnt = target_user.get("ticket_count", 0) + 5
-                            supabase.table("users").update({"ticket_count": new_cnt}).eq("id", target_user["id"]).execute()
-                            st.success(f"{target_user['name']} 님에게 티켓 5장이 지급되었습니다. (현재 {new_cnt}장)")
-                            st.rerun()
-                    with col_t2:
-                        vip_act_label = "❌ VIP 해제" if target_user.get("is_vip") else "👑 VIP 강제 활성화"
-                        if st.button(vip_act_label):
-                            supabase.table("users").update({"is_vip": not target_user.get("is_vip")}).eq("id", target_user["id"]).execute()
-                            st.success(f"{target_user['name']} 님의 VIP 상태가 변경되었습니다.")
-                            st.rerun()
-
+        with inbox_2:
+            rcv_list = supabase.table("match_requests").select("*").eq("receiver_id", me["id"]).execute().data
+            if not rcv_list:
+                st.caption("도착한 신청이 없습니다.")
+            else:
+                for req in rcv_list:
+                    snd = supabase.table("users").select("*").eq("id", req["sender_id"]).execute().data[0]
+                    st.markdown(f"**{snd['name'][0]}*님** ({snd['gender']} · {snd['age']}세 · {snd.get('job')})")
+                    if req["status"] == "ACCEPTED":
+                        st.success("🤝 대화 수락 완료! 연락처가 공개되었습니다.")
+                        s_img = snd.get("photo_url") or DEFAULT_AVATARS.get(snd["gender"])
+                        st.markdown(f'<img src="{s_img}" class="profile-avatar-clear">', unsafe_allow_html=True)
+                        st.write(f"📞 안심 연락처: **{snd['phone']}**")
+                    elif req["status"] == "PENDING":
+                        col_ac, col_re = st.columns(2)
+                        with col_ac:
+                            if st.button("수락 및 연락처 공유", key=f"ac_{req['id']}"):
+                                supabase.table("match_requests").update({"status": "ACCEPTED"}).eq("id", req["id"]).execute()
+                                send_aligo_notice_sms(snd["phone"], f"{me['name'][0]}* 님이 대화를 수락했습니다. 안심 연락처를 확인하세요.")
+                                st.rerun()
+                        with col_re:
+                            if st.button("거절", key=f"re_{req['id']}"):
+                                supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
+                                st.rerun()
                     st.divider()
-                    col_ban1, col_ban2 = st.columns(2)
-                    with col_ban1:
-                        if not target_user.get("is_suspended") and target_user["id"] != me["id"]:
-                            if st.button(f"🚫 {target_user['name']} 회원 이용 정지", key=f"ban_{target_user['id']}"):
-                                supabase.table("users").update({"is_suspended": True}).eq("id", target_user["id"]).execute()
-                                st.warning(f"{target_user['name']} 회원이 이용 정지 처리되었습니다.")
-                                st.rerun()
-                    with col_ban2:
-                        if target_user.get("is_suspended"):
-                            if st.button(f"✅ {target_user['name']} 회원 정지 해제", key=f"unban_{target_user['id']}"):
-                                supabase.table("users").update({"is_suspended": False}).eq("id", target_user["id"]).execute()
-                                st.success(f"{target_user['name']} 회원의 정지가 해제되었습니다.")
-                                st.rerun()
 
-            with adm_sub4:
-                st.markdown("##### 📊 실시간 매칭 신청 및 후불 결제 관리")
-                all_matches = supabase.table("match_requests").select("id, sender_id, receiver_id, status, payment_status, created_at").order("created_at", desc=True).execute().data
-                all_u_dict = {u["id"]: u for u in supabase.table("users").select("id, name, gender, phone").execute().data}
+    with tabs_main[2]:
+        st.markdown("##### ✏️ 자기소개 및 경력·취미 정보 수정")
+        edit_job = st.text_input("직업 또는 경력 수정", value=me.get("job", ""), key="edit_job")
+        job_errs = audit_text_typos(edit_job)
+        if job_errs:
+            st.caption(f"💡 권장 수정: {', '.join(job_errs)}")
 
-                if not all_matches:
-                    st.info("아직 매칭 이력이 없습니다.")
-                else:
-                    match_records = []
-                    for m in all_matches:
-                        s_u = all_u_dict.get(m["sender_id"], {})
-                        r_u = all_u_dict.get(m["receiver_id"], {})
-                        
-                        s_name = s_u.get("name", "(탈퇴)")
-                        r_name = r_u.get("name", "(탈퇴)")
-                        
-                        status_raw = m.get("status", "PENDING")
-                        pay_status = m.get("payment_status", "PAID")
-                        
-                        if status_raw == "ACCEPTED":
-                            status_kr = "🎉 열람 가능(결제완료)" if pay_status == "PAID" else "🔒 후불 결제 대기중"
-                        elif status_raw == "REJECTED":
-                            status_kr = "❌ 거절됨"
-                        else:
-                            status_kr = "⏳ 신청 답변 대기중"
+        edit_hobbies = st.text_input("취미 및 여가 생활 수정", value=me.get("hobbies", ""), key="edit_hobbies")
+        hobby_errs = audit_text_typos(edit_hobbies)
+        if hobby_errs:
+            st.caption(f"💡 권장 수정: {', '.join(hobby_errs)}")
 
-                        c_time = str(m.get("created_at", "-"))[:16].replace("T", " ")
+        edit_intro = st.text_area("한 줄 소개 수정", value=me.get("intro", ""), key="edit_intro")
+        intro_errs = audit_text_typos(edit_intro)
+        if intro_errs:
+            st.caption(f"💡 권장 수정: {', '.join(intro_errs)}")
 
-                        match_records.append({
-                            "신청일시": c_time,
-                            "신청회원": f"{s_name} ({s_u.get('phone', '-')})",
-                            "상대회원": f"{r_name} ({r_u.get('phone', '-')})",
-                            "매칭상태": status_kr,
-                            "결제상태": pay_status,
-                            "match_id": m["id"]
-                        })
+        if st.button("프로필 정보 업데이트"):
+            supabase.table("users").update({
+                "job": edit_job.strip(),
+                "hobbies": edit_hobbies.strip(),
+                "intro": edit_intro.strip()
+            }).eq("id", me["id"]).execute()
+            me["job"] = edit_job.strip()
+            me["hobbies"] = edit_hobbies.strip()
+            me["intro"] = edit_intro.strip()
+            st.session_state.user_info = me
+            st.success("프로필 정보가 성공적으로 수정되었습니다.")
+            st.rerun()
 
-                    m_df = pd.DataFrame(match_records)
-                    st.dataframe(m_df[["신청일시", "신청회원", "상대회원", "매칭상태", "결제상태"]], use_container_width=True)
-
-    render_support_footer()
+        st.markdown("---")
+        st.markdown("##### 📸 프로필 사진 등록")
+        st.caption("등록된 사진은 매칭 전까지 실루엣 블러 처리되어 안전하게 보호되며, 상호 수락 시에만 상대방에게 선명하게 공개됩니다.")
+        new_avatar = st.file_uploader("사진 파일 선택 (JPG, PNG)", type=["jpg", "png", "jpeg"], key="up_avatar")
+        if new_avatar and st.button("사진 등록 및 저장"):
+            f_ext = new_avatar.name.split(".")[-1].lower()
+            fname = f"avatar_5060_{me['id']}_{uuid.uuid4().hex[:6]}.{f_ext}"
+            supabase.storage.from_("avatars").upload(fname, new_avatar.read(), {"content-type": f"image/{f_ext}"})
+            url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{fname}"
+            supabase.table("users").update({"photo_url": url}).eq("id", me["id"]).execute()
+            me["photo_url"] = url
+            st.session_state.user_info = me
+            st.success("사진이 등록되었습니다. 매칭 전에는 블라인드 보호가 자동 적용됩니다.")
+            st.rerun()
 
     st.markdown("---")
     if st.button("로그아웃"):
