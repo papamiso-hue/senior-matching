@@ -12,9 +12,9 @@ import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
 
-# 1. 스트림릿 기본 페이지 설정 (반드시 최상단 1회 호출)
+# 1. 스트림릿 기본 페이지 설정
 st.set_page_config(
-    page_title="노블레스 라온 - 5060 검증형 프라이빗 매칭",
+    page_title="노블레스 라온 - 5060 프라이빗 매칭",
     page_icon="👑",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -58,7 +58,6 @@ PLATFORM_TYPO_RULES = {
 }
 
 def audit_text_typos(text: str):
-    """입력된 텍스트에서 오탈자 및 부적절한 표현 감지"""
     if not text:
         return []
     warnings = []
@@ -113,202 +112,257 @@ CORE_QUESTIONS_5060 = {
     }
 }
 
-# 5060 클래식 블랙 & 럭셔리 골드 테마 CSS
+# --- 프리미엄 5060 리뉴얼 UI CSS (골드 & 다크 럭셔리 + 시인성 특화) ---
 st.markdown("""
     <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
     .stApp {
-        background-color: #0A0A0B !important;
+        background: radial-gradient(circle at 50% 0%, #1F190B 0%, #0A0A0C 60%, #050506 100%) !important;
         color: #F8FAFC !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", sans-serif;
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
     .block-container { 
-        padding-top: 1.8rem !important; 
-        padding-bottom: 3.5rem !important; 
-        max-width: 620px !important; 
+        padding-top: 1.2rem !important; 
+        padding-bottom: 4rem !important; 
+        max-width: 520px !important; 
+    }
+
+    .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0 16px 0;
+        border-bottom: 1px solid rgba(234, 179, 8, 0.15);
+        margin-bottom: 16px;
+    }
+    .app-brand {
+        font-size: 1.3rem;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        background: linear-gradient(90deg, #FDE047 0%, #EAB308 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
 
     .hero-box {
-        background: linear-gradient(145deg, #18181B 0%, #111113 60%, #1C1917 100%);
-        border: 1px solid rgba(212, 175, 55, 0.4);
-        border-radius: 18px;
-        padding: 26px 20px 22px 20px;
+        background: linear-gradient(160deg, rgba(39, 39, 42, 0.7) 0%, rgba(24, 24, 27, 0.9) 100%);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(234, 179, 8, 0.35);
+        border-radius: 20px;
+        padding: 26px 20px;
         text-align: center;
-        margin-bottom: 1rem;
-        box-shadow: 0 10px 30px -10px rgba(212, 175, 55, 0.25);
+        margin-bottom: 1.2rem;
+        box-shadow: 0 16px 36px -10px rgba(234, 179, 8, 0.2);
     }
     .hero-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        background: rgba(212, 175, 55, 0.15);
-        border: 1px solid rgba(212, 175, 55, 0.45);
+        display: inline-block;
+        background: rgba(234, 179, 8, 0.12);
+        border: 1px solid rgba(234, 179, 8, 0.45);
         color: #FDE047 !important;
-        font-size: 0.72rem;
+        font-size: 0.76rem;
         font-weight: 800;
-        letter-spacing: 2px;
-        padding: 4px 12px;
-        border-radius: 30px;
-        margin-bottom: 12px;
-    }
-    .hero-title {
-        font-size: 2.1rem;
-        font-weight: 900;
-        color: #FFFFFF !important;
-        letter-spacing: -0.8px;
-        line-height: 1.25;
+        letter-spacing: 1.5px;
+        padding: 5px 16px;
+        border-radius: 9999px;
         margin-bottom: 10px;
     }
-    .hero-subtitle {
-        font-size: 1.0rem;
-        font-weight: 600;
-        color: #E2E8F0 !important;
-        line-height: 1.55;
-        word-break: keep-all;
+    .hero-title {
+        font-size: 2.05rem;
+        font-weight: 900;
+        line-height: 1.25;
+        letter-spacing: -0.8px;
+        color: #FFFFFF !important;
+        margin-bottom: 8px;
     }
-    .hero-highlight {
-        color: #FACC15 !important;
-        font-weight: 800;
+    .hero-subtitle {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #E4E4E7 !important;
+        line-height: 1.6;
     }
 
     .promise-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
-        margin-bottom: 1rem;
+        margin-bottom: 1.2rem;
     }
     .promise-card {
-        background: #18181B !important;
-        border: 1px solid #27272A !important;
-        border-radius: 12px;
+        background: rgba(24, 24, 27, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
         padding: 14px 6px;
         text-align: center;
     }
-    .promise-icon {
-        font-size: 1.4rem;
-        margin-bottom: 4px;
-    }
-    .promise-title {
-        font-size: 0.84rem;
-        font-weight: 800;
-        color: #F4F4F5 !important;
-    }
-    .promise-desc {
-        font-size: 0.70rem;
-        color: #A1A1AA !important;
-        margin-top: 2px;
-    }
+    .promise-icon { font-size: 1.4rem; margin-bottom: 4px; }
+    .promise-title { font-size: 0.85rem; font-weight: 800; color: #F4F4F5 !important; }
+    .promise-desc { font-size: 0.72rem; color: #A1A1AA !important; margin-top: 2px; }
 
-    .criteria-box {
+    /* 5060 전용 대형 프리미엄 매칭 카드 */
+    .senior-card {
+        position: relative;
+        border-radius: 22px;
+        overflow: hidden;
+        margin-bottom: 1.6rem;
+        background: #18181B;
+        border: 1px solid rgba(234, 179, 8, 0.25);
+        box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+    }
+    .senior-img-box {
+        position: relative;
+        width: 100%;
+        height: 390px;
+        overflow: hidden;
+    }
+    .senior-img-blur {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: blur(10px) brightness(0.85);
+        transform: scale(1.08);
+    }
+    .senior-img-clear {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .senior-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60%;
+        background: linear-gradient(to top, #18181B 15%, transparent 100%);
+        pointer-events: none;
+    }
+    .senior-blind-tag {
+        position: absolute;
+        top: 16px;
+        left: 16px;
         background: rgba(24, 24, 27, 0.8);
-        border: 1px solid #3F3F46;
-        border-radius: 10px;
-        padding: 10px 16px;
-        margin-bottom: 1.2rem;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(234, 179, 8, 0.35);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        color: #FDE047;
+    }
+    .senior-match-badge {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+        padding: 7px 16px;
+        border-radius: 20px;
+        font-size: 0.88rem;
+        font-weight: 900;
+        color: #000000;
+        box-shadow: 0 4px 14px rgba(234, 179, 8, 0.4);
+    }
+    .senior-content {
+        padding: 16px 20px 22px 20px;
+        margin-top: -24px;
+        position: relative;
+    }
+    .senior-name-row {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .senior-name {
+        font-size: 1.55rem;
+        font-weight: 900;
+        color: #FFFFFF;
+        letter-spacing: -0.5px;
+    }
+    .senior-age {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #D4D4D8;
+    }
+    .badge-pill-gold {
+        background: rgba(234, 179, 8, 0.15);
+        color: #FDE047;
+        border: 1px solid rgba(234, 179, 8, 0.35);
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 0.80rem;
+        font-weight: 800;
+    }
+    .badge-pill-credit {
+        background: rgba(16, 185, 129, 0.15);
+        color: #6EE7B7;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 0.80rem;
+        font-weight: 800;
+    }
+    .senior-intro {
+        margin-top: 12px;
+        font-size: 0.94rem;
+        color: #E4E4E7;
+        line-height: 1.6;
+        word-break: keep-all;
     }
 
+    /* 탭 스타일 */
     div[data-baseweb="tab-list"] {
-        background-color: #18181B !important;
-        padding: 4px;
-        border-radius: 10px;
+        background-color: rgba(24, 24, 27, 0.85) !important;
+        padding: 5px;
+        border-radius: 14px;
+        border: 1px solid rgba(234, 179, 8, 0.2) !important;
+        margin-bottom: 1.4rem;
         gap: 4px;
-        border: 1px solid #27272A !important;
-        margin-bottom: 1.2rem;
     }
     div[data-baseweb="tab"] {
         flex: 1;
-        height: 44px;
-        border-radius: 8px !important;
+        height: 46px;
+        border-radius: 10px !important;
         background-color: transparent !important;
         color: #A1A1AA !important;
-        font-weight: 700 !important;
-        font-size: 0.92rem !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
         border: none !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
     div[data-baseweb="tab"][aria-selected="true"] {
-        background-color: #CA8A04 !important;
+        background: linear-gradient(135deg, #CA8A04 0%, #A16207 100%) !important;
         color: #FFFFFF !important;
-        box-shadow: 0 4px 12px rgba(202, 138, 4, 0.35);
+        box-shadow: 0 4px 14px rgba(202, 138, 4, 0.35);
     }
-    div[data-baseweb="tab-border"] {
-        display: none !important;
-    }
+    div[data-baseweb="tab-border"] { display: none !important; }
 
+    /* 입력창 및 버튼 */
     div[data-baseweb="input"] {
-        background-color: #18181B !important;
+        background-color: rgba(24, 24, 27, 0.95) !important;
         border: 1.5px solid #27272A !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
     }
     div[data-baseweb="input"]:focus-within {
         border-color: #EAB308 !important;
+        box-shadow: 0 0 0 1px #EAB308 !important;
     }
-    div[data-baseweb="input"] input {
-        color: #FFFFFF !important;
-    }
-    label[data-testid="stWidgetLabel"] p {
-        color: #F4F4F5 !important;
-        font-weight: 700;
-        font-size: 0.88rem;
-    }
+    div[data-baseweb="input"] input { color: #FFFFFF !important; font-size: 0.95rem; }
 
     .stButton>button { 
         width: 100%; 
-        border-radius: 10px; 
+        border-radius: 12px; 
         font-weight: 800; 
-        height: 3.2rem;
-        font-size: 1.02rem;
+        height: 3.5rem;
+        font-size: 1.1rem;
+        letter-spacing: -0.3px;
         border: none !important;
-        background: linear-gradient(90deg, #CA8A04 0%, #A16207 100%) !important;
-        color: #FFFFFF !important;
-        box-shadow: 0 4px 14px rgba(202, 138, 4, 0.3);
+        background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important;
+        color: #000000 !important;
+        box-shadow: 0 6px 18px rgba(202, 138, 4, 0.35);
+        transition: transform 0.1s ease;
     }
-    .stButton>button:hover {
-        background: linear-gradient(90deg, #EAB308 0%, #CA8A04 100%) !important;
-    }
+    .stButton>button:active { transform: scale(0.98); }
 
-    .badge-gold {
-        background: rgba(202, 138, 4, 0.2);
-        color: #FDE047;
-        border: 1px solid rgba(234, 179, 8, 0.4);
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.72rem;
-        font-weight: 700;
-    }
-    .badge-credit {
-        background: rgba(16, 185, 129, 0.15);
-        color: #6EE7B7;
-        border: 1px solid rgba(16, 185, 129, 0.35);
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.72rem;
-        font-weight: 700;
-    }
-    .profile-avatar-blur {
-        width: 74px;
-        height: 74px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #EAB308;
-        filter: blur(6px);
-        transform: scale(0.96);
-    }
-    .profile-avatar-clear {
-        width: 74px;
-        height: 74px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #10B981;
-    }
-
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
+    #MainMenu, footer, header { visibility: hidden !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -355,8 +409,8 @@ def send_aligo_notice_sms(receiver_phone, text_message):
         pass
 
 DEFAULT_AVATARS = {
-    "남": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=300&auto=format&fit=crop",
-    "여": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop"
+    "남": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=600&auto=format&fit=crop",
+    "여": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop"
 }
 
 if "user_id" not in st.session_state:
@@ -377,7 +431,7 @@ if not st.session_state.user_id:
             <div class="hero-badge">👑 5060 NOBLESSE MATCHING</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
             <div class="hero-subtitle">품격 있는 인생 2막을 함께할 진중한 동반자를 위한<br>
-            <span class="hero-highlight">신용·신원 검증 기반 시니어 프라이빗 살롱</span></div>
+            <strong style="color:#FDE047;">신용·신원 검증 기반 시니어 프라이빗 살롱</strong></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -398,13 +452,6 @@ if not st.session_state.user_id:
                 <div class="promise-title">안심 비공개 프로필</div>
                 <div class="promise-desc">상호 수락 시 연락처 공개</div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-        <div class="criteria-box">
-            <span style="font-weight:800; font-size:0.84rem; color:#FDE047;">📌 5060 정회원 입회 기준</span>
-            <span style="font-weight:900; font-size:0.88rem; color:#6EE7B7;">만 48세 ~ 75세 (남 800 / 여 600점 이상)</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -589,20 +636,11 @@ else:
     me = st.session_state.user_info
 
     st.markdown(f"""
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 2px solid #3F3F46; padding-bottom: 8px;">
-            <div style="font-size:1.1rem; font-weight:900; color:#FFFFFF;">🌟 {BRAND_NAME_KR}</div>
-            <div style="font-size:0.75rem; font-weight:800; color:#EAB308; letter-spacing:1px;">{BRAND_NAME_EN}</div>
+        <div class="app-header">
+            <div class="app-brand">🌟 {BRAND_NAME_KR}</div>
+            <div style="font-size:0.85rem; font-weight:800; color:#FDE047;">🎟️ 티켓 {me.get('ticket_count', 0)}장</div>
         </div>
     """, unsafe_allow_html=True)
-
-    t_col1, t_col2 = st.columns([1, 3])
-    with t_col1:
-        my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
-        st.markdown(f'<img src="{my_avatar}" class="profile-avatar-clear">', unsafe_allow_html=True)
-    with t_col2:
-        st.markdown(f"#### **{me['name']}** ({me['gender']} · {me['age']}세)")
-        st.markdown(f'<span class="badge-gold">💼 {me.get("job", "경력 인증")}</span> <span class="badge-credit">🛡️ 신용 {me["credit_score"]}점</span>', unsafe_allow_html=True)
-        st.caption(f"📍 {me['region']} | 🎟️ 보유 티켓: {me.get('ticket_count', 0)}장")
 
     with st.expander("🚫 아는 사람 / 지인 번호 차단 관리"):
         curr_blocks = me.get("blocked_phones") or []
@@ -617,14 +655,13 @@ else:
                 st.success(f"{clean_bp} 번호가 상호 차단되었습니다.")
                 st.rerun()
 
-    tabs_main = st.tabs(["💖 가치관 매칭 피드", "📬 신청 보관함", "👤 프로필 관리 및 사진"])
+    tabs_main = st.tabs(["✨ 추천 피드", "📬 신청 보관함", "👤 내 프로필"])
 
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
     with tabs_main[0]:
         target_gender = "여" if me["gender"] == "남" else "남"
-        # 5060 타깃: 만 48세 이상 75세 이하 회원만 매칭 추천 대상
         raw_candidates = supabase.table("users").select("*")\
             .eq("gender", target_gender)\
             .gte("age", 48)\
@@ -647,7 +684,7 @@ else:
         sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
 
         if not candidates:
-            st.info("현재 활동 중인 추천 회원이 없습니다.")
+            st.info("현재 활동 중인 추천 동반자가 없습니다.")
         else:
             cand_scores = []
             for cand in candidates:
@@ -661,50 +698,61 @@ else:
             cand_scores.sort(key=lambda x: x[3], reverse=True)
 
             for cand, c_answers, common_keys, score in cand_scores:
-                with st.container():
-                    c1, c2, c3 = st.columns([1, 2.5, 1])
-                    with c1:
-                        c_img = cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"])
-                        st.markdown(f'<img src="{c_img}" class="profile-avatar-blur">', unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(f"**{cand['name'][0]}*님** ({cand['gender']} · {cand['age']}세)")
-                        st.markdown(f'<span class="badge-gold">💼 {cand.get("job", "경력 인증")}</span> <span class="badge-credit">신용 {cand["credit_score"]}점</span>', unsafe_allow_html=True)
-                        st.caption(f"📍 {cand['region']}")
-                        if cand.get("intro"):
-                            st.caption(f'"{cand["intro"]}"')
-                    with c3:
-                        st.metric("가치관 일치율", f"{score}%")
+                c_img = cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"])
+                intro_txt = cand.get("intro") or "서로를 존중하고 아껴줄 소중한 인연을 기다립니다."
 
-                    with st.expander("🔍 가치관 5대 문항 대조표 보기"):
-                        for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
-                            q_text = CORE_QUESTIONS_5060[q_num]["text"]
-                            m_val = my_answers.get(q_num, "미응답")
-                            c_val = c_answers.get(q_num, "미응답")
-                            is_match = (m_val == c_val)
-                            match_label = "🟢 일치" if is_match else "⚪ 상이"
-                            st.markdown(f"**[{match_label}] {q_text}**")
-                            st.caption(f"• 내 답변: {m_val} | 상대방: {c_val}")
+                st.markdown(f"""
+                    <div class="senior-card">
+                        <div class="senior-img-box">
+                            <img src="{c_img}" class="senior-img-blur">
+                            <div class="senior-overlay"></div>
+                            <div class="senior-blind-tag">🔒 안심 비공개 보호</div>
+                            <div class="senior-match-badge">{score}% 일치</div>
+                        </div>
+                        <div class="senior-content">
+                            <div class="senior-name-row">
+                                <span class="senior-name">{cand['name'][0]}*님</span>
+                                <span class="senior-age">{cand['age']}세 · {cand['region'].split()[0]}</span>
+                            </div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                                <span class="badge-pill-gold">💼 {cand.get('job', '경력 인증')}</span>
+                                <span class="badge-pill-credit">🛡️ 신용 {cand['credit_score']}점</span>
+                            </div>
+                            <div class="senior-intro">"{intro_txt}"</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
 
-                    req_status = sent_dict.get(cand["id"])
-                    if req_status == "PENDING":
-                        st.button(f"⏳ 대화 수락 대기중 ({cand['name'][0]}*님)", key=f"feed_btn_{cand['id']}", disabled=True)
-                    elif req_status == "ACCEPTED":
-                        st.success("🎉 매칭 성공! 보관함에서 선명한 프로필과 연락처를 확인하세요.")
-                    else:
-                        if st.button("💌 대화 신청 (티켓 1장 차감)", key=f"feed_btn_{cand['id']}"):
-                            if me.get("ticket_count", 0) <= 0:
-                                st.error("티켓이 부족합니다.")
-                            else:
-                                supabase.table("users").update({"ticket_count": me["ticket_count"] - 1}).eq("id", me["id"]).execute()
-                                supabase.table("match_requests").insert({
-                                    "sender_id": me["id"],
-                                    "receiver_id": cand["id"],
-                                    "status": "PENDING",
-                                    "payment_status": "PAID"
-                                }).execute()
-                                send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 가치관 기반 대화 신청이 도착했습니다.")
-                                st.rerun()
-                    st.divider()
+                with st.expander("🔍 5대 가치관 상세 대조표"):
+                    for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
+                        q_text = CORE_QUESTIONS_5060[q_num]["text"]
+                        m_val = my_answers.get(q_num, "미응답")
+                        c_val = c_answers.get(q_num, "미응답")
+                        is_match = (m_val == c_val)
+                        match_label = "🟢 일치" if is_match else "⚪ 상이"
+                        st.markdown(f"**[{match_label}] {q_text}**")
+                        st.caption(f"• 내 답변: {m_val} | 상대방: {c_val}")
+
+                req_status = sent_dict.get(cand["id"])
+                if req_status == "PENDING":
+                    st.button(f"⏳ 수락 대기중 ({cand['name'][0]}*님)", key=f"feed_btn_{cand['id']}", disabled=True)
+                elif req_status == "ACCEPTED":
+                    st.success("🎉 매칭 성공! 보관함에서 선명한 사진과 연락처를 확인하세요.")
+                else:
+                    if st.button("💌 대화 신청 (티켓 1장 차감)", key=f"feed_btn_{cand['id']}"):
+                        if me.get("ticket_count", 0) <= 0:
+                            st.error("티켓이 부족합니다.")
+                        else:
+                            supabase.table("users").update({"ticket_count": me["ticket_count"] - 1}).eq("id", me["id"]).execute()
+                            supabase.table("match_requests").insert({
+                                "sender_id": me["id"],
+                                "receiver_id": cand["id"],
+                                "status": "PENDING",
+                                "payment_status": "PAID"
+                            }).execute()
+                            send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 가치관 기반 대화 신청이 도착했습니다.")
+                            st.rerun()
+                st.write("")
 
     with tabs_main[1]:
         inbox_1, inbox_2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
@@ -719,9 +767,15 @@ else:
                     if req["status"] == "ACCEPTED":
                         st.success(f"🎉 **{rcv['name']}** 님과 매칭이 성사되었습니다!")
                         r_img = rcv.get("photo_url") or DEFAULT_AVATARS.get(rcv["gender"])
-                        st.markdown(f'<img src="{r_img}" class="profile-avatar-clear">', unsafe_allow_html=True)
+                        st.markdown(f"""
+                            <div class="senior-card">
+                                <div class="senior-img-box">
+                                    <img src="{r_img}" class="senior-img-clear">
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
                         st.write(f"📞 안심 연락처: **{rcv['phone']}** | 💼 경력: **{rcv.get('job')}**")
-                        st.markdown(f'<a href="tel:{rcv["phone"]}">📞 전화 걸기</a>', unsafe_allow_html=True)
+                        st.markdown(f'<a href="tel:{rcv["phone"]}">📞 바로 전화 걸기</a>', unsafe_allow_html=True)
                     else:
                         st.write(f"• **{rcv['name'][0]}*님**에게 보낸 신청 | 상태: `{req['status']}`")
 
@@ -736,7 +790,13 @@ else:
                     if req["status"] == "ACCEPTED":
                         st.success("🤝 대화 수락 완료! 연락처가 공개되었습니다.")
                         s_img = snd.get("photo_url") or DEFAULT_AVATARS.get(snd["gender"])
-                        st.markdown(f'<img src="{s_img}" class="profile-avatar-clear">', unsafe_allow_html=True)
+                        st.markdown(f"""
+                            <div class="senior-card">
+                                <div class="senior-img-box">
+                                    <img src="{s_img}" class="senior-img-clear">
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
                         st.write(f"📞 안심 연락처: **{snd['phone']}**")
                     elif req["status"] == "PENDING":
                         col_ac, col_re = st.columns(2)
@@ -752,6 +812,15 @@ else:
                     st.divider()
 
     with tabs_main[2]:
+        my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
+        st.markdown(f"""
+            <div style="text-align:center; padding:10px 0 20px 0;">
+                <img src="{my_avatar}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #EAB308;">
+                <h3 style="margin:10px 0 4px 0; color:#FFFFFF;">{me['name']} ({me['gender']} · {me['age']}세)</h3>
+                <div style="font-size:0.9rem; color:#D4D4D8;">📍 {me['region']} | 💼 {me.get('job')}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("##### ✏️ 자기소개 및 경력·취미 정보 수정")
         edit_job = st.text_input("직업 또는 경력 수정", value=me.get("job", ""), key="edit_job")
         job_errs = audit_text_typos(edit_job)
@@ -783,7 +852,6 @@ else:
 
         st.markdown("---")
         st.markdown("##### 📸 프로필 사진 등록")
-        st.caption("등록된 사진은 매칭 전까지 실루엣 블러 처리되어 안전하게 보호되며, 상호 수락 시에만 상대방에게 선명하게 공개됩니다.")
         new_avatar = st.file_uploader("사진 파일 선택 (JPG, PNG)", type=["jpg", "png", "jpeg"], key="up_avatar")
         if new_avatar and st.button("사진 등록 및 저장"):
             f_ext = new_avatar.name.split(".")[-1].lower()
