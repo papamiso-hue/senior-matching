@@ -44,6 +44,13 @@ ALIGO_API_KEY = "a2d6ej9asoilb20w66tmw6zw3qqp7shk"
 ALIGO_USER_ID = "equivision"
 ALIGO_SENDER = "01030383349"
 
+# 결제 계좌 정보 (필요시 실제 계좌번호로 변경)
+BANK_INFO = {
+    "bank": "카카오뱅크",
+    "account": "3333-01-2345678",
+    "holder": "라온(소셜클럽)"
+}
+
 # 4. 플랫폼 전용 맞춤법/오타 검증 엔진
 PLATFORM_TYPO_RULES = {
     r"안녕하새요": "안녕하세요",
@@ -88,7 +95,6 @@ KOREA_REGIONS = {
     "세종특별자치시": ["세종시 전역"]
 }
 
-# 5060 전용 필수 가치관 5대 문항
 CORE_QUESTIONS_5060 = {
     1: {
         "text": "1. 이상적인 동반 형태 및 관계 방향?",
@@ -112,7 +118,7 @@ CORE_QUESTIONS_5060 = {
     }
 }
 
-# --- 프리미엄 5060 리뉴얼 UI CSS (골드 & 다크 럭셔리 + 시인성 특화) ---
+# --- 프리미엄 5060 리뉴얼 UI CSS ---
 st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -199,7 +205,7 @@ st.markdown("""
     .promise-title { font-size: 0.85rem; font-weight: 800; color: #F4F4F5 !important; }
     .promise-desc { font-size: 0.72rem; color: #A1A1AA !important; margin-top: 2px; }
 
-    /* 5060 전용 대형 프리미엄 매칭 카드 */
+    /* 대형 카드 */
     .senior-card {
         position: relative;
         border-radius: 22px;
@@ -309,6 +315,60 @@ st.markdown("""
         word-break: keep-all;
     }
 
+    /* 티켓 충전소 패키지 카드 스타일 */
+    .shop-card {
+        background: #18181B;
+        border: 1.5px solid rgba(234, 179, 8, 0.25);
+        border-radius: 16px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+    .shop-card.featured {
+        border-color: #EAB308;
+        background: linear-gradient(145deg, #272215 0%, #18181B 100%);
+        box-shadow: 0 4px 20px rgba(234, 179, 8, 0.2);
+    }
+    .shop-title {
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: #FFFFFF;
+        margin-bottom: 4px;
+    }
+    .shop-desc {
+        font-size: 0.82rem;
+        color: #A1A1AA;
+    }
+    .shop-price {
+        font-size: 1.3rem;
+        font-weight: 900;
+        color: #FDE047;
+        text-align: right;
+    }
+    .shop-badge {
+        display: inline-block;
+        background: #CA8A04;
+        color: #FFFFFF;
+        font-size: 0.68rem;
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+    }
+
+    /* 계좌 안내 박스 */
+    .bank-box {
+        background: rgba(39, 39, 42, 0.6);
+        border: 1px dashed rgba(234, 179, 8, 0.4);
+        border-radius: 14px;
+        padding: 18px;
+        text-align: center;
+        margin: 16px 0;
+    }
+
     /* 탭 스타일 */
     div[data-baseweb="tab-list"] {
         background-color: rgba(24, 24, 27, 0.85) !important;
@@ -325,7 +385,7 @@ st.markdown("""
         background-color: transparent !important;
         color: #A1A1AA !important;
         font-weight: 800 !important;
-        font-size: 0.95rem !important;
+        font-size: 0.92rem !important;
         border: none !important;
     }
     div[data-baseweb="tab"][aria-selected="true"] {
@@ -423,6 +483,8 @@ if "sms_verified_phone" not in st.session_state:
     st.session_state.sms_verified_phone = None
 if "sms_is_verified" not in st.session_state:
     st.session_state.sms_is_verified = False
+if "selected_shop_tab" not in st.session_state:
+    st.session_state.selected_shop_tab = False
 
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
@@ -634,13 +696,18 @@ if not st.session_state.user_id:
 # --- 2. 메인 대시보드 화면 ---
 else:
     me = st.session_state.user_info
+    my_tickets = me.get('ticket_count', 0)
 
-    st.markdown(f"""
-        <div class="app-header">
-            <div class="app-brand">🌟 {BRAND_NAME_KR}</div>
-            <div style="font-size:0.85rem; font-weight:800; color:#FDE047;">🎟️ 티켓 {me.get('ticket_count', 0)}장</div>
-        </div>
-    """, unsafe_allow_html=True)
+    # 상단 헤더 (티켓 잔여량 및 바로 충전 버튼)
+    h_col1, h_col2 = st.columns([2.5, 1.5])
+    with h_col1:
+        st.markdown(f'<div class="app-brand">🌟 {BRAND_NAME_KR}</div>', unsafe_allow_html=True)
+    with h_col2:
+        st.markdown(f"""
+            <div style="text-align:right; margin-top:4px;">
+                <span style="font-size:0.92rem; font-weight:900; color:#FDE047;">🎟️ {my_tickets}장</span>
+            </div>
+        """, unsafe_allow_html=True)
 
     with st.expander("🚫 아는 사람 / 지인 번호 차단 관리"):
         curr_blocks = me.get("blocked_phones") or []
@@ -655,11 +722,13 @@ else:
                 st.success(f"{clean_bp} 번호가 상호 차단되었습니다.")
                 st.rerun()
 
-    tabs_main = st.tabs(["✨ 추천 피드", "📬 신청 보관함", "👤 내 프로필"])
+    # 4대 탭 메뉴 (티켓 충전소 추가)
+    tabs_main = st.tabs(["✨ 추천 피드", "📬 신청 보관함", "💳 티켓 충전", "👤 내 프로필"])
 
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
+    # --- TAB 1: 추천 피드 ---
     with tabs_main[0]:
         target_gender = "여" if me["gender"] == "남" else "남"
         raw_candidates = supabase.table("users").select("*")\
@@ -739,11 +808,13 @@ else:
                 elif req_status == "ACCEPTED":
                     st.success("🎉 매칭 성공! 보관함에서 선명한 사진과 연락처를 확인하세요.")
                 else:
-                    if st.button("💌 대화 신청 (티켓 1장 차감)", key=f"feed_btn_{cand['id']}"):
-                        if me.get("ticket_count", 0) <= 0:
-                            st.error("티켓이 부족합니다.")
+                    if st.button(f"💌 대화 신청하기 (티켓 1장)", key=f"feed_btn_{cand['id']}"):
+                        if my_tickets <= 0:
+                            st.error("🚨 보유 티켓이 부족합니다. 상단의 [💳 티켓 충전] 탭에서 충전 후 이용해 주세요.")
                         else:
-                            supabase.table("users").update({"ticket_count": me["ticket_count"] - 1}).eq("id", me["id"]).execute()
+                            supabase.table("users").update({"ticket_count": my_tickets - 1}).eq("id", me["id"]).execute()
+                            me["ticket_count"] = my_tickets - 1
+                            st.session_state.user_info = me
                             supabase.table("match_requests").insert({
                                 "sender_id": me["id"],
                                 "receiver_id": cand["id"],
@@ -754,6 +825,7 @@ else:
                             st.rerun()
                 st.write("")
 
+    # --- TAB 2: 신청 보관함 ---
     with tabs_main[1]:
         inbox_1, inbox_2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
         
@@ -811,7 +883,63 @@ else:
                                 st.rerun()
                     st.divider()
 
+    # --- TAB 3: [신규 보강] 티켓 충전소 ---
     with tabs_main[2]:
+        st.markdown(f"""
+            <div style="text-align:center; padding: 10px 0 16px 0;">
+                <h3 style="color:#FFFFFF; margin-bottom:4px;">👑 프라이빗 멤버십 충전</h3>
+                <div style="font-size:0.9rem; color:#A1A1AA;">현재 회원님의 보유 티켓: <strong style="color:#FDE047; font-size:1.05rem;">{my_tickets}장</strong></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="shop-card">
+                <div>
+                    <div class="shop-title">🎟️ 1회 대화 신청권</div>
+                    <div class="shop-desc">마음에 드는 동반자 1명에게 신청</div>
+                </div>
+                <div class="shop-price">30,000원</div>
+            </div>
+            
+            <div class="shop-card featured">
+                <div>
+                    <span class="shop-badge">⭐ 가장 많은 선택</span>
+                    <div class="shop-title">🌟 3회 실속 패키지</div>
+                    <div class="shop-desc">3회 신청 (회당 약 26,000원 / 11% 할인)</div>
+                </div>
+                <div class="shop-price">80,000원</div>
+            </div>
+
+            <div class="shop-card">
+                <div>
+                    <span class="shop-badge" style="background:#854D0E;">👑 VIP 추천</span>
+                    <div class="shop-title">👑 5회 VIP 전담 패키지</div>
+                    <div class="shop-desc">5회 신청 + 매칭 매니저 우선 주선</div>
+                </div>
+                <div class="shop-price">130,000원</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+            <div class="bank-box">
+                <div style="font-size:0.85rem; color:#E4E4E7; font-weight:700;">🏦 무통장 안심 입금 계좌</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#FDE047; margin:6px 0;">{BANK_INFO['bank']} {BANK_INFO['account']}</div>
+                <div style="font-size:0.82rem; color:#A1A1AA;">예금주: {BANK_INFO['holder']} (입금자명: <strong>{me['name']}</strong>)</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면, 담당 매니저가 즉시 확인 후 티켓을 충전해 드립니다.")
+        
+        st.markdown(f"""
+            <a href="{KAKAO_CHAT_URL}" target="_blank" style="text-decoration:none;">
+                <div style="background:#FEE500; color:#191919; text-align:center; padding:15px; border-radius:12px; font-weight:900; font-size:1.05rem; box-shadow:0 4px 14px rgba(254, 229, 0, 0.3);">
+                    💬 카카오톡 1:1 입금 확인 요청하기
+                </div>
+            </a>
+        """, unsafe_allow_html=True)
+
+    # --- TAB 4: 프로필 관리 ---
+    with tabs_main[3]:
         my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
         st.markdown(f"""
             <div style="text-align:center; padding:10px 0 20px 0;">
@@ -852,6 +980,7 @@ else:
 
         st.markdown("---")
         st.markdown("##### 📸 프로필 사진 등록")
+        st.caption("등록된 사진은 매칭 전까지 실루엣 블러 처리되어 안전하게 보호되며, 상호 수락 시에만 상대방에게 선명하게 공개됩니다.")
         new_avatar = st.file_uploader("사진 파일 선택 (JPG, PNG)", type=["jpg", "png", "jpeg"], key="up_avatar")
         if new_avatar and st.button("사진 등록 및 저장"):
             f_ext = new_avatar.name.split(".")[-1].lower()
