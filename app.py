@@ -48,7 +48,6 @@ ALIGO_SENDER = st.secrets["ALIGO_SENDER"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
-# 비밀번호 단방향 암호화 함수
 def hash_password(pwd: str) -> str:
     if not pwd:
         return ""
@@ -60,7 +59,6 @@ BANK_INFO = {
     "holder": "라온(소셜클럽)"
 }
 
-# 4. 맞춤법 및 오타 검증
 PLATFORM_TYPO_RULES = {
     r"안녕하새요": "안녕하세요",
     r"결재": "결제(이용권/티켓 결제)",
@@ -127,7 +125,6 @@ CORE_QUESTIONS_5060 = {
     }
 }
 
-# --- 프리미엄 5060 리뉴얼 UI CSS ---
 st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -485,7 +482,6 @@ if "sms_verified_phone" not in st.session_state:
 if "sms_is_verified" not in st.session_state:
     st.session_state.sms_is_verified = False
 
-# 5060 비밀번호 찾기 세션 상태
 if "reset_sms_code_5060" not in st.session_state:
     st.session_state.reset_sms_code_5060 = None
 if "reset_verified_phone_5060" not in st.session_state:
@@ -564,7 +560,6 @@ if not st.session_state.user_id:
                 else:
                     st.error("일치하는 회원 정보를 찾을 수 없습니다.")
 
-        # 🔑 비밀번호 찾기 (SMS 인증 기반)
         with st.expander("🔑 비밀번호를 잊으셨나요? (간편 재설정)"):
             st.caption("가입 시 등록한 성명과 휴대폰 번호로 인증 후 새 비밀번호를 설정할 수 있습니다.")
             f_name = st.text_input("가입 성명", key="f_name_5060")
@@ -712,10 +707,8 @@ if not st.session_state.user_id:
                         j_doc.read(), 
                         {"content-type": "application/pdf" if doc_ext == "pdf" else f"image/{doc_ext}"}
                     )
-                    doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{doc_name}"
                     now_utc = datetime.now(timezone.utc).isoformat()
 
-                    # 비밀번호 암호화 저장
                     new_u = supabase.table("users").insert({
                         "name": j_name.strip(),
                         "phone": clean_jp,
@@ -724,7 +717,7 @@ if not st.session_state.user_id:
                         "age": int(j_age),
                         "region": j_region,
                         "credit_score": int(j_credit),
-                        "credit_doc_url": doc_url,
+                        "credit_doc_url": doc_name,
                         "credit_status": "PENDING",
                         "is_verified": False,
                         "ticket_count": 3,
@@ -787,7 +780,6 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
-    # --- TAB 1: 추천 피드 ---
     with tabs_main[0]:
         target_gender = "여" if me["gender"] == "남" else "남"
         raw_candidates = supabase.table("users").select("*")\
@@ -884,7 +876,6 @@ else:
                             st.rerun()
                 st.write("")
 
-    # --- TAB 2: 신청 보관함 ---
     with tabs_main[1]:
         inbox_1, inbox_2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
         
@@ -942,7 +933,6 @@ else:
                                 st.rerun()
                     st.divider()
 
-    # --- TAB 3: 티켓 충전소 ---
     with tabs_main[2]:
         st.markdown(f"""
             <div style="text-align:center; padding: 10px 0 16px 0;">
@@ -997,7 +987,6 @@ else:
             </a>
         """, unsafe_allow_html=True)
 
-    # --- TAB 4: 프로필 관리 ---
     with tabs_main[3]:
         my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
         st.markdown(f"""
@@ -1051,6 +1040,68 @@ else:
             st.session_state.user_info = me
             st.success("사진이 등록되었습니다. 매칭 전에는 블라인드 보호가 자동 적용됩니다.")
             st.rerun()
+
+    # 👑 [관리자 전용] 5060 신원/신용 서류 심사 및 즉시 파기 센터
+    if me.get("is_admin"):
+        st.markdown("---")
+        with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
+            pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").execute().data
+            if not pending_users:
+                st.success("현재 심사 대기 중인 회원이 없습니다.")
+            else:
+                st.caption(f"총 {len(pending_users)}명의 서류 검토 대기자가 있습니다.")
+                for pu in pending_users:
+                    st.markdown(f"**신청자:** {pu['name']} ({pu['gender']} · {pu['age']}세 · {pu.get('job')} · 신용 {pu['credit_score']}점)")
+                    st.caption(f"연락처: {pu['phone']}")
+                    
+                    doc_path = pu.get("credit_doc_url", "")
+                    if doc_path and not doc_path.startswith("["):
+                        try:
+                            raw_path = doc_path.split("/")[-1]
+                            signed = supabase.storage.from_("credit-docs").create_signed_url(raw_path, 60)
+                            s_url = signed.get("signedURL") or signed.get("signedUrl")
+                            if s_url:
+                                st.markdown(f'<a href="{s_url}" target="_blank">📄 [안심 열람] 증빙서류 1회용 링크 열기 (60초 후 만료)</a>', unsafe_allow_html=True)
+                        except Exception as err:
+                            st.caption(f"서류 링크 생성 오류: {err}")
+
+                    col_ap, col_rj = st.columns(2)
+                    with col_ap:
+                        if st.button(f"✅ 승인 및 서류 영구 파기", key=f"btn_ap_5060_{pu['id']}"):
+                            raw_fname = doc_path.split("/")[-1]
+                            try:
+                                supabase.storage.from_("credit-docs").remove([raw_fname])
+                            except Exception:
+                                pass
+                            
+                            supabase.table("users").update({
+                                "is_verified": True,
+                                "credit_status": "VERIFIED",
+                                "credit_doc_url": "[심사 완료 후 안전 파기됨]"
+                            }).eq("id", pu["id"]).execute()
+
+                            send_aligo_notice_sms(pu["phone"], "노블레스 라온 신원 및 신용 검증이 완료되었습니다. 제출 서류는 안전하게 영구 파기되었습니다.")
+                            st.success(f"{pu['name']} 님이 정회원으로 승인되었습니다.")
+                            st.rerun()
+
+                    with col_rj:
+                        if st.button(f"🚫 반려 및 서류 파기", key=f"btn_rj_5060_{pu['id']}"):
+                            raw_fname = doc_path.split("/")[-1]
+                            try:
+                                supabase.storage.from_("credit-docs").remove([raw_fname])
+                            except Exception:
+                                pass
+                            
+                            supabase.table("users").update({
+                                "is_verified": False,
+                                "credit_status": "REJECTED",
+                                "credit_doc_url": "[반려 후 안전 파기됨]"
+                            }).eq("id", pu["id"]).execute()
+
+                            send_aligo_notice_sms(pu["phone"], "제출하신 증빙 서류가 기준에 미달하여 반려되었습니다. 다시 등록해 주세요.")
+                            st.warning(f"{pu['name']} 님의 신청이 반려되었습니다.")
+                            st.rerun()
+                    st.divider()
 
     st.markdown("---")
     if st.button("로그아웃"):
