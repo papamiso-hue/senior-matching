@@ -6,6 +6,7 @@ import math
 import io
 import json
 import random
+import hashlib
 import requests
 from datetime import datetime, timedelta, timezone
 import pandas as pd
@@ -33,25 +34,33 @@ st.markdown("""
 </head>
 """, unsafe_allow_html=True)
 
-# 3. 서비스 기본 상수 정의
+# 3. 서비스 기본 상수 및 보안 Secrets 연동
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON 5060"
 SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
-ALIGO_API_KEY = "a2d6ej9asoilb20w66tmw6zw3qqp7shk"
-ALIGO_USER_ID = "equivision"
-ALIGO_SENDER = "01030383349"
+ALIGO_API_KEY = st.secrets["ALIGO_API_KEY"]
+ALIGO_USER_ID = st.secrets["ALIGO_USER_ID"]
+ALIGO_SENDER = st.secrets["ALIGO_SENDER"]
 
-# 결제 계좌 정보 (필요시 실제 계좌번호로 변경)
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+
+# 비밀번호 단방향 암호화 함수
+def hash_password(pwd: str) -> str:
+    if not pwd:
+        return ""
+    return hashlib.sha256(pwd.strip().encode("utf-8")).hexdigest()
+
 BANK_INFO = {
     "bank": "카카오뱅크",
     "account": "3333-01-2345678",
     "holder": "라온(소셜클럽)"
 }
 
-# 4. 플랫폼 전용 맞춤법/오타 검증 엔진
+# 4. 맞춤법 및 오타 검증
 PLATFORM_TYPO_RULES = {
     r"안녕하새요": "안녕하세요",
     r"결재": "결제(이용권/티켓 결제)",
@@ -205,7 +214,6 @@ st.markdown("""
     .promise-title { font-size: 0.85rem; font-weight: 800; color: #F4F4F5 !important; }
     .promise-desc { font-size: 0.72rem; color: #A1A1AA !important; margin-top: 2px; }
 
-    /* 대형 카드 */
     .senior-card {
         position: relative;
         border-radius: 22px;
@@ -315,7 +323,6 @@ st.markdown("""
         word-break: keep-all;
     }
 
-    /* 티켓 충전소 패키지 카드 스타일 */
     .shop-card {
         background: #18181B;
         border: 1.5px solid rgba(234, 179, 8, 0.25);
@@ -359,7 +366,6 @@ st.markdown("""
         margin-bottom: 4px;
     }
 
-    /* 계좌 안내 박스 */
     .bank-box {
         background: rgba(39, 39, 42, 0.6);
         border: 1px dashed rgba(234, 179, 8, 0.4);
@@ -369,7 +375,6 @@ st.markdown("""
         margin: 16px 0;
     }
 
-    /* 탭 스타일 */
     div[data-baseweb="tab-list"] {
         background-color: rgba(24, 24, 27, 0.85) !important;
         padding: 5px;
@@ -395,7 +400,6 @@ st.markdown("""
     }
     div[data-baseweb="tab-border"] { display: none !important; }
 
-    /* 입력창 및 버튼 */
     div[data-baseweb="input"] {
         background-color: rgba(24, 24, 27, 0.95) !important;
         border: 1.5px solid #27272A !important;
@@ -426,9 +430,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-
 @st.cache_resource
 def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -457,9 +458,9 @@ def send_aligo_notice_sms(receiver_phone, text_message):
     try:
         url = "https://apis.aligo.in/send/"
         payload = {
-            ALIGO_API_KEY = st.secrets["ALIGO_API_KEY"]
-            ALIGO_USER_ID = st.secrets["ALIGO_USER_ID"]
-            ALIGO_SENDER = st.secrets["ALIGO_SENDER"]
+            "key": ALIGO_API_KEY,
+            "user_id": ALIGO_USER_ID,
+            "sender": ALIGO_SENDER,
             "receiver": receiver_phone,
             "msg": f"[{BRAND_NAME_KR}] {text_message}",
             "testmode_yn": "N"
@@ -483,8 +484,14 @@ if "sms_verified_phone" not in st.session_state:
     st.session_state.sms_verified_phone = None
 if "sms_is_verified" not in st.session_state:
     st.session_state.sms_is_verified = False
-if "selected_shop_tab" not in st.session_state:
-    st.session_state.selected_shop_tab = False
+
+# 5060 비밀번호 찾기 세션 상태
+if "reset_sms_code_5060" not in st.session_state:
+    st.session_state.reset_sms_code_5060 = None
+if "reset_verified_phone_5060" not in st.session_state:
+    st.session_state.reset_verified_phone_5060 = None
+if "reset_target_uid_5060" not in st.session_state:
+    st.session_state.reset_target_uid_5060 = None
 
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
@@ -529,24 +536,77 @@ if not st.session_state.user_id:
             if not login_name.strip() or not clean_p or not login_pwd.strip():
                 st.error("성명, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
             else:
+                hashed_input = hash_password(login_pwd)
                 res = supabase.table("users").select("*")\
                     .eq("name", login_name.strip())\
                     .eq("phone", clean_p)\
-                    .eq("password", login_pwd.strip())\
                     .execute()
+
                 if res.data:
                     u = res.data[0]
-                    if u.get("is_suspended"):
-                        st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
+                    stored_pwd = u.get("password", "")
+                    if stored_pwd == hashed_input or stored_pwd == login_pwd.strip():
+                        if u.get("is_suspended"):
+                            st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
+                        else:
+                            now_utc = datetime.now(timezone.utc).isoformat()
+                            update_data = {"last_login_at": now_utc}
+                            if stored_pwd != hashed_input:
+                                update_data["password"] = hashed_input
+                                
+                            supabase.table("users").update(update_data).eq("id", u["id"]).execute()
+                            u["last_login_at"] = now_utc
+                            st.session_state.user_id = u["id"]
+                            st.session_state.user_info = u
+                            st.rerun()
                     else:
-                        now_utc = datetime.now(timezone.utc).isoformat()
-                        supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
-                        u["last_login_at"] = now_utc
-                        st.session_state.user_id = u["id"]
-                        st.session_state.user_info = u
-                        st.rerun()
+                        st.error("비밀번호가 일치하지 않습니다.")
                 else:
                     st.error("일치하는 회원 정보를 찾을 수 없습니다.")
+
+        # 🔑 비밀번호 찾기 (SMS 인증 기반)
+        with st.expander("🔑 비밀번호를 잊으셨나요? (간편 재설정)"):
+            st.caption("가입 시 등록한 성명과 휴대폰 번호로 인증 후 새 비밀번호를 설정할 수 있습니다.")
+            f_name = st.text_input("가입 성명", key="f_name_5060")
+            col_fp1, col_fp2 = st.columns([2.5, 1.2])
+            with col_fp1:
+                f_phone = st.text_input("가입 휴대폰 번호", placeholder="01012345678", key="f_phone_5060")
+            with col_fp2:
+                st.write("")
+                btn_find_sms = st.button("인증문자 발송", key="btn_find_sms_5060")
+
+            clean_fp = re.sub(r'[^0-9]', '', f_phone.strip())
+            if btn_find_sms:
+                if not f_name.strip() or len(clean_fp) < 10:
+                    st.error("성명과 휴대폰 번호를 정확히 입력해 주세요.")
+                else:
+                    chk = supabase.table("users").select("id").eq("name", f_name.strip()).eq("phone", clean_fp).execute().data
+                    if not chk:
+                        st.error("등록된 회원 정보가 존재하지 않습니다.")
+                    else:
+                        code = str(random.randint(100000, 999999))
+                        st.session_state.reset_sms_code_5060 = code
+                        st.session_state.reset_verified_phone_5060 = clean_fp
+                        st.session_state.reset_target_uid_5060 = chk[0]["id"]
+                        send_aligo_sms(clean_fp, code)
+                        st.success("인증번호가 발송되었습니다. 아래에 입력해 주세요.")
+
+            if st.session_state.reset_sms_code_5060:
+                in_fcode = st.text_input("문자 인증번호 6자리", key="in_find_code_5060")
+                new_reset_pwd = st.text_input("새로운 간편 비밀번호 (4~6자리)", type="password", key="new_reset_pwd_5060")
+                
+                if st.button("새 비밀번호로 변경 및 저장", key="btn_do_reset_5060"):
+                    if in_fcode.strip() != st.session_state.reset_sms_code_5060:
+                        st.error("인증번호가 일치하지 않습니다.")
+                    elif len(new_reset_pwd.strip()) < 4:
+                        st.error("비밀번호는 최소 4자리 이상이어야 합니다.")
+                    else:
+                        supabase.table("users").update({
+                            "password": hash_password(new_reset_pwd)
+                        }).eq("id", st.session_state.reset_target_uid_5060).execute()
+                        st.session_state.reset_sms_code_5060 = None
+                        st.session_state.reset_target_uid_5060 = None
+                        st.success("🎉 비밀번호가 안전하게 재설정되었습니다! 새 비밀번호로 로그인해 주세요.")
 
     with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
@@ -655,10 +715,11 @@ if not st.session_state.user_id:
                     doc_url = f"{SUPABASE_URL}/storage/v1/object/public/credit-docs/{doc_name}"
                     now_utc = datetime.now(timezone.utc).isoformat()
 
+                    # 비밀번호 암호화 저장
                     new_u = supabase.table("users").insert({
                         "name": j_name.strip(),
                         "phone": clean_jp,
-                        "password": j_pwd.strip(),
+                        "password": hash_password(j_pwd),
                         "gender": j_gender,
                         "age": int(j_age),
                         "region": j_region,
@@ -698,7 +759,6 @@ else:
     me = st.session_state.user_info
     my_tickets = me.get('ticket_count', 0)
 
-    # 상단 헤더 (티켓 잔여량 및 바로 충전 버튼)
     h_col1, h_col2 = st.columns([2.5, 1.5])
     with h_col1:
         st.markdown(f'<div class="app-brand">🌟 {BRAND_NAME_KR}</div>', unsafe_allow_html=True)
@@ -722,7 +782,6 @@ else:
                 st.success(f"{clean_bp} 번호가 상호 차단되었습니다.")
                 st.rerun()
 
-    # 4대 탭 메뉴 (티켓 충전소 추가)
     tabs_main = st.tabs(["✨ 추천 피드", "📬 신청 보관함", "💳 티켓 충전", "👤 내 프로필"])
 
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
@@ -883,7 +942,7 @@ else:
                                 st.rerun()
                     st.divider()
 
-    # --- TAB 3: [신규 보강] 티켓 충전소 ---
+    # --- TAB 3: 티켓 충전소 ---
     with tabs_main[2]:
         st.markdown(f"""
             <div style="text-align:center; padding: 10px 0 16px 0;">
