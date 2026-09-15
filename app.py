@@ -933,6 +933,7 @@ else:
                                 st.rerun()
                     st.divider()
 
+   # --- TAB 3: 티켓 충전소 ---
     with tabs_main[2]:
         st.markdown(f"""
             <div style="text-align:center; padding: 10px 0 16px 0;">
@@ -968,6 +969,41 @@ else:
                 <div class="shop-price">130,000원</div>
             </div>
         """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+            <div class="bank-box">
+                <div style="font-size:0.85rem; color:#E4E4E7; font-weight:700;">🏦 무통장 안심 입금 계좌</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#FDE047; margin:6px 0;">{BANK_INFO['bank']} {BANK_INFO['account']}</div>
+                <div style="font-size:0.82rem; color:#A1A1AA;">예금주: {BANK_INFO['holder']} (입금자명: <strong>{me['name']}</strong>)</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면 담당 매니저가 즉시 확인 후 티켓을 충전해 드립니다.")
+        
+        st.markdown(f"""
+            <a href="{KAKAO_CHAT_URL}" target="_blank" style="text-decoration:none;">
+                <div style="background:#FEE500; color:#191919; text-align:center; padding:15px; border-radius:12px; font-weight:900; font-size:1.05rem; box-shadow:0 4px 14px rgba(254, 229, 0, 0.3); margin-bottom:18px;">
+                    💬 카카오톡 1:1 입금 확인 및 환불 문의
+                </div>
+            </a>
+        """, unsafe_allow_html=True)
+
+        # ⚖️ [전자상거래법 준수] 미사용 티켓 환불 기준 안내 아코디언
+        with st.expander("⚖️ 전자상거래법에 따른 티켓 환불 및 안심 이용 규정 안내"):
+            st.markdown("""
+            **1. 미사용 티켓 100% 청약철회 (환불)**
+            * 구매 후 **7일 이내에 전혀 사용하지 않은 티켓**은 전자상거래법 제17조에 따라 별도의 수수료 없이 **결제 금액 전액(100%) 환불**됩니다.
+
+            **2. 사용한 티켓의 환불 제한**
+            * 상대방 프로필에 대화 신청을 전송하여 **이미 사용(차감)된 티켓은 디지털 용역 제공이 개시·완료된 것으로 간주되어 환불이 불가**합니다.
+            * 패키지 상품(3회권, 5회권) 중 일부를 사용한 경우, 남은 미사용 잔여 티켓은 전체 결제액에서 이미 사용한 횟수만큼 단품 정가(회당 30,000원)를 차감한 후 잔여액을 반환합니다.
+
+            **3. 대화 신청 거절 및 미응답 시 티켓 보호**
+            * 신청을 받은 상대방이 정중히 '거절'하거나 72시간 이내 응답이 없을 경우, 회원의 소중한 권리 보호를 위해 **차감된 티켓은 보유 수량으로 즉시 전액 복구(반환)**됩니다.
+
+            **4. 환불 신청 접수**
+            * 상단 카카오톡 1:1 고객센터로 성명, 연락처, 입금 계좌번호를 남겨주시면 업무일 기준 24시간 이내에 전액 환불 송금 처리됩니다.
+            """)
 
         st.markdown(f"""
             <div class="bank-box">
