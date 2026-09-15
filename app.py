@@ -482,6 +482,13 @@ if "sms_verified_phone" not in st.session_state:
 if "sms_is_verified" not in st.session_state:
     st.session_state.sms_is_verified = False
 
+# SMS 연타 방지 변수
+if "sms_send_count_5060" not in st.session_state:
+    st.session_state.sms_send_count_5060 = 0
+if "sms_last_sent_at_5060" not in st.session_state:
+    st.session_state.sms_last_sent_at_5060 = None
+
+# 비밀번호 찾기 세션 상태
 if "reset_sms_code_5060" not in st.session_state:
     st.session_state.reset_sms_code_5060 = None
 if "reset_verified_phone_5060" not in st.session_state:
@@ -615,9 +622,17 @@ if not st.session_state.user_id:
             btn_sms = st.button("인증번호 발송", key="btn_sms")
 
         clean_jp = re.sub(r'[^0-9]', '', j_phone.strip())
+        
+        # 🛡️ 5060 SMS 연타 방지 및 쿨타임 로직 적용
         if btn_sms:
+            now_ts = datetime.now().timestamp()
             if len(clean_jp) < 10:
                 st.error("올바른 휴대폰 번호를 입력해 주세요.")
+            elif st.session_state.sms_send_count_5060 >= 3:
+                st.error("🚨 인증문자 발송 허용 횟수(최대 3회)를 초과했습니다. 잠시 후 다시 시도해 주세요.")
+            elif st.session_state.sms_last_sent_at_5060 and (now_ts - st.session_state.sms_last_sent_at_5060 < 60):
+                rem_sec = int(60 - (now_ts - st.session_state.sms_last_sent_at_5060))
+                st.warning(f"⏳ 문자 재발송 쿨타임이 적용 중입니다. {rem_sec}초 후에 다시 시도해 주세요.")
             else:
                 dup = supabase.table("users").select("id").eq("phone", clean_jp).execute().data
                 if dup:
@@ -627,8 +642,11 @@ if not st.session_state.user_id:
                     st.session_state.sms_auth_code = code
                     st.session_state.sms_verified_phone = clean_jp
                     st.session_state.sms_is_verified = False
+                    st.session_state.sms_last_sent_at_5060 = now_ts
+                    st.session_state.sms_send_count_5060 += 1
+                    
                     send_aligo_sms(clean_jp, code)
-                    st.success("문자로 발송된 6자리 인증번호를 입력해 주세요.")
+                    st.success(f"문자로 발송된 6자리 인증번호를 입력해 주세요. (발송 {st.session_state.sms_send_count_5060}/3회)")
 
         if st.session_state.sms_auth_code:
             c_code, c_btn = st.columns([2.5, 1.2])
@@ -780,6 +798,7 @@ else:
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
     my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
 
+    # --- TAB 1: 추천 피드 ---
     with tabs_main[0]:
         target_gender = "여" if me["gender"] == "남" else "남"
         raw_candidates = supabase.table("users").select("*")\
@@ -874,9 +893,37 @@ else:
                             }).execute()
                             send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 가치관 기반 대화 신청이 도착했습니다.")
                             st.rerun()
+
+                st.caption("ℹ️ 대화 신청 시 티켓 1장이 차감되며, 상대방이 72시간 내 응답하지 않거나 거절 시 티켓은 100% 자동 반환됩니다.")
                 st.write("")
 
+    # --- TAB 2: 신청 보관함 ---
     with tabs_main[1]:
+        # ⏰ 72시간 무응답 자동 취소 및 티켓 100% 자동 복구 시스템
+        pending_sent = supabase.table("match_requests")\
+            .select("*")\
+            .eq("sender_id", me["id"])\
+            .eq("status", "PENDING")\
+            .execute().data
+            
+        now_dt = datetime.now(timezone.utc)
+        restored_count = 0
+        
+        for req in pending_sent:
+            created_str = req.get("created_at")
+            if created_str:
+                created_dt = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+                if now_dt - created_dt > timedelta(hours=72):
+                    supabase.table("match_requests").update({"status": "EXPIRED"}).eq("id", req["id"]).execute()
+                    restored_count += 1
+
+        if restored_count > 0:
+            new_ticket_val = me.get("ticket_count", 0) + restored_count
+            supabase.table("users").update({"ticket_count": new_ticket_val}).eq("id", me["id"]).execute()
+            me["ticket_count"] = new_ticket_val
+            st.session_state.user_info = me
+            st.info(f"💡 72시간 동안 상대방 응답이 없는 신청 {restored_count}건이 자동 취소되어 티켓 {restored_count}장이 정상 반환되었습니다.")
+
         inbox_1, inbox_2 = st.tabs(["내가 보낸 신청", "나에게 온 신청"])
         
         with inbox_1:
@@ -898,8 +945,12 @@ else:
                         """, unsafe_allow_html=True)
                         st.write(f"📞 안심 연락처: **{rcv['phone']}** | 💼 경력: **{rcv.get('job')}**")
                         st.markdown(f'<a href="tel:{rcv["phone"]}">📞 바로 전화 걸기</a>', unsafe_allow_html=True)
+                    elif req["status"] == "EXPIRED":
+                        st.write(f"• **{rcv['name'][0]}*님** 신청 기한만료(72시간 무응답) | 티켓 반환 완료 ✅")
+                    elif req["status"] == "REJECTED":
+                        st.write(f"• **{rcv['name'][0]}*님** 신청 거절 | 티켓 반환 완료 ✅")
                     else:
-                        st.write(f"• **{rcv['name'][0]}*님**에게 보낸 신청 | 상태: `{req['status']}`")
+                        st.write(f"• **{rcv['name'][0]}*님**에게 보낸 신청 | 상태: `대기중(72시간 초과 시 자동 반환)`")
 
         with inbox_2:
             rcv_list = supabase.table("match_requests").select("*").eq("receiver_id", me["id"]).execute().data
@@ -929,11 +980,14 @@ else:
                                 st.rerun()
                         with col_re:
                             if st.button("거절", key=f"re_{req['id']}"):
+                                # 거절 시 상대방 티켓 즉시 자동 복구
                                 supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
+                                snd_curr = supabase.table("users").select("ticket_count").eq("id", snd["id"]).execute().data[0]
+                                supabase.table("users").update({"ticket_count": snd_curr.get("ticket_count", 0) + 1}).eq("id", snd["id"]).execute()
                                 st.rerun()
                     st.divider()
 
-   # --- TAB 3: 티켓 충전소 ---
+    # --- TAB 3: 티켓 충전소 ---
     with tabs_main[2]:
         st.markdown(f"""
             <div style="text-align:center; padding: 10px 0 16px 0;">
@@ -978,7 +1032,7 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면 담당 매니저가 즉시 확인 후 티켓을 충전해 드립니다.")
+        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면, 담당 매니저가 즉시 확인 후 티켓을 충전해 드립니다.")
         
         st.markdown(f"""
             <a href="{KAKAO_CHAT_URL}" target="_blank" style="text-decoration:none;">
@@ -998,31 +1052,14 @@ else:
             * 상대방 프로필에 대화 신청을 전송하여 **이미 사용(차감)된 티켓은 디지털 용역 제공이 개시·완료된 것으로 간주되어 환불이 불가**합니다.
             * 패키지 상품(3회권, 5회권) 중 일부를 사용한 경우, 남은 미사용 잔여 티켓은 전체 결제액에서 이미 사용한 횟수만큼 단품 정가(회당 30,000원)를 차감한 후 잔여액을 반환합니다.
 
-            **3. 대화 신청 거절 및 미응답 시 티켓 보호**
-            * 신청을 받은 상대방이 정중히 '거절'하거나 72시간 이내 응답이 없을 경우, 회원의 소중한 권리 보호를 위해 **차감된 티켓은 보유 수량으로 즉시 전액 복구(반환)**됩니다.
+            **3. 대화 신청 거절 및 72시간 무응답 시 티켓 보호**
+            * 신청을 받은 상대방이 정중히 '거절'하거나 **72시간 동안 미응답 시**, 회원의 소중한 권리 보호를 위해 **차감된 티켓은 보유 수량으로 즉시 전액 복구(반환)**됩니다.
 
             **4. 환불 신청 접수**
             * 상단 카카오톡 1:1 고객센터로 성명, 연락처, 입금 계좌번호를 남겨주시면 업무일 기준 24시간 이내에 전액 환불 송금 처리됩니다.
             """)
 
-        st.markdown(f"""
-            <div class="bank-box">
-                <div style="font-size:0.85rem; color:#E4E4E7; font-weight:700;">🏦 무통장 안심 입금 계좌</div>
-                <div style="font-size:1.15rem; font-weight:900; color:#FDE047; margin:6px 0;">{BANK_INFO['bank']} {BANK_INFO['account']}</div>
-                <div style="font-size:0.82rem; color:#A1A1AA;">예금주: {BANK_INFO['holder']} (입금자명: <strong>{me['name']}</strong>)</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면, 담당 매니저가 즉시 확인 후 티켓을 충전해 드립니다.")
-        
-        st.markdown(f"""
-            <a href="{KAKAO_CHAT_URL}" target="_blank" style="text-decoration:none;">
-                <div style="background:#FEE500; color:#191919; text-align:center; padding:15px; border-radius:12px; font-weight:900; font-size:1.05rem; box-shadow:0 4px 14px rgba(254, 229, 0, 0.3);">
-                    💬 카카오톡 1:1 입금 확인 요청하기
-                </div>
-            </a>
-        """, unsafe_allow_html=True)
-
+    # --- TAB 4: 프로필 관리 ---
     with tabs_main[3]:
         my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
         st.markdown(f"""
@@ -1077,7 +1114,6 @@ else:
             st.success("사진이 등록되었습니다. 매칭 전에는 블라인드 보호가 자동 적용됩니다.")
             st.rerun()
 
-    # 👑 [관리자 전용] 5060 신원/신용 서류 심사 및 즉시 파기 센터
     if me.get("is_admin"):
         st.markdown("---")
         with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
