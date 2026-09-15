@@ -21,17 +21,53 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. PWA 모바일 웹앱 메타태그 주입
-st.markdown("""
-<head>
-    <title>노블레스 라온</title>
-    <meta name="apple-mobile-web-app-title" content="노블레스 라온">
-    <meta name="application-name" content="노블레스 라온">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
-    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
-</head>
+# 2. PWA 모바일 전용 앱 아이콘 & 브랜드명 주입 (홈화면 추가 완벽 지원)
+manifest_5060 = {
+    "name": "노블레스 라온",
+    "short_name": "노블레스라온",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0A0A0C",
+    "theme_color": "#1F190B",
+    "icons": [
+        {
+            "src": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=512&auto=format&fit=crop",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
+manifest_5060_json = json.dumps(manifest_5060)
+
+st.markdown(f"""
+    <head>
+        <title>노블레스 라온</title>
+        <meta name="apple-mobile-web-app-title" content="노블레스 라온">
+        <meta name="application-name" content="노블레스 라온">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="#1F190B">
+        <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
+        <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
+    </head>
+    <script>
+        // 안드로이드 홈화면 추가용 Manifest 동적 주입
+        const manifestBlob = new Blob([`{manifest_5060_json}`], {{type: 'application/json'}});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        let manifestLink = document.querySelector("link[rel='manifest']");
+        if (!manifestLink) {{
+            manifestLink = document.createElement('link');
+            manifestLink.rel = 'manifest';
+            document.head.appendChild(manifestLink);
+        }}
+        manifestLink.href = manifestURL;
+        document.title = "노블레스 라온";
+    </script>
 """, unsafe_allow_html=True)
 
 # 3. 서비스 기본 상수 및 보안 Secrets 연동
