@@ -457,9 +457,9 @@ def send_aligo_notice_sms(receiver_phone, text_message):
     try:
         url = "https://apis.aligo.in/send/"
         payload = {
-            "key": ALIGO_API_KEY,
-            "user_id": ALIGO_USER_ID,
-            "sender": ALIGO_SENDER,
+            ALIGO_API_KEY = st.secrets["ALIGO_API_KEY"]
+            ALIGO_USER_ID = st.secrets["ALIGO_USER_ID"]
+            ALIGO_SENDER = st.secrets["ALIGO_SENDER"]
             "receiver": receiver_phone,
             "msg": f"[{BRAND_NAME_KR}] {text_message}",
             "testmode_yn": "N"
