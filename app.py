@@ -582,7 +582,11 @@ if not st.session_state.user_id:
             use_container_width=True
         )
 
-    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+    # 카카오 인증을 마친 상태면 신규 등록 탭을 가장 앞에 노출
+    if st.session_state.kakao_user:
+        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
+    else:
+        tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
