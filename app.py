@@ -517,28 +517,55 @@ if "reset_target_uid_5060" not in st.session_state:
 if "kakao_user" not in st.session_state:
     st.session_state.kakao_user = None
 
-# 카카오 콜백 처리
+# 카카오 콜백 처리 (원인 진단 출력)
 params = st.query_params
 if "code" in params and not st.session_state.user_id:
     kakao_code = params.get("code")
-    k_user = get_kakao_user_info(kakao_code)
-    if k_user:
-        st.session_state.kakao_user = k_user
-        kakao_id_str = str(k_user["id"])
+    
+    # 1. 카카오 토큰 요청
+    token_url = "https://kauth.kakao.com/oauth/token"
+    token_data = {
+        "grant_type": "authorization_code",
+        "client_id": "53c242a5a25a23e264cd7e845b124a82",
+        "redirect_uri": "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app",
+        "code": kakao_code,
+    }
+    headers = {"Content-type": "application/x-www-form-urlencoded;charset=utf-8"}
+    
+    res = requests.post(token_url, data=token_data, headers=headers).json()
+    access_token = res.get("access_token")
+    
+    if not access_token:
+        # 카카오가 거부한 실제 에러 내용 화면 출력
+        st.error(f"🚨 카카오 토큰 발급 거절: {res}")
+    else:
+        # 2. 프로필 조회
+        u_res = requests.get(
+            "https://kapi.kakao.com/v2/user/me",
+            headers={"Authorization": f"Bearer {access_token}"}
+        ).json()
         
-        res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
-        if res.data:
-            u = res.data[0]
-            if u.get("is_suspended"):
-                st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
-            else:
-                now_utc = datetime.now(timezone.utc).isoformat()
-                supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
-                u["last_login_at"] = now_utc
-                st.session_state.user_id = u["id"]
-                st.session_state.user_info = u
-                st.query_params.clear()
-                st.rerun()
+        k_id = str(u_res.get("id"))
+        k_props = u_res.get("properties", {})
+        k_nick = k_props.get("nickname", "카카오 회원")
+        k_img = k_props.get("profile_image", "")
+        
+        st.session_state.kakao_user = {
+            "id": k_id,
+            "nickname": k_nick,
+            "profile_image": k_img
+        }
+        
+        # 3. 기존 등록 회원 여부 확인
+        chk = supabase.table("users").select("*").eq("kakao_id", k_id).execute()
+        if chk.data:
+            u = chk.data[0]
+            now_utc = datetime.now(timezone.utc).isoformat()
+            supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
+            st.session_state.user_id = u["id"]
+            st.session_state.user_info = u
+            st.query_params.clear()
+            st.rerun()
 
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
