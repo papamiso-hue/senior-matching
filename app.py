@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 from supabase import create_client, Client
 from pypdf import PdfReader
+from kakao_auth import get_kakao_login_url, get_kakao_user_info
 
 # 1. 스트림릿 기본 페이지 설정
 st.set_page_config(
@@ -56,7 +57,6 @@ st.markdown(f"""
         <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
     </head>
     <script>
-        // 안드로이드 홈화면 추가용 Manifest 동적 주입
         const manifestBlob = new Blob([`{manifest_5060_json}`], {{type: 'application/json'}});
         const manifestURL = URL.createObjectURL(manifestBlob);
         let manifestLink = document.querySelector("link[rel='manifest']");
@@ -417,14 +417,14 @@ st.markdown("""
         width: 100%; 
         border-radius: 12px; 
         font-weight: 800; 
-        height: 3.5rem;
-        font-size: 1.1rem;
-        letter-spacing: -0.3px;
-        border: none !important;
-        background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important;
-        color: #000000 !important;
-        box-shadow: 0 6px 18px rgba(202, 138, 4, 0.35);
-        transition: transform 0.1s ease;
+        height: 3.5rem; 
+        font-size: 1.1rem; 
+        letter-spacing: -0.3px; 
+        border: none !important; 
+        background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important; 
+        color: #000000 !important; 
+        box-shadow: 0 6px 18px rgba(202, 138, 4, 0.35); 
+        transition: transform 0.1s ease; 
     }
     .stButton>button:active { transform: scale(0.98); }
 
@@ -476,6 +476,7 @@ DEFAULT_AVATARS = {
     "여": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop"
 }
 
+# --- 세션 상태 초기화 ---
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 if "user_info" not in st.session_state:
@@ -497,6 +498,40 @@ if "reset_verified_phone_5060" not in st.session_state:
     st.session_state.reset_verified_phone_5060 = None
 if "reset_target_uid_5060" not in st.session_state:
     st.session_state.reset_target_uid_5060 = None
+
+# 카카오 연동 세션 상태
+if "kakao_user" not in st.session_state:
+    st.session_state.kakao_user = None
+
+# ----------------------------------------------------
+# 🌟 [카카오 로그인 콜백 핸들러]
+# 사용자가 카카오 로그인 완료 후 리디렉트되었을 때 실행
+# ----------------------------------------------------
+params = st.query_params
+if "code" in params and not st.session_state.user_id:
+    kakao_code = params.get("code")
+    k_user = get_kakao_user_info(kakao_code)
+    if k_user:
+        st.session_state.kakao_user = k_user
+        kakao_id_str = str(k_user["id"])
+        
+        # 1) 카카오 ID로 기존 가입된 유저인지 조회
+        res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
+        if res.data:
+            u = res.data[0]
+            if u.get("is_suspended"):
+                st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
+            else:
+                now_utc = datetime.now(timezone.utc).isoformat()
+                supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
+                u["last_login_at"] = now_utc
+                st.session_state.user_id = u["id"]
+                st.session_state.user_info = u
+                st.query_params.clear()
+                st.rerun()
+        else:
+            st.info(f"💬 카카오 인증 완료 ({k_user['nickname']}님). 필수 신원 및 신용 정보를 입력하여 가입을 마쳐주세요.")
+            st.query_params.clear()
 
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
@@ -527,6 +562,18 @@ if not st.session_state.user_id:
                 <div class="promise-desc">상호 수락 시 연락처 공개</div>
             </div>
         </div>
+    """, unsafe_allow_html=True)
+
+    # 🌟 [시니어 전용 큰 글씨 카카오 간편 로그인 버튼]
+    kakao_login_url = get_kakao_login_url()
+    st.markdown(f"""
+        <a href="{kakao_login_url}" target="_self" style="text-decoration:none;">
+            <div style="background-color: #FEE500; color: #191919; padding: 16px 20px; 
+                        border-radius: 14px; text-align: center; font-weight: 900; font-size: 1.15rem; 
+                        box-shadow: 0 4px 14px rgba(254, 229, 0, 0.4); margin-bottom: 18px; cursor: pointer;">
+                💬 카카오 계정으로 간편 시작
+            </div>
+        </a>
     """, unsafe_allow_html=True)
 
     tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
@@ -614,7 +661,14 @@ if not st.session_state.user_id:
 
     with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
-        j_name = st.text_input("실명", key="j_name")
+        
+        # 카카오 연동 시 기본 이름/닉네임 자동 반영
+        default_name = ""
+        if st.session_state.kakao_user:
+            default_name = st.session_state.kakao_user.get("nickname", "")
+            st.caption(f"💬 카카오 프로필 연동 중: **{default_name}**")
+
+        j_name = st.text_input("실명", value=default_name, key="j_name")
         
         col_p1, col_p2 = st.columns([2.5, 1.2])
         with col_p1:
@@ -623,7 +677,6 @@ if not st.session_state.user_id:
             st.write("")
             btn_sms = st.button("인증번호 발송", key="btn_sms")
 
-        # ⚡ 5060 SMS 연타 방지 장치
         clean_jp = re.sub(r'[^0-9]', '', j_phone.strip())
         if btn_sms:
             now_ts = datetime.now().timestamp()
@@ -727,7 +780,10 @@ if not st.session_state.user_id:
                     )
                     now_utc = datetime.now(timezone.utc).isoformat()
 
-                    new_u = supabase.table("users").insert({
+                    kakao_id_val = str(st.session_state.kakao_user["id"]) if st.session_state.kakao_user else None
+                    kakao_photo_val = st.session_state.kakao_user.get("profile_image") if st.session_state.kakao_user else None
+
+                    user_data = {
                         "name": j_name.strip(),
                         "phone": clean_jp,
                         "password": hash_password(j_pwd),
@@ -747,7 +803,13 @@ if not st.session_state.user_id:
                         "intro": j_intro.strip(),
                         "is_admin": False,
                         "is_suspended": False
-                    }).execute().data[0]
+                    }
+                    if kakao_id_val:
+                        user_data["kakao_id"] = kakao_id_val
+                    if kakao_photo_val:
+                        user_data["photo_url"] = kakao_photo_val
+
+                    new_u = supabase.table("users").insert(user_data).execute().data[0]
 
                     uid = new_u["id"]
                     supabase.table("user_answers").insert([
@@ -897,7 +959,7 @@ else:
                 st.caption("ℹ️ 대화 신청 시 티켓 1장이 사용되며, 상대방 거절/72시간 미응답 시 티켓은 자동 반환됩니다. (미사용 티켓 7일 이내 100% 환불)")
                 st.write("")
 
-    # --- TAB 2: 신청 보관함 (모순 1 해결: 72시간 자동 만료 & 거절 시 티켓 즉시 복구) ---
+    # --- TAB 2: 신청 보관함 ---
     with tabs_main[1]:
         pending_sent = supabase.table("match_requests")\
             .select("*")\
@@ -982,10 +1044,8 @@ else:
                                 send_aligo_notice_sms(snd["phone"], f"{me['name'][0]}* 님이 대화를 수락했습니다. 안심 연락처를 확인하세요.")
                                 st.rerun()
                         with col_re:
-                            # ⚡ 거절 시 신청자 티켓 +1 즉시 자동 복구
                             if st.button("거절", key=f"re_{req['id']}"):
                                 supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).execute()
-                                
                                 cur_sender_ticket = snd.get("ticket_count", 0)
                                 supabase.table("users").update({"ticket_count": cur_sender_ticket + 1}).eq("id", snd["id"]).execute()
                                 send_aligo_notice_sms(snd["phone"], "보내신 대화 신청이 정중히 사양되었으며, 사용하신 티켓 1장이 정상 복구되었습니다.")
@@ -1061,7 +1121,7 @@ else:
             * 신청을 받은 상대방이 정중히 '거절'하거나 72시간 이내 응답이 없을 경우, **차감된 티켓은 보유 수량으로 100% 자동 반환**됩니다.
             """)
 
-    # --- TAB 4: 프로필 관리 (모순 4 해결: 서류 컬럼 격리) ---
+    # --- TAB 4: 프로필 관리 ---
     with tabs_main[3]:
         my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
         st.markdown(f"""
@@ -1088,7 +1148,6 @@ else:
         if intro_errs:
             st.caption(f"💡 권장 수정: {', '.join(intro_errs)}")
 
-        # ⚡ 모순 4 해결: 수정 대상 컬럼만 분리하여 서류 파기 텍스트 보호
         if st.button("프로필 정보 업데이트"):
             supabase.table("users").update({
                 "job": edit_job.strip(),
@@ -1183,4 +1242,5 @@ else:
     if st.button("로그아웃"):
         st.session_state.user_id = None
         st.session_state.user_info = None
+        st.session_state.kakao_user = None
         st.rerun()
