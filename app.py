@@ -581,6 +581,22 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
+    if st.session_state.kakao_user:
+        k_nick = st.session_state.kakao_user.get("nickname", "회원")
+        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n회원 심사를 위해 아래에서 기본 정보와 신원 서류를 등록해 주세요.")
+    else:
+        kakao_login_url = get_kakao_login_url()
+        st.link_button(
+            "💬 카카오 계정으로 간편 시작",
+            url=kakao_login_url,
+            use_container_width=True
+        )
+
+    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+
+    with tab_login:
+        login_name = st.text_input("성명", key="l_name")
+
     # 🌟 신규 회원이 카카오 인증을 마쳤을 때: 친절한 안내 배너를 띄우고 신규 등록 단계임을 명시
     if st.session_state.kakao_user:
         k_nick = st.session_state.kakao_user.get("nickname", "회원")
