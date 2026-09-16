@@ -598,9 +598,12 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
+    # 🌟 카카오 인증 완료 시: 로그인 탭을 아예 없애고 가입 폼 우선 배치
     if st.session_state.kakao_user:
         k_nick = st.session_state.kakao_user.get("nickname", "회원")
-        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n회원 심사를 위해 아래 [신규 프로필 등록]에서 기본 정보와 서류를 제출해 주세요.")
+        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n라온 회원 심사를 위해 **기본 인적사항과 서류**를 등록해 주세요.")
+        
+        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
     else:
         kakao_login_url = get_kakao_login_url()
         st.link_button(
@@ -608,8 +611,7 @@ if not st.session_state.user_id:
             url=kakao_login_url,
             use_container_width=True
         )
-
-    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+        tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
@@ -688,6 +690,8 @@ if not st.session_state.user_id:
                         st.session_state.reset_sms_code_5060 = None
                         st.session_state.reset_target_uid_5060 = None
                         st.success("🎉 비밀번호가 안전하게 재설정되었습니다! 새 비밀번호로 로그인해 주세요.")
+
+    with tab_join:
 
     with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
