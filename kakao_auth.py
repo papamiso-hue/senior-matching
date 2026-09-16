@@ -1,22 +1,18 @@
 import streamlit as st
 import requests
 
-# 발급받은 카카오 정보
 KAKAO_REST_API_KEY = "53c242a5a25a23e264cd7e845b124a82"
-KAKAO_REDIRECT_URI = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"  # (블라인드 라온은 https://blindraon.com)
+KAKAO_REDIRECT_URI = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
 
 def get_kakao_login_url():
-    """카카오 인증 인가 코드 요청 URL 생성 (쿠키/보안 우회 파라미터 포함)"""
     return (
         f"https://kauth.kakao.com/oauth/authorize?"
         f"client_id={KAKAO_REST_API_KEY}&"
         f"redirect_uri={KAKAO_REDIRECT_URI}&"
-        f"response_type=code&"
-        f"prompt=login"
+        f"response_type=code"
     )
 
 def get_kakao_user_info(auth_code):
-    """인가 코드로 토큰 발급 및 사용자 프로필 조회"""
     token_url = "https://kauth.kakao.com/oauth/token"
     token_data = {
         "grant_type": "authorization_code",
@@ -27,10 +23,12 @@ def get_kakao_user_info(auth_code):
     headers = {"Content-type": "application/x-www-form-urlencoded;charset=utf-8"}
     
     try:
-        token_res = requests.post(token_url, data=token_data, headers=headers).json()
-        access_token = token_res.get("access_token")
+        res = requests.post(token_url, data=token_data, headers=headers)
+        token_res = res.json()
         
+        access_token = token_res.get("access_token")
         if not access_token:
+            st.error(f"🚨 토큰 발급 에러 응답: {token_res}")
             return None
 
         user_url = "https://kapi.kakao.com/v2/user/me"
@@ -50,5 +48,6 @@ def get_kakao_user_info(auth_code):
             "nickname": nickname,
             "profile_image": profile_image
         }
-    except Exception:
+    except Exception as e:
+        st.error(f"🚨 카카오 통신 예외 발생: {e}")
         return None
