@@ -522,10 +522,15 @@ params = st.query_params
 if "code" in params and not st.session_state.user_id:
     kakao_code = params.get("code")
     k_user = get_kakao_user_info(kakao_code)
+    
+    # 1회용 인가 코드 사용 즉시 주소창 파라미터 삭제 (KOE320 방지)
+    st.query_params.clear()
+    
     if k_user:
         st.session_state.kakao_user = k_user
         kakao_id_str = str(k_user["id"])
         
+        # 1) 기존 회원 여부 확인
         res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
         if res.data:
             u = res.data[0]
@@ -537,8 +542,10 @@ if "code" in params and not st.session_state.user_id:
                 u["last_login_at"] = now_utc
                 st.session_state.user_id = u["id"]
                 st.session_state.user_info = u
-                st.query_params.clear()
                 st.rerun()
+        else:
+            # 2) 신규 회원인 경우: 안내 화면으로 갱신
+            st.rerun()
 
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
@@ -571,9 +578,11 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
+    # 🌟 카카오 인증 완료 회원이면 환영 박스 표시 & 신규 가입 탭 우선 활성화
     if st.session_state.kakao_user:
         k_nick = st.session_state.kakao_user.get("nickname", "회원")
         st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n회원 심사를 위해 아래에서 기본 정보와 서류를 제출해 주세요.")
+        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
     else:
         kakao_login_url = get_kakao_login_url()
         st.link_button(
@@ -581,11 +590,6 @@ if not st.session_state.user_id:
             url=kakao_login_url,
             use_container_width=True
         )
-
-    # 카카오 인증을 마친 상태면 신규 등록 탭을 가장 앞에 노출
-    if st.session_state.kakao_user:
-        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
-    else:
         tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
     with tab_login:
