@@ -517,17 +517,15 @@ if "reset_target_uid_5060" not in st.session_state:
 if "kakao_user" not in st.session_state:
     st.session_state.kakao_user = None
 
-# 카카오 콜백 처리 (진단 및 확실한 처리)
+# 카카오 콜백 처리
 params = st.query_params
 if "code" in params and not st.session_state.user_id:
     kakao_code = params.get("code")
     k_user = get_kakao_user_info(kakao_code)
-    
     if k_user:
         st.session_state.kakao_user = k_user
         kakao_id_str = str(k_user["id"])
         
-        # 기존 가입 여부 확인
         res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
         if res.data:
             u = res.data[0]
@@ -541,12 +539,7 @@ if "code" in params and not st.session_state.user_id:
                 st.session_state.user_info = u
                 st.query_params.clear()
                 st.rerun()
-            else:
-                # 신규 회원이면 쿼리 파라미터만 정리
-                st.query_params.clear()
-        except Exception as e:
-            st.error(f"DB 조회 중 오류: {e}")
-            
+
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
     st.markdown(f"""
@@ -588,8 +581,6 @@ if not st.session_state.user_id:
             url=kakao_login_url,
             use_container_width=True
         )
-
-    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
     tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
