@@ -692,8 +692,6 @@ if not st.session_state.user_id:
                         st.success("🎉 비밀번호가 안전하게 재설정되었습니다! 새 비밀번호로 로그인해 주세요.")
 
     with tab_join:
-
-    with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
         
         default_name = ""
