@@ -165,11 +165,27 @@ st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
-    .stApp {
+   .stApp {
         background: radial-gradient(circle at 50% 0%, #1F190B 0%, #0A0A0C 60%, #050506 100%) !important;
         color: #F8FAFC !important;
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
+
+    .stLinkButton > a {
+        background-color: #FEE500 !important;
+        color: #191919 !important;
+        font-weight: 900 !important;
+        font-size: 1.15rem !important;
+        border-radius: 14px !important;
+        height: 3.6rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(254, 229, 0, 0.4) !important;
+        margin-bottom: 12px !important;
+    }
+
     .block-container { 
         padding-top: 1.2rem !important; 
         padding-bottom: 4rem !important; 
@@ -564,17 +580,13 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🌟 카카오 계정으로 간편 시작 버튼 (최상위 창으로 강제 이동)
+   # 🌟 공식 지원 링크 버튼으로 교체 (터치/클릭 100% 동작)
     kakao_login_url = get_kakao_login_url()
-    st.markdown(f"""
-        <a href="{kakao_login_url}" target="_top" style="text-decoration:none;">
-            <div style="background-color: #FEE500; color: #191919; padding: 16px 20px; 
-                        border-radius: 14px; text-align: center; font-weight: 900; font-size: 1.15rem; 
-                        box-shadow: 0 4px 14px rgba(254, 229, 0, 0.4); margin-bottom: 18px; cursor: pointer;">
-                💬 카카오 계정으로 간편 시작
-            </div>
-        </a>
-    """, unsafe_allow_html=True)
+    st.link_button(
+        "💬 카카오 계정으로 간편 시작",
+        url=kakao_login_url,
+        use_container_width=True
+    )
 
     tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
