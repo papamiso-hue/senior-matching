@@ -22,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. PWA 모바일 전용 앱 아이콘 & 브랜드명 주입 (홈화면 추가 완벽 지원)
+# 2. PWA 모바일 전용 앱 아이콘 & 브랜드명 주입
 manifest_5060 = {
     "name": "노블레스 라온",
     "short_name": "노블레스라온",
@@ -165,7 +165,7 @@ st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
-   .stApp {
+    .stApp {
         background: radial-gradient(circle at 50% 0%, #1F190B 0%, #0A0A0C 60%, #050506 100%) !important;
         color: #F8FAFC !important;
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif !important;
@@ -492,7 +492,6 @@ DEFAULT_AVATARS = {
     "여": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop"
 }
 
-# --- 세션 상태 초기화 ---
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 if "user_info" not in st.session_state:
@@ -515,14 +514,10 @@ if "reset_verified_phone_5060" not in st.session_state:
 if "reset_target_uid_5060" not in st.session_state:
     st.session_state.reset_target_uid_5060 = None
 
-# 카카오 연동 세션 상태
 if "kakao_user" not in st.session_state:
     st.session_state.kakao_user = None
 
-# ----------------------------------------------------
-# 🌟 [카카오 로그인 콜백 핸들러]
-# 사용자가 카카오 로그인 완료 후 리디렉트되었을 때 실행
-# ----------------------------------------------------
+# 카카오 콜백 처리
 params = st.query_params
 if "code" in params and not st.session_state.user_id:
     kakao_code = params.get("code")
@@ -531,7 +526,6 @@ if "code" in params and not st.session_state.user_id:
         st.session_state.kakao_user = k_user
         kakao_id_str = str(k_user["id"])
         
-        # 1) 카카오 ID로 기존 가입된 유저인지 조회
         res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
         if res.data:
             u = res.data[0]
@@ -546,7 +540,6 @@ if "code" in params and not st.session_state.user_id:
                 st.query_params.clear()
                 st.rerun()
         else:
-            # 2) 미가입 신규 회원인 경우: 안내 플래그 설정 후 주소창 정리
             st.query_params.clear()
             st.rerun()
 
@@ -583,7 +576,7 @@ if not st.session_state.user_id:
 
     if st.session_state.kakao_user:
         k_nick = st.session_state.kakao_user.get("nickname", "회원")
-        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n회원 심사를 위해 아래에서 기본 정보와 신원 서류를 등록해 주세요.")
+        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n회원 심사를 위해 아래 [신규 프로필 등록]에서 기본 정보와 서류를 제출해 주세요.")
     else:
         kakao_login_url = get_kakao_login_url()
         st.link_button(
@@ -596,29 +589,6 @@ if not st.session_state.user_id:
 
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
-
-    # 🌟 신규 회원이 카카오 인증을 마쳤을 때: 친절한 안내 배너를 띄우고 신규 등록 단계임을 명시
-    if st.session_state.kakao_user:
-        k_nick = st.session_state.kakao_user.get("nickname", "회원")
-        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n라온 회원 심사를 위해 **아래 [신규 프로필 등록]에서 기본 정보와 신원 서류를 등록**해 주세요. (다음 접속부터는 카카오 터치 한 번으로 즉시 로그인됩니다)")
-    else:
-        kakao_login_url = get_kakao_login_url()
-        st.link_button(
-            "💬 카카오 계정으로 간편 시작",
-            url=kakao_login_url,
-            use_container_width=True
-        )
-
-    # 🌟 카카오 인증 신규 회원이면 등록 폼을 우선 열어줌
-    if st.session_state.kakao_user:
-        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
-    else:
-        tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
-
-    with tab_login:
-
-    with tab_login:
-        login_name = st.text_input("성명", key="l_name")
         login_phone = st.text_input("휴대폰 번호 (- 제외 숫자만)", placeholder="01012345678", key="l_phone")
         login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", key="l_pwd")
 
@@ -628,10 +598,7 @@ if not st.session_state.user_id:
                 st.error("성명, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
             else:
                 hashed_input = hash_password(login_pwd)
-                res = supabase.table("users").select("*")\
-                    .eq("name", login_name.strip())\
-                    .eq("phone", clean_p)\
-                    .execute()
+                res = supabase.table("users").select("*").eq("name", login_name.strip()).eq("phone", clean_p).execute()
 
                 if res.data:
                     u = res.data[0]
@@ -701,7 +668,6 @@ if not st.session_state.user_id:
     with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
         
-        # 카카오 연동 시 기본 이름/닉네임 자동 반영
         default_name = ""
         if st.session_state.kakao_user:
             default_name = st.session_state.kakao_user.get("nickname", "")
@@ -1215,7 +1181,7 @@ else:
             st.success("사진이 등록되었습니다. 매칭 전에는 블라인드 보호가 자동 적용됩니다.")
             st.rerun()
 
-    # 👑 [관리자 전용] 5060 신원/신용 서류 심사 및 즉시 파기 센터
+    # 👑 [관리자 전용] 5060 서류 심사 센터
     if me.get("is_admin"):
         st.markdown("---")
         with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
