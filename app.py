@@ -523,27 +523,24 @@ if "code" in params and not st.session_state.user_id:
     kakao_code = params.get("code")
     k_user = get_kakao_user_info(kakao_code)
     
-    if not k_user:
-        st.error("🚨 카카오 사용자 정보를 불러오지 못했습니다. 카카오 REST API 키 또는 Redirect URI 설정을 확인해 주세요.")
-    else:
+    if k_user:
         st.session_state.kakao_user = k_user
         kakao_id_str = str(k_user["id"])
         
-        # Supabase users 테이블에서 카카오 ID 조회
-        try:
-            res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
-            if res.data:
-                u = res.data[0]
-                if u.get("is_suspended"):
-                    st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
-                else:
-                    now_utc = datetime.now(timezone.utc).isoformat()
-                    supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
-                    u["last_login_at"] = now_utc
-                    st.session_state.user_id = u["id"]
-                    st.session_state.user_info = u
-                    st.query_params.clear()
-                    st.rerun()
+        # 기존 가입 여부 확인
+        res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
+        if res.data:
+            u = res.data[0]
+            if u.get("is_suspended"):
+                st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
+            else:
+                now_utc = datetime.now(timezone.utc).isoformat()
+                supabase.table("users").update({"last_login_at": now_utc}).eq("id", u["id"]).execute()
+                u["last_login_at"] = now_utc
+                st.session_state.user_id = u["id"]
+                st.session_state.user_info = u
+                st.query_params.clear()
+                st.rerun()
             else:
                 # 신규 회원이면 쿼리 파라미터만 정리
                 st.query_params.clear()
