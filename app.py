@@ -564,10 +564,10 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🌟 [시니어 전용 큰 글씨 카카오 간편 로그인 버튼]
+    # 🌟 카카오 계정으로 간편 시작 버튼 (최상위 창으로 강제 이동)
     kakao_login_url = get_kakao_login_url()
     st.markdown(f"""
-        <a href="{kakao_login_url}" target="_self" style="text-decoration:none;">
+        <a href="{kakao_login_url}" target="_top" style="text-decoration:none;">
             <div style="background-color: #FEE500; color: #191919; padding: 16px 20px; 
                         border-radius: 14px; text-align: center; font-weight: 900; font-size: 1.15rem; 
                         box-shadow: 0 4px 14px rgba(254, 229, 0, 0.4); margin-bottom: 18px; cursor: pointer;">
