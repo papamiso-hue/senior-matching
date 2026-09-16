@@ -526,6 +526,7 @@ if "code" in params and not st.session_state.user_id:
         st.session_state.kakao_user = k_user
         kakao_id_str = str(k_user["id"])
         
+        # 1) 기존 회원인지 확인
         res = supabase.table("users").select("*").eq("kakao_id", kakao_id_str).execute()
         if res.data:
             u = res.data[0]
@@ -540,9 +541,8 @@ if "code" in params and not st.session_state.user_id:
                 st.query_params.clear()
                 st.rerun()
         else:
+            # 2) 신규 회원인 경우: rerun 하지 않고 query_params만 정리하여 상태 유지
             st.query_params.clear()
-            st.rerun()
-
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
     st.markdown(f"""
