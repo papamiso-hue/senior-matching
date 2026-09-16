@@ -691,16 +691,16 @@ if not st.session_state.user_id:
                         st.session_state.reset_target_uid_5060 = None
                         st.success("🎉 비밀번호가 안전하게 재설정되었습니다! 새 비밀번호로 로그인해 주세요.")
 
-    with tab_join:
+with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
-        
+
         default_name = ""
         if st.session_state.kakao_user:
             default_name = st.session_state.kakao_user.get("nickname", "")
             st.caption(f"💬 카카오 프로필 연동 중: **{default_name}**")
 
         j_name = st.text_input("실명", value=default_name, key="j_name")
-        
+
         col_p1, col_p2 = st.columns([2.5, 1.2])
         with col_p1:
             j_phone = st.text_input("휴대폰 번호 (- 제외)", placeholder="01012345678", key="j_phone")
