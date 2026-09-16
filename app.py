@@ -543,6 +543,7 @@ if "code" in params and not st.session_state.user_id:
         else:
             # 2) 신규 회원인 경우: rerun 하지 않고 query_params만 정리하여 상태 유지
             st.query_params.clear()
+            
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
     st.markdown(f"""
