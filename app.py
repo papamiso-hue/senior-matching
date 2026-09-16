@@ -546,8 +546,9 @@ if "code" in params and not st.session_state.user_id:
                 st.query_params.clear()
                 st.rerun()
         else:
-            st.info(f"💬 카카오 인증 완료 ({k_user['nickname']}님). 필수 신원 및 신용 정보를 입력하여 가입을 마쳐주세요.")
+            # 2) 미가입 신규 회원인 경우: 안내 플래그 설정 후 주소창 정리
             st.query_params.clear()
+            st.rerun()
 
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
@@ -580,15 +581,25 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
-   # 🌟 공식 지원 링크 버튼으로 교체 (터치/클릭 100% 동작)
-    kakao_login_url = get_kakao_login_url()
-    st.link_button(
-        "💬 카카오 계정으로 간편 시작",
-        url=kakao_login_url,
-        use_container_width=True
-    )
+    # 🌟 신규 회원이 카카오 인증을 마쳤을 때: 친절한 안내 배너를 띄우고 신규 등록 단계임을 명시
+    if st.session_state.kakao_user:
+        k_nick = st.session_state.kakao_user.get("nickname", "회원")
+        st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n라온 회원 심사를 위해 **아래 [신규 프로필 등록]에서 기본 정보와 신원 서류를 등록**해 주세요. (다음 접속부터는 카카오 터치 한 번으로 즉시 로그인됩니다)")
+    else:
+        kakao_login_url = get_kakao_login_url()
+        st.link_button(
+            "💬 카카오 계정으로 간편 시작",
+            url=kakao_login_url,
+            use_container_width=True
+        )
 
-    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+    # 🌟 카카오 인증 신규 회원이면 등록 폼을 우선 열어줌
+    if st.session_state.kakao_user:
+        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
+    else:
+        tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+
+    with tab_login:
 
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
