@@ -591,6 +591,8 @@ if not st.session_state.user_id:
 
     tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
 
+    tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
         login_phone = st.text_input("휴대폰 번호 (- 제외 숫자만)", placeholder="01012345678", key="l_phone")
