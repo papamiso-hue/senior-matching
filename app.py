@@ -1262,7 +1262,7 @@ st.markdown("""
         <div><strong>상호명:</strong> 이퀴비젼에이아이 주식회사 | <strong>대표자:</strong> 오성수</div>
         <div><strong>사업자등록번호:</strong> 302-88-04351 | <strong>통신판매업신고번호:</strong> 신고 준비 중 (발급 즉시 기재)</div>
         <div><strong>사업장 주소:</strong> 서울특별시 금천구 벚꽃로 30, 206동 318호(독산동, 금천 롯데캐슬 골드파크 2차)</div>
-        <div><strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> 공식 계정 등록 예정</div>
+        <div><strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> papamiso@gmail.com</div>
         <div style="margin-top: 8px; font-size: 0.72rem; color: #64748B;">
             © 2026 EQUIVISION AI Inc. All rights reserved. 본 플랫폼은 전자상거래법 및 개인정보보호법을 준수합니다.
         </div>
