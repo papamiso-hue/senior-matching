@@ -7,6 +7,7 @@ import io
 import json
 import random
 import hashlib
+import html
 import requests
 from datetime import datetime, timedelta, timezone
 import pandas as pd
@@ -83,6 +84,18 @@ ALIGO_SENDER = st.secrets["ALIGO_SENDER"]
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+
+def esc(value) -> str:
+    """사용자가 입력한 글을 화면(HTML)에 안전하게 넣기 위한 처리 (악성 코드 삽입 방지)"""
+    return html.escape(str(value)) if value is not None else ""
+
+# 티켓 가격표 (원). 가격을 바꿀 때는 여기 숫자만 고치면 화면과 환불 안내에 같이 반영됩니다.
+TICKET_PRICE_1 = 10000
+TICKET_PRICE_3 = 27000
+TICKET_PRICE_5 = 43000
+
+def won(n: int) -> str:
+    return f"{n:,}원"
 
 def hash_password(pwd: str) -> str:
     if not pwd:
@@ -873,11 +886,15 @@ else:
     # --- TAB 1: 추천 피드 ---
     with tabs_main[0]:
         target_gender = "여" if me["gender"] == "남" else "남"
-        raw_candidates = supabase.table("users").select("*")\
+        # 비밀번호 등 불필요한 정보는 가져오지 않고, 최근 접속자 위주로 최대 300명만 불러옵니다.
+        raw_candidates = supabase.table("users")\
+            .select("id,name,phone,gender,age,region,job,intro,photo_url,credit_score,blocked_phones")\
             .eq("gender", target_gender)\
             .gte("age", 48)\
             .lte("age", 75)\
             .eq("is_suspended", False)\
+            .order("last_login_at", desc=True)\
+            .limit(300)\
             .execute().data
 
         my_blocked_set = set(me.get("blocked_phones") or [])
@@ -898,9 +915,14 @@ else:
             st.info("현재 활동 중인 추천 동반자가 없습니다.")
         else:
             cand_scores = []
+            # 후보 전원의 답변을 한 번에 가져옵니다 (후보마다 따로 조회하면 느려집니다).
+            all_ans = supabase.table("user_answers").select("user_id, question_num, answer_value")\
+                .in_("user_id", [c["id"] for c in candidates]).execute().data
+            ans_by_user = {}
+            for item in all_ans:
+                ans_by_user.setdefault(item["user_id"], {})[item["question_num"]] = item["answer_value"]
             for cand in candidates:
-                c_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", cand["id"]).execute().data
-                c_answers = {item["question_num"]: item["answer_value"] for item in c_ans_data}
+                c_answers = ans_by_user.get(cand["id"], {})
                 
                 common_keys = set(my_answers.keys()).intersection(set(c_answers.keys()))
                 score = int((sum(1 for k in common_keys if my_answers[k] == c_answers[k]) / len(common_keys)) * 100) if common_keys else 0
@@ -909,8 +931,8 @@ else:
             cand_scores.sort(key=lambda x: x[3], reverse=True)
 
             for cand, c_answers, common_keys, score in cand_scores:
-                c_img = cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"])
-                intro_txt = cand.get("intro") or "서로를 존중하고 아껴줄 소중한 인연을 기다립니다."
+                c_img = esc(cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"]))
+                intro_txt = esc(cand.get("intro") or "서로를 존중하고 아껴줄 소중한 인연을 기다립니다.")
 
                 st.markdown(f"""
                     <div class="senior-card">
@@ -922,12 +944,12 @@ else:
                         </div>
                         <div class="senior-content">
                             <div class="senior-name-row">
-                                <span class="senior-name">{cand['name'][0]}*님</span>
-                                <span class="senior-age">{cand['age']}세 · {cand['region'].split()[0]}</span>
+                                <span class="senior-name">{esc(cand['name'][0])}*님</span>
+                                <span class="senior-age">{esc(cand['age'])}세 · {esc(cand['region'].split()[0])}</span>
                             </div>
                             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-                                <span class="badge-pill-gold">💼 {cand.get('job', '경력 인증')}</span>
-                                <span class="badge-pill-credit">🛡️ 신용 {cand['credit_score']}점</span>
+                                <span class="badge-pill-gold">💼 {esc(cand.get('job') or '경력 인증')}</span>
+                                <span class="badge-pill-credit">🛡️ 신용 {esc(cand['credit_score'])}점</span>
                             </div>
                             <div class="senior-intro">"{intro_txt}"</div>
                         </div>
@@ -1010,7 +1032,7 @@ else:
                     rcv = supabase.table("users").select("*").eq("id", req["receiver_id"]).execute().data[0]
                     if req["status"] == "ACCEPTED":
                         st.success(f"🎉 **{rcv['name']}** 님과 매칭이 성사되었습니다!")
-                        r_img = rcv.get("photo_url") or DEFAULT_AVATARS.get(rcv["gender"])
+                        r_img = esc(rcv.get("photo_url") or DEFAULT_AVATARS.get(rcv["gender"]))
                         st.markdown(f"""
                             <div class="senior-card">
                                 <div class="senior-img-box">
@@ -1037,7 +1059,7 @@ else:
                     st.markdown(f"**{snd['name'][0]}*님** ({snd['gender']} · {snd['age']}세 · {snd.get('job')})")
                     if req["status"] == "ACCEPTED":
                         st.success("🤝 대화 수락 완료! 연락처가 공개되었습니다.")
-                        s_img = snd.get("photo_url") or DEFAULT_AVATARS.get(snd["gender"])
+                        s_img = esc(snd.get("photo_url") or DEFAULT_AVATARS.get(snd["gender"]))
                         st.markdown(f"""
                             <div class="senior-card">
                                 <div class="senior-img-box">
@@ -1072,31 +1094,33 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("""
+        d3 = round((1 - TICKET_PRICE_3 / (TICKET_PRICE_1 * 3)) * 100)
+        d5 = round((1 - TICKET_PRICE_5 / (TICKET_PRICE_1 * 5)) * 100)
+        st.markdown(f"""
             <div class="shop-card">
                 <div>
                     <div class="shop-title">🎟️ 1회 대화 신청권</div>
                     <div class="shop-desc">마음에 드는 동반자 1명에게 신청</div>
                 </div>
-                <div class="shop-price">30,000원</div>
+                <div class="shop-price">{won(TICKET_PRICE_1)}</div>
             </div>
             
             <div class="shop-card featured">
                 <div>
                     <span class="shop-badge">⭐ 가장 많은 선택</span>
                     <div class="shop-title">🌟 3회 실속 패키지</div>
-                    <div class="shop-desc">3회 신청 (회당 약 26,000원 / 11% 할인)</div>
+                    <div class="shop-desc">3회 신청 (회당 약 {won(round(TICKET_PRICE_3 / 3))} / {d3}% 할인)</div>
                 </div>
-                <div class="shop-price">80,000원</div>
+                <div class="shop-price">{won(TICKET_PRICE_3)}</div>
             </div>
 
             <div class="shop-card">
                 <div>
                     <span class="shop-badge" style="background:#854D0E;">👑 VIP 추천</span>
                     <div class="shop-title">👑 5회 VIP 전담 패키지</div>
-                    <div class="shop-desc">5회 신청 + 매칭 매니저 우선 주선</div>
+                    <div class="shop-desc">5회 신청 + 매칭 매니저 우선 주선 (회당 약 {won(round(TICKET_PRICE_5 / 5))} / {d5}% 할인)</div>
                 </div>
-                <div class="shop-price">130,000원</div>
+                <div class="shop-price">{won(TICKET_PRICE_5)}</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1104,7 +1128,7 @@ else:
             <div class="bank-box">
                 <div style="font-size:0.85rem; color:#E4E4E7; font-weight:700;">🏦 무통장 안심 입금 계좌</div>
                 <div style="font-size:1.15rem; font-weight:900; color:#FDE047; margin:6px 0;">{BANK_INFO['bank']} {BANK_INFO['account']}</div>
-                <div style="font-size:0.82rem; color:#A1A1AA;">예금주: {BANK_INFO['holder']} (입금자명: <strong>{me['name']}</strong>)</div>
+                <div style="font-size:0.82rem; color:#A1A1AA;">예금주: {esc(BANK_INFO['holder'])} (입금자명: <strong>{esc(me['name'])}</strong>)</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1119,13 +1143,13 @@ else:
         """, unsafe_allow_html=True)
 
         with st.expander("⚖️ 전자상거래법에 따른 티켓 환불 및 안심 이용 규정 안내"):
-            st.markdown("""
+            st.markdown(f"""
             **1. 미사용 티켓 100% 청약철회 (환불)**
             * 구매 후 **7일 이내에 전혀 사용하지 않은 티켓**은 전자상거래법 제17조에 따라 별도의 수수료 없이 **결제 금액 전액(100%) 환불**됩니다.
 
             **2. 사용한 티켓의 환불 제한**
             * 상대방 프로필에 대화 신청을 전송하여 **이미 사용(차감)된 티켓은 디지털 용역 제공이 완료된 것으로 간주되어 환불이 불가**합니다.
-            * 패키지 상품 중 일부만 사용한 경우, 미사용 잔여 티켓은 전체 결제액에서 사용한 횟수만큼 단품 정가(회당 30,000원)를 차감한 후 잔여액을 반환합니다.
+            * 패키지 상품 중 일부만 사용한 경우, 미사용 잔여 티켓은 전체 결제액에서 사용한 횟수만큼 단품 정가(회당 {won(TICKET_PRICE_1)})를 차감한 후 잔여액을 반환합니다.
 
             **3. 대화 신청 거절 및 72시간 미응답 시 티켓 보호**
             * 신청을 받은 상대방이 정중히 '거절'하거나 72시간 이내 응답이 없을 경우, **차감된 티켓은 보유 수량으로 100% 자동 반환**됩니다.
@@ -1133,12 +1157,12 @@ else:
 
     # --- TAB 4: 프로필 관리 ---
     with tabs_main[3]:
-        my_avatar = me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"])
+        my_avatar = esc(me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"]))
         st.markdown(f"""
             <div style="text-align:center; padding:10px 0 20px 0;">
                 <img src="{my_avatar}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #EAB308;">
-                <h3 style="margin:10px 0 4px 0; color:#FFFFFF;">{me['name']} ({me['gender']} · {me['age']}세)</h3>
-                <div style="font-size:0.9rem; color:#D4D4D8;">📍 {me['region']} | 💼 {me.get('job')}</div>
+                <h3 style="margin:10px 0 4px 0; color:#FFFFFF;">{esc(me['name'])} ({esc(me['gender'])} · {esc(me['age'])}세)</h3>
+                <div style="font-size:0.9rem; color:#D4D4D8;">📍 {esc(me['region'])} | 💼 {esc(me.get('job'))}</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1260,7 +1284,7 @@ st.markdown("""
     <div style="margin-top: 50px; padding: 22px 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.76rem; color: #94A3B8; line-height: 1.7; word-break: keep-all;">
         <div style="font-weight: 800; color: #CBD5E1; margin-bottom: 6px;">(주)이퀴비젼에이아이 사업자 정보</div>
         <div><strong>상호명:</strong> 이퀴비젼에이아이 주식회사 | <strong>대표자:</strong> 오성수</div>
-        <div><strong>사업자등록번호:</strong> 302-88-04351 | <strong>통신판매업신고번호:</strong> 신고 준비 중 (발급 즉시 기재)</div>
+        <div><strong>사업자등록번호:</strong> 302-88-04351 | <strong>통신판매업신고번호:</strong> 제2026-서울금천-2071호 (2026.10.15 신고)</div>
         <div><strong>사업장 주소:</strong> 서울특별시 금천구 벚꽃로 30, 206동 318호(독산동, 금천 롯데캐슬 골드파크 2차)</div>
         <div><strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> papamiso@gmail.com</div>
         <div style="margin-top: 8px; font-size: 0.72rem; color: #64748B;">
