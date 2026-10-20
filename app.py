@@ -103,9 +103,9 @@ def hash_password(pwd: str) -> str:
     return hashlib.sha256(pwd.strip().encode("utf-8")).hexdigest()
 
 BANK_INFO = {
-    "bank": "카카오뱅크",
-    "account": "3333-01-2345678",
-    "holder": "라온(소셜클럽)"
+    "bank": "IBK기업은행",
+    "account": "079-154812-04-018",
+    "holder": "이퀴비젼에이아이 주식회사"
 }
 
 PLATFORM_TYPO_RULES = {
@@ -1286,7 +1286,7 @@ st.markdown("""
         <div><strong>상호명:</strong> 이퀴비젼에이아이 주식회사 | <strong>대표자:</strong> 오성수</div>
         <div><strong>사업자등록번호:</strong> 302-88-04351 | <strong>통신판매업신고번호:</strong> 제2026-서울금천-2071호 (2026.10.15 신고)</div>
         <div><strong>사업장 주소:</strong> 서울특별시 금천구 벚꽃로 30, 206동 318호(독산동, 금천 롯데캐슬 골드파크 2차)</div>
-        <div><strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> papamiso@gmail.com</div>
+        <div><strong>대표전화:</strong> 050-6798-3349 | <strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> equivisionai@gmail.com</div>
         <div style="margin-top: 8px; font-size: 0.72rem; color: #64748B;">
             © 2026 EQUIVISION AI Inc. All rights reserved. 본 플랫폼은 전자상거래법 및 개인정보보호법을 준수합니다.
         </div>
