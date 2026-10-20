@@ -17,7 +17,7 @@ from kakao_auth import get_kakao_login_url, get_kakao_user_info
 
 # 1. 스트림릿 기본 페이지 설정
 st.set_page_config(
-    page_title="노블레스 라온 - 5060 프라이빗 매칭",
+    page_title="노블레스 라온 - 5060 동반자·친구 만남",
     page_icon="👑",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -154,7 +154,7 @@ KOREA_REGIONS = {
 CORE_QUESTIONS_5060 = {
     1: {
         "text": "1. 이상적인 동반 형태 및 관계 방향?",
-        "options": ["혼인신고(법적 재혼) 희망", "사실혼(동거 및 일상 공유)", "LAT(각자 주거 유지 + 데이트형 동반자)", "편안하게 의지하는 친구 같은 만남"]
+        "options": ["취미·여행을 함께하는 동반자", "일상을 나누며 자주 만나는 가까운 친구", "각자 생활을 지키며 가끔 만나는 편안한 사이", "대화와 안부를 나누는 편안한 친구"]
     },
     2: {
         "text": "2. 자녀 독립 상태 및 교류 빈도?",
@@ -566,7 +566,7 @@ if not st.session_state.user_id:
         <div class="hero-box">
             <div class="hero-badge">👑 5060 NOBLESSE MATCHING</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
-            <div class="hero-subtitle">품격 있는 인생 2막을 함께할 진중한 동반자를 위한<br>
+            <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
             <strong style="color:#FDE047;">신용·신원 검증 기반 시니어 프라이빗 살롱</strong></div>
         </div>
     """, unsafe_allow_html=True)
@@ -759,7 +759,7 @@ if not st.session_state.user_id:
         if hobby_typos:
             st.caption(f"💡 표현 교정 안내: {', '.join(hobby_typos)}")
 
-        j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="인생의 후반전을 서로 존중하며 따뜻하게 보낼 인연을 찾습니다.", key="j_intro")
+        j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다.", key="j_intro")
         intro_typos = audit_text_typos(j_intro)
         if intro_typos:
             st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
@@ -932,7 +932,7 @@ else:
 
             for cand, c_answers, common_keys, score in cand_scores:
                 c_img = esc(cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"]))
-                intro_txt = esc(cand.get("intro") or "서로를 존중하고 아껴줄 소중한 인연을 기다립니다.")
+                intro_txt = esc(cand.get("intro") or "서로를 존중하며 함께 시간을 나눌 좋은 친구를 기다립니다.")
 
                 st.markdown(f"""
                     <div class="senior-card">
