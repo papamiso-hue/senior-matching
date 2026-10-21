@@ -1269,7 +1269,7 @@ if not st.session_state.user_id:
         if hobby_typos:
             st.caption(f"💡 표현 교정 안내: {', '.join(hobby_typos)}")
 
-        j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다.", key="j_intro")
+        j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="", placeholder="예: 인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다. (비워 두면 이 문장이 들어갑니다)", max_chars=500, key="j_intro")
         intro_typos = audit_text_typos(j_intro)
         if intro_typos:
             st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
@@ -1356,7 +1356,7 @@ if not st.session_state.user_id:
                         "last_login_at": now_utc,
                         "job": j_job.strip() if j_job else "개인사업/전문직",
                         "hobbies": j_hobbies.strip() if j_hobbies else "여가 생활",
-                        "intro": j_intro.strip(),
+                        "intro": (j_intro.strip() or "인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다."),
                         "is_admin": False,
                         "is_suspended": False
                     }
