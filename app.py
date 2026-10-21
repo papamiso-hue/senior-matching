@@ -99,7 +99,10 @@ def won(n: int) -> str:
     return f"{n:,}원"
 
 # 친구 추천 보상 설정 (바꾸려면 여기 숫자만 고치세요)
+WELCOME_TICKETS = 1         # 가입 선물 티켓 수
 REFERRAL_BONUS = 1          # 추천한 분 / 가입한 분 각각 받는 티켓 수
+REFERRAL_PAID_QNUM = 93     # 추천 보상 지급 완료 기록 (친구가 첫 결제한 뒤 지급)
+PURCHASE_QNUM = 94          # 유료 티켓 충전 기록 (사람당 1줄, JSON)
 REFERRAL_MAX_REWARDS = 5    # 한 분이 받을 수 있는 추천 보상 최대 횟수
 REFERRAL_QNUM = 90          # 추천 기록을 user_answers에 남길 때 쓰는 번호 (문답 1~5와 겹치지 않음)
 APP_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
@@ -681,7 +684,7 @@ if "code" in params and not st.session_state.user_id:
 if not st.session_state.user_id:
     st.markdown(f"""
         <div class="hero-box">
-            <div class="hero-badge">👑 5060 NOBLESSE MATCHING</div>
+            <div class="hero-badge">👑 5060 NOBLESSE COMPANIONS</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
             <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
             <strong style="color:#FDE047;">본인 확인으로 안심하는 5060 동반자·친구 만남</strong></div>
@@ -948,7 +951,7 @@ if not st.session_state.user_id:
                         "credit_doc_url": doc_name if has_doc else "",
                         "credit_status": "PENDING" if has_doc else "NONE",
                         "is_verified": False,
-                        "ticket_count": 3,
+                        "ticket_count": WELCOME_TICKETS,
                         "is_vip": False,
                         "blocked_phones": [],
                         "last_login_at": now_utc,
@@ -982,30 +985,22 @@ if not st.session_state.user_id:
                         {"user_id": uid, "question_num": 5, "answer_value": a5}
                     ]).execute()
 
-                    # 친구 추천 보상: 추천한 분과 가입한 분 모두 티켓 1장 (추천인당 최대 REFERRAL_MAX_REWARDS명)
+                    # 친구 추천: 가입 때는 "누가 초대했는지"만 기록합니다. 티켓은 친구가 첫 유료 티켓을 산 뒤에 지급합니다.
                     ref_msg = ""
                     ref_id = st.session_state.get("ref_id")
                     if ref_id and str(ref_id) != str(uid):
                         try:
-                            ref_rows = supabase.table("users").select("id,ticket_count").eq("id", ref_id).execute().data
+                            ref_rows = supabase.table("users").select("id").eq("id", ref_id).execute().data
                             if ref_rows:
-                                done = supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_QNUM).eq("answer_value", f"ref:{ref_id}").execute().data
-                                if len(done) < REFERRAL_MAX_REWARDS:
-                                    # 기록이 먼저 성공해야 보상을 줍니다 (중복 지급 방지)
-                                    supabase.table("user_answers").insert({"user_id": uid, "question_num": REFERRAL_QNUM, "answer_value": f"ref:{ref_id}"}).execute()
-                                    supabase.table("users").update({"ticket_count": (ref_rows[0].get("ticket_count") or 0) + REFERRAL_BONUS}).eq("id", ref_id).execute()
-                                    new_total = (new_u.get("ticket_count") or 0) + REFERRAL_BONUS
-                                    supabase.table("users").update({"ticket_count": new_total}).eq("id", uid).execute()
-                                    new_u["ticket_count"] = new_total
-                                    record_free_grant(ref_id, REFERRAL_BONUS)
-                                    ref_msg = f" 친구 추천 선물로 티켓 {REFERRAL_BONUS}장이 더 지급되었습니다."
+                                supabase.table("user_answers").insert({"user_id": uid, "question_num": REFERRAL_QNUM, "answer_value": f"ref:{ref_id}"}).execute()
+                                ref_msg = f" 첫 유료 티켓을 구매하시면 초대해 주신 분과 함께 티켓 {REFERRAL_BONUS}장씩 드립니다."
                         except Exception:
-                            pass  # 추천 보상 실패가 가입을 막지 않도록 함
+                            pass  # 추천 기록 실패가 가입을 막지 않도록 함
 
-                    record_free_grant(uid, 3 + (REFERRAL_BONUS if ref_msg else 0))
+                    record_free_grant(uid, WELCOME_TICKETS)
                     st.session_state.user_id = uid
                     st.session_state.user_info = new_u
-                    st.success(f"🎉 서류 제출 및 가입이 완료되었습니다! 웰컴 티켓 3장이 지급되었습니다.{ref_msg}")
+                    st.success(f"🎉 서류 제출 및 가입이 완료되었습니다! 가입 선물 티켓 {WELCOME_TICKETS}장이 지급되었습니다.{ref_msg}")
                     st.rerun()
                 except Exception as e:
                     st.error(f"가입 처리 중 오류 발생: {e}")
@@ -1285,7 +1280,7 @@ else:
                 <div>
                     <span class="shop-badge" style="background:#854D0E;">👑 VIP 추천</span>
                     <div class="shop-title">👑 5회 VIP 전담 패키지</div>
-                    <div class="shop-desc">5회 신청 + 담당 매니저 우선 안내 (회당 약 {won(round(TICKET_PRICE_5 / 5))} / {d5}% 할인)</div>
+                    <div class="shop-desc">5회 신청 (회당 약 {won(round(TICKET_PRICE_5 / 5))} / {d5}% 할인)</div>
                 </div>
                 <div class="shop-price">{won(TICKET_PRICE_5)}</div>
             </div>
@@ -1338,7 +1333,7 @@ else:
             invited = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_QNUM).eq("answer_value", f"ref:{me['id']}").execute().data)
         except Exception:
             invited = 0
-        st.caption(f"아래 링크로 친구가 가입하면 두 분 모두 티켓 {REFERRAL_BONUS}장을 받습니다. (최대 {REFERRAL_MAX_REWARDS}명 · 현재 {invited}명 초대 완료)")
+        st.caption(f"아래 링크로 친구가 가입하고 첫 유료 티켓을 구매하면 두 분 모두 티켓 {REFERRAL_BONUS}장을 받습니다. (보상 최대 {REFERRAL_MAX_REWARDS}명 · 현재 {invited}명이 링크로 가입)")
         st.code(f"{APP_URL}/?ref={me['id']}", language=None)
         st.markdown("---")
 
@@ -1393,6 +1388,47 @@ else:
 
     # 👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터
     if me.get("is_admin"):
+        st.markdown("---")
+        with st.expander("💳 [관리자 전용] 입금 확인 후 티켓 충전"):
+            st.caption("법인 계좌 입금을 확인한 뒤에만 사용하세요. 충전 내역이 기록되고, 친구 추천으로 가입한 분의 첫 충전이면 추천 보상이 자동 지급됩니다.")
+            ch_phone = st.text_input("충전할 회원 휴대폰 번호 (숫자만)", key="adm_ch_phone")
+            ch_qty = st.selectbox("충전 티켓 수", [1, 3, 5], key="adm_ch_qty")
+            ch_ok = st.checkbox("입금(금액·입금자명)을 확인했습니다.", key="adm_ch_ok")
+            if st.button("티켓 충전 실행", key="adm_ch_btn"):
+                cp = re.sub(r"[^0-9]", "", ch_phone or "")
+                tgt = supabase.table("users").select("id,name,ticket_count").eq("phone", cp).execute().data if cp else []
+                if not ch_ok:
+                    st.error("입금 확인 체크를 먼저 해 주세요.")
+                elif not tgt:
+                    st.error("해당 번호의 회원을 찾지 못했습니다.")
+                else:
+                    t = tgt[0]
+                    price = {1: TICKET_PRICE_1, 3: TICKET_PRICE_3, 5: TICKET_PRICE_5}[ch_qty]
+                    purchases, p_exists = _ledger_get(t["id"], PURCHASE_QNUM)
+                    first_purchase = len(purchases) == 0
+                    purchases.append({"qty": ch_qty, "price": price, "at": datetime.now(timezone.utc).isoformat()})
+                    _ledger_put(t["id"], PURCHASE_QNUM, purchases, p_exists)  # 기록을 먼저 남김
+                    supabase.table("users").update({"ticket_count": (t.get("ticket_count") or 0) + ch_qty}).eq("id", t["id"]).execute()
+                    msg = f"{t['name']} 님에게 티켓 {ch_qty}장({won(price)})을 충전했습니다."
+                    if first_purchase:
+                        try:
+                            inv = supabase.table("user_answers").select("answer_value").eq("user_id", t["id"]).eq("question_num", REFERRAL_QNUM).execute().data
+                            rid = inv[0]["answer_value"].split("ref:")[1] if inv and "ref:" in inv[0]["answer_value"] else None
+                            if rid:
+                                paid_cnt = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_PAID_QNUM).eq("answer_value", f"rewarded:{rid}").execute().data)
+                                if paid_cnt < REFERRAL_MAX_REWARDS:
+                                    supabase.table("user_answers").insert({"user_id": t["id"], "question_num": REFERRAL_PAID_QNUM, "answer_value": f"rewarded:{rid}"}).execute()
+                                    r_rows = supabase.table("users").select("id,ticket_count").eq("id", rid).execute().data
+                                    if r_rows:
+                                        supabase.table("users").update({"ticket_count": (r_rows[0].get("ticket_count") or 0) + REFERRAL_BONUS}).eq("id", rid).execute()
+                                        record_free_grant(rid, REFERRAL_BONUS)
+                                        cur = supabase.table("users").select("ticket_count").eq("id", t["id"]).execute().data[0]["ticket_count"]
+                                        supabase.table("users").update({"ticket_count": (cur or 0) + REFERRAL_BONUS}).eq("id", t["id"]).execute()
+                                        record_free_grant(t["id"], REFERRAL_BONUS)
+                                        msg += f" 친구 추천 보상으로 두 분께 티켓 {REFERRAL_BONUS}장씩 추가 지급했습니다."
+                        except Exception:
+                            msg += " (추천 보상 처리 중 오류 — 수동 확인 필요)"
+                    st.success(msg)
         st.markdown("---")
         with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
             pending_users = [u for u in supabase.table("users").select("*").eq("credit_status", "PENDING").execute().data if u.get("credit_doc_url")]
