@@ -541,6 +541,9 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(202, 138, 4, 0.35);
     }
     div[data-baseweb="tab-border"] { display: none !important; }
+    /* 탭 안쪽 글씨까지 밝게 (선택 안 된 탭도 또렷하게) */
+    button[data-baseweb="tab"] p, button[data-baseweb="tab"] span, div[data-baseweb="tab"] p { color: #E4E4E7 !important; font-weight: 800 !important; }
+    button[data-baseweb="tab"][aria-selected="true"] p, div[data-baseweb="tab"][aria-selected="true"] p { color: #FFFFFF !important; }
     /* 입력칸 위 안내 글씨를 어두운 배경에서도 또렷하게 */
     label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { color: #F4F4F5 !important; font-size: 0.98rem !important; }
 
