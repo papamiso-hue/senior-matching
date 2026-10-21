@@ -1001,6 +1001,7 @@ if "code" in params and not st.session_state.user_id:
         if res.data:
             u = res.data[0]
             if u.get("is_suspended"):
+                st.session_state.kakao_user = None  # 정지된 회원이 새 가입 화면으로 넘어가지 못하게 함
                 st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
             else:
                 now_utc = datetime.now(timezone.utc).isoformat()
@@ -1072,7 +1073,7 @@ def sync_login_cookie():
                 uid = read_login_token(tok) if tok else None
                 if uid:
                     rows = supabase.table("users").select("*").eq("id", uid).execute().data
-                    if rows and not rows[0].get("is_suspended"):
+                    if rows and not rows[0].get("is_suspended") and not rows[0].get("is_admin"):  # 관리자는 자동 로그인 제외
                         u = rows[0]
                         ss.user_id = u["id"]
                         ss.user_info = u
