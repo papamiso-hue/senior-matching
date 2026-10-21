@@ -1013,6 +1013,76 @@ if "code" in params and not st.session_state.user_id:
             # 2) 신규 회원인 경우: 안내 화면으로 갱신
             st.rerun()
 
+
+# --- 로그인 7일 유지 (새로고침·앱 전환으로 튕기는 문제 방지) ---
+# 브라우저 쿠키에 '서명된 로그인표'를 저장합니다. 비밀번호는 저장하지 않으며, 서명 없이는 위조할 수 없습니다.
+# 이 부분이 어떤 이유로든 실패하면 조용히 넘어가고, 예전처럼 직접 로그인하면 됩니다.
+import hmac as _hmac, hashlib as _hashlib, time as _time
+import streamlit.components.v1 as _components
+LOGIN_COOKIE = "nr_login"
+LOGIN_DAYS = 7
+
+
+def _login_sig(uid: str, exp: int) -> str:
+    key = _hashlib.sha256(("nr-login|" + str(SUPABASE_KEY)).encode()).digest()
+    return _hmac.new(key, f"{uid}.{exp}".encode(), _hashlib.sha256).hexdigest()
+
+
+def make_login_token(uid) -> str:
+    exp = int(_time.time()) + LOGIN_DAYS * 86400
+    return f"{uid}.{exp}.{_login_sig(str(uid), exp)}"
+
+
+def read_login_token(token: str):
+    """맞는 로그인표면 회원 id를, 아니면 None을 돌려줍니다."""
+    try:
+        uid, exp_s, sig = str(token).rsplit(".", 2)
+        exp = int(exp_s)
+        if exp < int(_time.time()):
+            return None
+        if not _hmac.compare_digest(sig, _login_sig(uid, exp)):
+            return None
+        return uid
+    except Exception:
+        return None
+
+
+def _cookie_js(script: str):
+    _components.html(f"<script>{script}</script>", height=0)
+
+
+def sync_login_cookie():
+    try:
+        ss = st.session_state
+        if ss.user_id:
+            ss["_logged_out"] = False
+            if ss.get("_cookie_uid") != str(ss.user_id):
+                tok = make_login_token(ss.user_id)
+                _cookie_js(f"document.cookie='{LOGIN_COOKIE}={tok}; max-age={LOGIN_DAYS*86400}; path=/; SameSite=Lax; Secure';")
+                ss["_cookie_uid"] = str(ss.user_id)
+        else:
+            if ss.get("_cookie_uid"):  # 로그아웃·탈퇴·제재로 로그인이 풀린 경우
+                _cookie_js(f"document.cookie='{LOGIN_COOKIE}=; max-age=0; path=/; SameSite=Lax; Secure';")
+                ss["_cookie_uid"] = None
+                ss["_logged_out"] = True
+            elif not ss.get("_logged_out") and not ss.get("_restore_tried"):
+                ss["_restore_tried"] = True
+                ck = getattr(st.context, "cookies", None)
+                tok = ck.get(LOGIN_COOKIE) if ck else None
+                uid = read_login_token(tok) if tok else None
+                if uid:
+                    rows = supabase.table("users").select("*").eq("id", uid).execute().data
+                    if rows and not rows[0].get("is_suspended"):
+                        u = rows[0]
+                        ss.user_id = u["id"]
+                        ss.user_info = u
+                        ss["_cookie_uid"] = str(u["id"])
+    except Exception:
+        pass
+
+
+sync_login_cookie()
+
 # --- 1. 로그인 / 신규 가입 화면 ---
 if not st.session_state.user_id:
     st.markdown(f"""
