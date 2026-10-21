@@ -303,6 +303,7 @@ PURCHASE_QNUM = 94          # 유료 티켓 충전 기록 (사람당 1줄, JSON)
 REFERRAL_MAX_REWARDS = 5    # 한 분이 받을 수 있는 추천 보상 최대 횟수
 REFERRAL_QNUM = 90          # 추천 기록을 user_answers에 남길 때 쓰는 번호 (문답 1~5와 겹치지 않음)
 APP_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
+SHARE_URL = "https://noblesseraon.com"   # 친구 초대 링크에 쓰는 대표 도메인 (접속하면 사이트로 이동하고 ?ref= 값은 유지됩니다)
 
 PBKDF2_ROUNDS = 200_000
 
@@ -488,11 +489,25 @@ st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
+    /* ===== 5060 눈이 편한 화면: 밝은 배경 + 큰 글씨 + 진한 글자색 ===== */
+    html { font-size: 19px !important; color-scheme: light !important; }
     .stApp {
-        background: radial-gradient(circle at 50% 0%, #1F190B 0%, #0A0A0C 60%, #050506 100%) !important;
-        color: #F8FAFC !important;
+        background: #FFFBF2 !important;
+        color: #1A1A1A !important;
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
+    .stApp, .stApp * { word-break: keep-all; overflow-wrap: break-word; }
+    .stApp p, .stApp li, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4,
+    [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
+    [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
+    [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label,
+    [data-testid="stExpander"] summary p, [data-testid="stExpander"] summary span,
+    [data-testid="stRadio"] label p, [data-testid="stCheckbox"] label p {
+        color: #1A1A1A !important;
+        line-height: 1.65 !important;
+    }
+    [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #4A4A4A !important; font-size: 0.92rem !important; }
+    .stApp a { color: #8A4B00 !important; text-decoration: underline; font-weight: 700; }
 
     .stLinkButton > a {
         background-color: #FEE500 !important;
@@ -500,19 +515,20 @@ st.markdown("""
         font-weight: 900 !important;
         font-size: 1.15rem !important;
         border-radius: 14px !important;
-        height: 3.6rem !important;
+        height: 3.8rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(254, 229, 0, 0.4) !important;
+        border: 2px solid #C9B200 !important;
+        text-decoration: none !important;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18) !important;
         margin-bottom: 12px !important;
     }
 
-    .block-container { 
-        padding-top: 1.2rem !important; 
-        padding-bottom: 4rem !important; 
-        max-width: 520px !important; 
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 4rem !important;
+        max-width: 560px !important;
     }
 
     .app-header {
@@ -520,53 +536,51 @@ st.markdown("""
         justify-content: space-between;
         align-items: center;
         padding: 10px 0 16px 0;
-        border-bottom: 1px solid rgba(234, 179, 8, 0.15);
+        border-bottom: 2px solid #E3D3A8;
         margin-bottom: 16px;
     }
     .app-brand {
-        font-size: 1.3rem;
+        font-size: 1.45rem;
         font-weight: 900;
         letter-spacing: -0.5px;
-        background: linear-gradient(90deg, #FDE047 0%, #EAB308 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #7A4A00 !important;
+        -webkit-text-fill-color: #7A4A00;
     }
 
     .hero-box {
-        background: linear-gradient(160deg, rgba(39, 39, 42, 0.7) 0%, rgba(24, 24, 27, 0.9) 100%);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(234, 179, 8, 0.35);
+        background: #FFFFFF;
+        border: 2px solid #B7791F;
         border-radius: 20px;
         padding: 26px 20px;
         text-align: center;
         margin-bottom: 1.2rem;
-        box-shadow: 0 16px 36px -10px rgba(234, 179, 8, 0.2);
+        box-shadow: 0 6px 18px rgba(122, 74, 0, 0.15);
     }
     .hero-badge {
         display: inline-block;
-        background: rgba(234, 179, 8, 0.12);
-        border: 1px solid rgba(234, 179, 8, 0.45);
-        color: #FDE047 !important;
-        font-size: 0.76rem;
+        background: #FFF3CC;
+        border: 1.5px solid #B7791F;
+        color: #6B4000 !important;
+        font-size: 0.85rem;
         font-weight: 800;
-        letter-spacing: 1.5px;
+        letter-spacing: 1px;
         padding: 5px 16px;
         border-radius: 9999px;
         margin-bottom: 10px;
     }
     .hero-title {
-        font-size: 2.05rem;
+        font-size: 2.1rem;
         font-weight: 900;
-        line-height: 1.25;
+        line-height: 1.3;
         letter-spacing: -0.8px;
-        color: #FFFFFF !important;
+        color: #1A1A1A !important;
         margin-bottom: 8px;
     }
     .hero-subtitle {
-        font-size: 0.95rem;
+        font-size: 1.05rem;
         font-weight: 600;
-        color: #E4E4E7 !important;
-        line-height: 1.6;
+        color: #2B2B2B !important;
+        line-height: 1.65;
     }
 
     .promise-grid {
@@ -576,24 +590,24 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
     .promise-card {
-        background: rgba(24, 24, 27, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #FFFFFF;
+        border: 1.5px solid #D9C48F;
         border-radius: 14px;
         padding: 14px 6px;
         text-align: center;
     }
-    .promise-icon { font-size: 1.4rem; margin-bottom: 4px; }
-    .promise-title { font-size: 0.85rem; font-weight: 800; color: #F4F4F5 !important; }
-    .promise-desc { font-size: 0.72rem; color: #A1A1AA !important; margin-top: 2px; }
+    .promise-icon { font-size: 1.5rem; margin-bottom: 4px; }
+    .promise-title { font-size: 0.95rem; font-weight: 800; color: #1A1A1A !important; }
+    .promise-desc { font-size: 0.82rem; color: #4A4A4A !important; margin-top: 2px; }
 
     .senior-card {
         position: relative;
         border-radius: 22px;
         overflow: hidden;
         margin-bottom: 1.6rem;
-        background: #18181B;
-        border: 1px solid rgba(234, 179, 8, 0.25);
-        box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+        background: #FFFFFF;
+        border: 2px solid #D9C48F;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
     .senior-img-box {
         position: relative;
@@ -605,7 +619,7 @@ st.markdown("""
         width: 100%;
         height: 100%;
         object-fit: cover;
-        filter: blur(10px) brightness(0.85);
+        filter: blur(10px) brightness(0.95);
         transform: scale(1.08);
     }
     .senior-img-clear {
@@ -618,34 +632,33 @@ st.markdown("""
         bottom: 0;
         left: 0;
         right: 0;
-        height: 60%;
-        background: linear-gradient(to top, #18181B 15%, transparent 100%);
+        height: 45%;
+        background: linear-gradient(to top, #FFFFFF 10%, transparent 100%);
         pointer-events: none;
     }
     .senior-blind-tag {
         position: absolute;
         top: 16px;
         left: 16px;
-        background: rgba(24, 24, 27, 0.8);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(234, 179, 8, 0.35);
+        background: #FFFFFF;
+        border: 1.5px solid #B7791F;
         padding: 6px 14px;
         border-radius: 20px;
-        font-size: 0.76rem;
+        font-size: 0.88rem;
         font-weight: 800;
-        color: #FDE047;
+        color: #6B4000;
     }
     .senior-match-badge {
         position: absolute;
         top: 16px;
         right: 16px;
-        background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+        background: #F2B705;
         padding: 7px 16px;
         border-radius: 20px;
-        font-size: 0.88rem;
+        font-size: 0.98rem;
         font-weight: 900;
-        color: #000000;
-        box-shadow: 0 4px 14px rgba(234, 179, 8, 0.4);
+        color: #1A1A1A;
+        border: 1.5px solid #8A5A00;
     }
     .senior-content {
         padding: 16px 20px 22px 20px;
@@ -659,45 +672,45 @@ st.markdown("""
         margin-bottom: 8px;
     }
     .senior-name {
-        font-size: 1.55rem;
+        font-size: 1.7rem;
         font-weight: 900;
-        color: #FFFFFF;
+        color: #1A1A1A;
         letter-spacing: -0.5px;
     }
     .senior-age {
-        font-size: 1.15rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        color: #D4D4D8;
+        color: #333333;
     }
     .badge-pill-gold {
-        background: rgba(234, 179, 8, 0.15);
-        color: #FDE047;
-        border: 1px solid rgba(234, 179, 8, 0.35);
+        background: #FFF3CC;
+        color: #6B4000;
+        border: 1.5px solid #B7791F;
         padding: 5px 12px;
         border-radius: 6px;
-        font-size: 0.80rem;
+        font-size: 0.9rem;
         font-weight: 800;
     }
     .badge-pill-credit {
-        background: rgba(16, 185, 129, 0.15);
-        color: #6EE7B7;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: #DFF5E8;
+        color: #0B5B34;
+        border: 1.5px solid #2E8B57;
         padding: 5px 12px;
         border-radius: 6px;
-        font-size: 0.80rem;
+        font-size: 0.9rem;
         font-weight: 800;
     }
     .senior-intro {
         margin-top: 12px;
-        font-size: 0.94rem;
-        color: #E4E4E7;
-        line-height: 1.6;
+        font-size: 1.05rem;
+        color: #1A1A1A;
+        line-height: 1.7;
         word-break: keep-all;
     }
 
     .shop-card {
-        background: #18181B;
-        border: 1.5px solid rgba(234, 179, 8, 0.25);
+        background: #FFFFFF;
+        border: 2px solid #D9C48F;
         border-radius: 16px;
         padding: 18px 20px;
         margin-bottom: 14px;
@@ -706,71 +719,90 @@ st.markdown("""
         align-items: center;
     }
     .shop-card.featured {
-        border-color: #EAB308;
-        background: linear-gradient(145deg, #272215 0%, #18181B 100%);
-        box-shadow: 0 4px 20px rgba(234, 179, 8, 0.2);
+        border-color: #B7791F;
+        background: #FFF8E1;
+        box-shadow: 0 4px 14px rgba(183, 121, 31, 0.25);
     }
-    .shop-title { font-size: 1.1rem; font-weight: 900; color: #FFFFFF; margin-bottom: 4px; }
-    .shop-desc { font-size: 0.82rem; color: #A1A1AA; }
-    .shop-price { font-size: 1.3rem; font-weight: 900; color: #FDE047; text-align: right; }
-    .shop-badge { display: inline-block; background: #CA8A04; color: #FFFFFF; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 4px; }
-    .bank-box { background: rgba(39, 39, 42, 0.6); border: 1px dashed rgba(234, 179, 8, 0.4); border-radius: 14px; padding: 18px; text-align: center; margin: 16px 0; }
+    .shop-title { font-size: 1.2rem; font-weight: 900; color: #1A1A1A; margin-bottom: 4px; }
+    .shop-desc { font-size: 0.95rem; color: #3A3A3A; }
+    .shop-price { white-space: nowrap; margin-left: 10px; font-size: 1.4rem; font-weight: 900; color: #7A4A00; text-align: right; }
+    .shop-badge { display: inline-block; background: #7A4A00; color: #FFFFFF; font-size: 0.8rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 4px; }
+    .bank-box { background: #FFFFFF; border: 2px dashed #B7791F; border-radius: 14px; padding: 18px; text-align: center; margin: 16px 0; }
 
     div[data-baseweb="tab-list"] {
-        background-color: rgba(24, 24, 27, 0.85) !important;
+        background-color: #F3E9D2 !important;
         padding: 5px;
         border-radius: 14px;
-        border: 1px solid rgba(234, 179, 8, 0.2) !important;
+        border: 1.5px solid #D9C48F !important;
         margin-bottom: 1.4rem;
         gap: 4px;
     }
     div[data-baseweb="tab"] {
         flex: 1;
-        height: 46px;
+        height: 52px;
         border-radius: 10px !important;
         background-color: transparent !important;
-        color: #E4E4E7 !important;
+        color: #1A1A1A !important;
         font-weight: 800 !important;
-        font-size: 0.92rem !important;
+        font-size: 1rem !important;
         border: none !important;
     }
     div[data-baseweb="tab"][aria-selected="true"] {
-        background: linear-gradient(135deg, #CA8A04 0%, #A16207 100%) !important;
+        background: #7A4A00 !important;
         color: #FFFFFF !important;
-        box-shadow: 0 4px 14px rgba(202, 138, 4, 0.35);
+        box-shadow: 0 3px 10px rgba(122, 74, 0, 0.35);
     }
     div[data-baseweb="tab-border"] { display: none !important; }
-    /* 탭 안쪽 글씨까지 밝게 (선택 안 된 탭도 또렷하게) */
-    button[data-baseweb="tab"] p, button[data-baseweb="tab"] span, div[data-baseweb="tab"] p { color: #E4E4E7 !important; font-weight: 800 !important; }
+    div[data-baseweb="tab-highlight"] { display: none !important; }
+    button[data-baseweb="tab"] p, button[data-baseweb="tab"] span, div[data-baseweb="tab"] p { color: #1A1A1A !important; font-weight: 800 !important; font-size: 1rem !important; }
     button[data-baseweb="tab"][aria-selected="true"] p, div[data-baseweb="tab"][aria-selected="true"] p { color: #FFFFFF !important; }
-    /* 입력칸 위 안내 글씨를 어두운 배경에서도 또렷하게 */
-    label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { color: #F4F4F5 !important; font-size: 0.98rem !important; }
+    label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { color: #1A1A1A !important; font-size: 1.05rem !important; font-weight: 700 !important; }
 
-    div[data-baseweb="input"] {
-        background-color: rgba(24, 24, 27, 0.95) !important;
-        border: 1.5px solid #27272A !important;
+    div[data-baseweb="input"], div[data-baseweb="textarea"], div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        border: 2px solid #6B5B3A !important;
         border-radius: 12px !important;
     }
-    div[data-baseweb="input"]:focus-within {
-        border-color: #EAB308 !important;
-        box-shadow: 0 0 0 1px #EAB308 !important;
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {
+        border-color: #B7791F !important;
+        box-shadow: 0 0 0 2px #F2B705 !important;
     }
-    div[data-baseweb="input"] input { color: #FFFFFF !important; font-size: 0.95rem; }
+    div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea, div[data-baseweb="select"] div {
+        color: #111111 !important;
+        -webkit-text-fill-color: #111111 !important;
+        font-size: 1.05rem !important;
+        background-color: transparent !important;
+    }
+    div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder {
+        color: #6B6B6B !important; -webkit-text-fill-color: #6B6B6B !important; opacity: 1 !important;
+    }
+    div[data-baseweb="popover"] ul, div[data-baseweb="popover"] li, div[data-baseweb="menu"] { background-color: #FFFFFF !important; color: #111111 !important; }
+    div[data-baseweb="popover"] li * { color: #111111 !important; }
 
-    .stButton>button { 
-        width: 100%; 
-        border-radius: 12px; 
-        font-weight: 800; 
-        height: 3.5rem; 
-        font-size: 1.1rem; 
-        letter-spacing: -0.3px; 
-        border: none !important; 
-        background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important; 
-        color: #000000 !important; 
-        box-shadow: 0 6px 18px rgba(202, 138, 4, 0.35); 
-        transition: transform 0.1s ease; 
+    [data-testid="stExpander"] { background: #FFFFFF !important; border: 2px solid #D9C48F !important; border-radius: 12px !important; }
+    [data-testid="stExpander"] summary { background: #FFFFFF !important; }
+    [data-testid="stExpander"] summary svg { color: #1A1A1A !important; fill: #1A1A1A !important; }
+    [data-testid="stCode"], [data-testid="stCode"] pre, .stCodeBlock pre, pre { background: #FFFFFF !important; color: #111111 !important; border: 2px solid #D9C48F !important; font-size: 0.95rem !important; }
+    [data-testid="stCode"] code, pre code, code { color: #111111 !important; background: transparent !important; }
+    [data-testid="stAlert"] p, [data-testid="stAlert"] div { color: #1A1A1A !important; }
+
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        font-weight: 800;
+        min-height: 3.6rem;
+        font-size: 1.15rem;
+        letter-spacing: -0.3px;
+        border: 2px solid #8A5A00 !important;
+        background: #F2B705 !important;
+        color: #111111 !important;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        transition: transform 0.1s ease;
     }
+    .stButton>button p, .stButton>button span { color: #111111 !important; font-size: 1.15rem !important; font-weight: 800 !important; }
+    .stButton>button:hover { background: #FFC81F !important; }
     .stButton>button:active { transform: scale(0.98); }
+    .stButton>button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #1A5FB4 !important; outline-offset: 2px; }
 
     #MainMenu, footer, header { visibility: hidden !important; }
     </style>
@@ -1091,7 +1123,7 @@ if not st.session_state.user_id:
             <div class="hero-badge">👑 5060 NOBLESSE COMPANIONS</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
             <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
-            <strong style="color:#FDE047;">본인 확인으로 안심하는 5060 동반자·친구 만남</strong></div>
+            <strong style="color:#7A4A00;">본인 확인으로 안심하는 5060 동반자·친구 만남</strong></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1518,7 +1550,7 @@ else:
     with h_col2:
         st.markdown(f"""
             <div style="text-align:right; margin-top:4px;">
-                <span style="font-size:0.92rem; font-weight:900; color:#FDE047;">🎟️ {my_tickets}장</span>
+                <span style="font-size:1.05rem; font-weight:900; color:#7A4A00;">🎟️ {my_tickets}장</span>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1767,8 +1799,8 @@ else:
     with tabs_main[2]:
         st.markdown(f"""
             <div style="text-align:center; padding: 10px 0 16px 0;">
-                <h3 style="color:#FFFFFF; margin-bottom:4px;">👑 대화 신청 티켓 충전</h3>
-                <div style="font-size:0.9rem; color:#A1A1AA;">현재 회원님의 보유 티켓: <strong style="color:#FDE047; font-size:1.05rem;">{my_tickets}장</strong></div>
+                <h3 style="color:#1A1A1A; margin-bottom:4px;">👑 대화 신청 티켓 충전</h3>
+                <div style="font-size:1rem; color:#3A3A3A;">현재 회원님의 보유 티켓: <strong style="color:#7A4A00; font-size:1.05rem;">{my_tickets}장</strong></div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1804,9 +1836,9 @@ else:
 
         st.markdown(f"""
             <div class="bank-box">
-                <div style="font-size:0.85rem; color:#E4E4E7; font-weight:700;">🏦 무통장 안심 입금 계좌</div>
-                <div style="font-size:1.15rem; font-weight:900; color:#FDE047; margin:6px 0;">{BANK_INFO['bank']} {BANK_INFO['account']}</div>
-                <div style="font-size:0.82rem; color:#A1A1AA;">예금주: {esc(BANK_INFO['holder'])} (입금자명: <strong>{esc(me['name'])}</strong>)</div>
+                <div style="font-size:1rem; color:#1A1A1A; font-weight:700;">🏦 무통장 안심 입금 계좌</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#7A4A00; margin:6px 0;">{BANK_INFO['bank']} {BANK_INFO['account']}</div>
+                <div style="font-size:0.95rem; color:#3A3A3A;">예금주: {esc(BANK_INFO['holder'])} (입금자명: <strong>{esc(me['name'])}</strong>)</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1838,9 +1870,9 @@ else:
         my_avatar = esc(me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"]))
         st.markdown(f"""
             <div style="text-align:center; padding:10px 0 20px 0;">
-                <img src="{my_avatar}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #EAB308;">
-                <h3 style="margin:10px 0 4px 0; color:#FFFFFF;">{esc(me['name'])} ({esc(me['gender'])} · {esc(me['age'])}세)</h3>
-                <div style="font-size:0.9rem; color:#D4D4D8;">📍 {esc(me['region'])} | 💼 {esc(me.get('job'))}</div>
+                <img src="{my_avatar}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #B7791F;">
+                <h3 style="margin:10px 0 4px 0; color:#1A1A1A;">{esc(me['name'])} ({esc(me['gender'])} · {esc(me['age'])}세)</h3>
+                <div style="font-size:1rem; color:#222222;">📍 {esc(me['region'])} | 💼 {esc(me.get('job'))}</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -1850,7 +1882,7 @@ else:
         except Exception:
             invited = 0
         st.caption(f"아래 링크로 친구가 가입하고 첫 유료 티켓을 구매하면 두 분 모두 티켓 {REFERRAL_BONUS}장을 받습니다. (보상 최대 {REFERRAL_MAX_REWARDS}명 · 현재 {invited}명이 링크로 가입)")
-        st.code(f"{APP_URL}/?ref={me['id']}", language=None)
+        st.code(f"{SHARE_URL}/?ref={me['id']}", language=None)
         st.markdown("---")
 
         st.markdown("##### ✏️ 자기소개 및 경력·취미 정보 수정")
@@ -2128,13 +2160,13 @@ render_faq()
 
 # --- [법적 필수 표기] 플랫폼 하단 사업자 정보 푸터 ---
 st.markdown("""
-    <div style="margin-top: 50px; padding: 22px 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.76rem; color: #94A3B8; line-height: 1.7; word-break: keep-all;">
-        <div style="font-weight: 800; color: #CBD5E1; margin-bottom: 6px;">(주)이퀴비젼에이아이 사업자 정보</div>
+    <div style="margin-top: 50px; padding: 22px 14px; border-top: 2px solid #D9C48F; font-size: 0.92rem; color: #4A4A4A; line-height: 1.7; word-break: keep-all;">
+        <div style="font-weight: 800; color: #222222; margin-bottom: 6px;">(주)이퀴비젼에이아이 사업자 정보</div>
         <div><strong>상호명:</strong> 이퀴비젼에이아이 주식회사 | <strong>대표자:</strong> 오성수</div>
         <div><strong>사업자등록번호:</strong> 302-88-04351 | <strong>통신판매업신고번호:</strong> 제2026-서울금천-2071호 (2026.10.15 신고)</div>
         <div><strong>사업장 주소:</strong> 서울특별시 금천구 벚꽃로 30, 206동 318호(독산동, 금천 롯데캐슬 골드파크 2차)</div>
         <div><strong>대표전화:</strong> 050-6798-3349 | <strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> equivisionai@gmail.com</div>
-        <div style="margin-top: 8px; font-size: 0.72rem; color: #64748B;">
+        <div style="margin-top: 8px; font-size: 0.85rem; color: #555555;">
             © 2026 EQUIVISION AI Inc. All rights reserved. 본 플랫폼은 전자상거래법 및 개인정보보호법을 준수합니다.
         </div>
     </div>
