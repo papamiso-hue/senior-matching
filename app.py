@@ -99,6 +99,11 @@ EMAIL_QNUM = 95  # 가입 이메일 보관 (user_answers 한 줄, 탈퇴 시 함
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
+def flat_html(s: str) -> str:
+    """HTML 안의 빈 줄·들여쓰기를 없애 마크다운이 코드 블록으로 오해하지 않게 합니다."""
+    return "\n".join(l.strip() for l in s.splitlines() if l.strip())
+
+
 def esc(value) -> str:
     """사용자가 입력한 글을 화면(HTML)에 안전하게 넣기 위한 처리 (악성 코드 삽입 방지)"""
     return html.escape(str(value)) if value is not None else ""
@@ -1516,7 +1521,7 @@ else:
                 c_img = esc(blur_photo_url(cand.get("photo_url"), cand["gender"]))
                 intro_txt = esc(cand.get("intro") or "서로를 존중하며 함께 시간을 나눌 좋은 친구를 기다립니다.")
 
-                st.markdown(f"""
+                st.markdown(flat_html(f"""
                     <div class="senior-card">
                         <div class="senior-img-box">
                             <img src="{c_img}" class="senior-img-blur">
@@ -1536,7 +1541,7 @@ else:
                             <div class="senior-intro">"{intro_txt}"</div>
                         </div>
                     </div>
-                """, unsafe_allow_html=True)
+                """), unsafe_allow_html=True)
 
                 with st.expander("🔍 5가지 질문 상세 비교"):
                     for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
