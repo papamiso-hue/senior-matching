@@ -7,6 +7,7 @@ import io
 import json
 import random
 import hashlib
+import hmac
 import html
 import requests
 from datetime import datetime, timedelta, timezone
@@ -103,10 +104,49 @@ REFERRAL_MAX_REWARDS = 5    # 한 분이 받을 수 있는 추천 보상 최대 
 REFERRAL_QNUM = 90          # 추천 기록을 user_answers에 남길 때 쓰는 번호 (문답 1~5와 겹치지 않음)
 APP_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
 
+PBKDF2_ROUNDS = 200_000
+
+def blur_photo_url(photo_url, gender):
+    """피드에는 서버에서 미리 흐리게 만든 사진만 보여줍니다. 흐린 사본이 없으면 기본 실루엣을 씁니다."""
+    marker = "/avatars/avatar_5060_"
+    if photo_url and marker in photo_url:
+        return photo_url.replace(marker, "/avatars/blur_avatar_5060_")
+    return DEFAULT_AVATARS.get(gender)
+
+def make_blurred_copy(raw_bytes: bytes) -> bytes:
+    from PIL import Image, ImageFilter
+    img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
+    img.thumbnail((320, 320))
+    img = img.filter(ImageFilter.GaussianBlur(radius=20))
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=70)
+    return out.getvalue()
+
 def hash_password(pwd: str) -> str:
+    """비밀번호를 사람마다 다른 소금(salt)을 섞어 여러 번 해시해서 저장합니다."""
     if not pwd:
         return ""
-    return hashlib.sha256(pwd.strip().encode("utf-8")).hexdigest()
+    salt = uuid.uuid4().hex
+    h = hashlib.pbkdf2_hmac("sha256", pwd.strip().encode("utf-8"), salt.encode("utf-8"), PBKDF2_ROUNDS).hex()
+    return f"pbkdf2${PBKDF2_ROUNDS}${salt}${h}"
+
+def verify_password(pwd: str, stored: str) -> bool:
+    """새 방식과, 예전 방식(단순 해시·평문) 모두 확인합니다."""
+    if not pwd or not stored:
+        return False
+    pwd = pwd.strip()
+    if stored.startswith("pbkdf2$"):
+        try:
+            _, rounds, salt, h = stored.split("$")
+            calc = hashlib.pbkdf2_hmac("sha256", pwd.encode("utf-8"), salt.encode("utf-8"), int(rounds)).hex()
+            return hmac.compare_digest(calc, h)
+        except Exception:
+            return False
+    legacy = hashlib.sha256(pwd.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(stored, legacy) or hmac.compare_digest(stored, pwd)
+
+def is_modern_hash(stored: str) -> bool:
+    return bool(stored) and stored.startswith("pbkdf2$")
 
 BANK_INFO = {
     "bank": "IBK기업은행",
@@ -425,7 +465,7 @@ st.markdown("""
         height: 46px;
         border-radius: 10px !important;
         background-color: transparent !important;
-        color: #A1A1AA !important;
+        color: #E4E4E7 !important;
         font-weight: 800 !important;
         font-size: 0.92rem !important;
         border: none !important;
@@ -436,6 +476,8 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(202, 138, 4, 0.35);
     }
     div[data-baseweb="tab-border"] { display: none !important; }
+    /* 입력칸 위 안내 글씨를 어두운 배경에서도 또렷하게 */
+    label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { color: #F4F4F5 !important; font-size: 0.98rem !important; }
 
     div[data-baseweb="input"] {
         background-color: rgba(24, 24, 27, 0.95) !important;
@@ -580,7 +622,7 @@ if not st.session_state.user_id:
             <div class="hero-badge">👑 5060 NOBLESSE MATCHING</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
             <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
-            <strong style="color:#FDE047;">신용·신원 검증 기반 시니어 프라이빗 살롱</strong></div>
+            <strong style="color:#FDE047;">본인 확인으로 안심하는 5060 동반자·친구 만남</strong></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -588,8 +630,8 @@ if not st.session_state.user_id:
         <div class="promise-grid">
             <div class="promise-card">
                 <div class="promise-icon">🛡️</div>
-                <div class="promise-title">신용·자산 검증</div>
-                <div class="promise-desc">남 800 / 여 600점+</div>
+                <div class="promise-title">본인 확인 완료</div>
+                <div class="promise-desc">카카오 + 휴대폰 인증</div>
             </div>
             <div class="promise-card">
                 <div class="promise-icon">🚫</div>
@@ -628,20 +670,22 @@ if not st.session_state.user_id:
             if not login_name.strip() or not clean_p or not login_pwd.strip():
                 st.error("성명, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
             else:
-                hashed_input = hash_password(login_pwd)
+                if st.session_state.get("login_fail_5060", 0) >= 5:
+                    st.error("비밀번호를 여러 번 틀리셨습니다. 잠시 후 페이지를 새로고침하고 다시 시도하거나 고객센터로 문의해 주세요.")
+                    st.stop()
                 res = supabase.table("users").select("*").eq("name", login_name.strip()).eq("phone", clean_p).execute()
 
                 if res.data:
                     u = res.data[0]
                     stored_pwd = u.get("password", "")
-                    if stored_pwd == hashed_input or stored_pwd == login_pwd.strip():
+                    if verify_password(login_pwd, stored_pwd):
                         if u.get("is_suspended"):
                             st.error("🚫 제재 조치된 계정입니다. 고객센터로 문의해 주세요.")
                         else:
                             now_utc = datetime.now(timezone.utc).isoformat()
                             update_data = {"last_login_at": now_utc}
-                            if stored_pwd != hashed_input:
-                                update_data["password"] = hashed_input
+                            if not is_modern_hash(stored_pwd):
+                                update_data["password"] = hash_password(login_pwd)  # 예전 방식 비밀번호는 로그인 때 새 방식으로 바꿔 저장
                                 
                             supabase.table("users").update(update_data).eq("id", u["id"]).execute()
                             u["last_login_at"] = now_utc
@@ -649,6 +693,7 @@ if not st.session_state.user_id:
                             st.session_state.user_info = u
                             st.rerun()
                     else:
+                        st.session_state.login_fail_5060 = st.session_state.get("login_fail_5060", 0) + 1
                         st.error("비밀번호가 일치하지 않습니다.")
                 else:
                     st.error("일치하는 회원 정보를 찾을 수 없습니다.")
@@ -777,11 +822,10 @@ if not st.session_state.user_id:
         if intro_typos:
             st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
 
-        st.markdown("##### 🛡️ 신용 검증 기준")
-        req_score = 800 if j_gender == "남" else 600
-        st.caption(f"ℹ️ {j_gender}성 입회 기준: 공인 신용점수 {req_score}점 이상")
-        j_credit = st.number_input(f"공인 신용점수 ({req_score}점 이상 필수)", 0, 1000, 820 if j_gender == "남" else 750, key="j_credit")
-        j_doc = st.file_uploader("신용 증빙 서류 첨부 (NICE/KCB 리포트 또는 토스 캡처)", type=["jpg", "png", "pdf"], key="j_doc")
+        st.markdown("##### 🛡️ 인증 배지 (선택)")
+        st.caption("ℹ️ 신용점수와 증빙서류 제출은 **선택**입니다. 제출하면 프로필에 '인증 배지'가 붙어 신뢰도가 올라갑니다. 서류는 확인 즉시 파기됩니다.")
+        j_credit = st.number_input("공인 신용점수 (선택, 배지를 원하실 때만 입력)", 0, 1000, 0, key="j_credit")
+        j_doc = st.file_uploader("신용 증빙 서류 첨부 (선택: NICE/KCB 리포트 또는 토스 캡처)", type=["jpg", "png", "pdf"], key="j_doc")
 
         st.markdown("##### 🎯 5060 필수 가치관 5대 문답")
         a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], key="jq_1")
@@ -790,30 +834,43 @@ if not st.session_state.user_id:
         a4 = st.radio(CORE_QUESTIONS_5060[4]["text"], CORE_QUESTIONS_5060[4]["options"], key="jq_4")
         a5 = st.radio(CORE_QUESTIONS_5060[5]["text"], CORE_QUESTIONS_5060[5]["options"], key="jq_5")
 
-        agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관 및 증빙서류 확인 즉시 파기에 동의합니다.", key="agree_terms")
+        with st.expander("📄 수집 항목과 이용 안내 (눌러서 읽어 보세요)"):
+            st.markdown("""
+            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 가치관 문답 답변, 카카오 계정 식별번호·프로필 사진(카카오로 가입 시)
+            **이용 목적**: 회원 가입과 본인 확인, 대화 신청 서비스 제공, 이용 안내 문자 발송, 부정 이용 방지
+            **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
+            **선택 항목**: 신용점수와 증빙서류(인증 배지용). 확인 후 서류는 파기하며, 배지를 받지 않아도 이용에 불이익이 없습니다.
+            동의를 거부할 수 있으나, 필수 항목은 거부하면 가입이 어렵습니다.
+            """)
+        agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관에 동의합니다.", key="agree_terms")
+        agree_privacy = st.checkbox("[필수] 개인정보 수집·이용에 동의합니다. (위 안내 참고)", key="agree_privacy")
+        agree_credit = st.checkbox("[선택] 신용점수·증빙서류 수집·이용에 동의합니다. (인증 배지를 받을 때만)", key="agree_credit")
 
         if st.button("신원 검증 신청 및 가입 완료", key="btn_submit_join"):
-            if not agree_terms:
-                st.error("필수 이용약관에 동의해 주세요.")
+            if not agree_terms or not agree_privacy:
+                st.error("필수 항목(이용약관, 개인정보 수집·이용)에 동의해 주세요.")
+            elif j_doc and not agree_credit:
+                st.error("서류를 올리시려면 [선택] 신용정보 수집·이용에 동의해 주세요. (배지가 필요 없으면 서류를 지워 주세요)")
             elif not j_name.strip():
                 st.error("성명을 입력해 주세요.")
             elif not st.session_state.sms_is_verified or st.session_state.sms_verified_phone != clean_jp:
                 st.error("휴대폰 SMS 인증을 완료해 주세요.")
             elif len(j_pwd.strip()) < 4:
                 st.error("비밀번호는 최소 4자리 이상이어야 합니다.")
-            elif j_credit < req_score:
-                st.error(f"입회 기준 미달: 노블레스 라온은 {j_gender}성 기준 {req_score}점 이상만 승인됩니다.")
-            elif not j_doc:
-                st.error("신원 및 신용 증빙 서류를 첨부해 주세요.")
+            elif j_doc and j_credit <= 0:
+                st.error("서류를 올리셨다면 신용점수도 함께 입력해 주세요. (배지가 필요 없으면 서류를 지워 주세요)")
             else:
-                doc_ext = j_doc.name.split(".")[-1].lower()
-                doc_name = f"verify_{clean_jp}_{uuid.uuid4().hex[:6]}.{doc_ext}"
+                has_doc = bool(j_doc)
+                doc_name = ""
                 try:
-                    supabase.storage.from_("credit-docs").upload(
-                        doc_name, 
-                        j_doc.read(), 
-                        {"content-type": "application/pdf" if doc_ext == "pdf" else f"image/{doc_ext}"}
-                    )
+                    if has_doc:
+                        doc_ext = j_doc.name.split(".")[-1].lower()
+                        doc_name = f"verify_{clean_jp}_{uuid.uuid4().hex[:6]}.{doc_ext}"
+                        supabase.storage.from_("credit-docs").upload(
+                            doc_name,
+                            j_doc.read(),
+                            {"content-type": "application/pdf" if doc_ext == "pdf" else f"image/{doc_ext}"}
+                        )
                     now_utc = datetime.now(timezone.utc).isoformat()
 
                     kakao_id_val = str(st.session_state.kakao_user["id"]) if st.session_state.kakao_user else None
@@ -826,9 +883,9 @@ if not st.session_state.user_id:
                         "gender": j_gender,
                         "age": int(j_age),
                         "region": j_region,
-                        "credit_score": int(j_credit),
-                        "credit_doc_url": doc_name,
-                        "credit_status": "PENDING",
+                        "credit_score": int(j_credit) if has_doc else 0,
+                        "credit_doc_url": doc_name if has_doc else "",
+                        "credit_status": "PENDING" if has_doc else "NONE",
                         "is_verified": False,
                         "ticket_count": 3,
                         "is_vip": False,
@@ -845,7 +902,15 @@ if not st.session_state.user_id:
                     if kakao_photo_val:
                         user_data["photo_url"] = kakao_photo_val
 
-                    new_u = supabase.table("users").insert(user_data).execute().data[0]
+                    try:
+                        new_u = supabase.table("users").insert(user_data).execute().data[0]
+                    except Exception:
+                        # DB가 'NONE' 값을 허용하지 않는 경우를 대비한 안전장치
+                        if user_data.get("credit_status") == "NONE":
+                            user_data["credit_status"] = "PENDING"
+                            new_u = supabase.table("users").insert(user_data).execute().data[0]
+                        else:
+                            raise
 
                     uid = new_u["id"]
                     supabase.table("user_answers").insert([
@@ -920,7 +985,7 @@ else:
         target_gender = "여" if me["gender"] == "남" else "남"
         # 비밀번호 등 불필요한 정보는 가져오지 않고, 최근 접속자 위주로 최대 300명만 불러옵니다.
         raw_candidates = supabase.table("users")\
-            .select("id,name,phone,gender,age,region,job,intro,photo_url,credit_score,blocked_phones")\
+            .select("id,name,phone,gender,age,region,job,intro,photo_url,credit_score,credit_status,blocked_phones")\
             .eq("gender", target_gender)\
             .gte("age", 48)\
             .lte("age", 75)\
@@ -963,7 +1028,7 @@ else:
             cand_scores.sort(key=lambda x: x[3], reverse=True)
 
             for cand, c_answers, common_keys, score in cand_scores:
-                c_img = esc(cand.get("photo_url") or DEFAULT_AVATARS.get(cand["gender"]))
+                c_img = esc(blur_photo_url(cand.get("photo_url"), cand["gender"]))
                 intro_txt = esc(cand.get("intro") or "서로를 존중하며 함께 시간을 나눌 좋은 친구를 기다립니다.")
 
                 st.markdown(f"""
@@ -981,7 +1046,7 @@ else:
                             </div>
                             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
                                 <span class="badge-pill-gold">💼 {esc(cand.get('job') or '경력 인증')}</span>
-                                <span class="badge-pill-credit">🛡️ 신용 {esc(cand['credit_score'])}점</span>
+                                {'<span class="badge-pill-credit">🛡️ 인증 회원</span>' if cand.get('credit_status') == 'VERIFIED' else ''}
                             </div>
                             <div class="senior-intro">"{intro_txt}"</div>
                         </div>
@@ -1243,7 +1308,12 @@ else:
         if new_avatar and st.button("사진 등록 및 저장"):
             f_ext = new_avatar.name.split(".")[-1].lower()
             fname = f"avatar_5060_{me['id']}_{uuid.uuid4().hex[:6]}.{f_ext}"
-            supabase.storage.from_("avatars").upload(fname, new_avatar.read(), {"content-type": f"image/{f_ext}"})
+            raw_img = new_avatar.read()
+            supabase.storage.from_("avatars").upload(fname, raw_img, {"content-type": f"image/{f_ext}"})
+            try:
+                supabase.storage.from_("avatars").upload(f"blur_{fname}", make_blurred_copy(raw_img), {"content-type": "image/jpeg"})
+            except Exception as e:
+                st.warning("흐림 처리 사본을 만들지 못해 피드에는 기본 이미지가 표시됩니다.")
             url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{fname}"
             supabase.table("users").update({"photo_url": url}).eq("id", me["id"]).execute()
             me["photo_url"] = url
