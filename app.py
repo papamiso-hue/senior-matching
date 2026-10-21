@@ -106,6 +106,68 @@ APP_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
 
 PBKDF2_ROUNDS = 200_000
 
+# ---- 무료 티켓 유효기간 (가입 선물·친구 추천 티켓은 지급일부터 FREE_TICKET_DAYS일) ----
+FREE_TICKET_DAYS = 90
+GRANT_QNUM = 91     # 무료 티켓 지급 기록 (user_answers에 사람당 1줄, JSON)
+EXPIRE_QNUM = 92    # 소멸 처리 완료 기록 (사람당 1줄, JSON)
+
+def _ledger_get(uid, qnum):
+    try:
+        rows = supabase.table("user_answers").select("answer_value").eq("user_id", uid).eq("question_num", qnum).execute().data
+        if rows:
+            return json.loads(rows[0]["answer_value"]), True
+    except Exception:
+        pass
+    return [], False
+
+def _ledger_put(uid, qnum, value, exists):
+    payload = json.dumps(value, ensure_ascii=False)
+    if exists:
+        supabase.table("user_answers").update({"answer_value": payload}).eq("user_id", uid).eq("question_num", qnum).execute()
+    else:
+        supabase.table("user_answers").insert({"user_id": uid, "question_num": qnum, "answer_value": payload}).execute()
+
+def record_free_grant(uid, qty):
+    """무료 티켓을 준 날짜와 장수를 기록합니다. 실패해도 지급 자체는 막지 않습니다."""
+    try:
+        grants, exists = _ledger_get(uid, GRANT_QNUM)
+        grants.append({"qty": int(qty), "at": datetime.now(timezone.utc).isoformat()})
+        _ledger_put(uid, GRANT_QNUM, grants, exists)
+    except Exception:
+        pass
+
+def expire_free_tickets(user) -> int:
+    """유효기간이 지난 무료 티켓을 소멸시킵니다. 무료 티켓부터 먼저 쓴 것으로 계산하며(오래된 것 먼저),
+    유료로 충전한 티켓은 건드리지 않습니다. 소멸한 장수를 돌려줍니다."""
+    try:
+        grants, _ = _ledger_get(user["id"], GRANT_QNUM)
+        if not grants:
+            return 0
+        done, done_exists = _ledger_get(user["id"], EXPIRE_QNUM)
+        reqs = supabase.table("match_requests").select("status").eq("sender_id", user["id"]).execute().data
+        spent = sum(1 for r in reqs if r.get("status") in ("PENDING", "ACCEPTED"))
+        now_dt = datetime.now(timezone.utc)
+        balance = user.get("ticket_count", 0) or 0
+        expired_total = 0
+        for g in sorted(grants, key=lambda x: x["at"]):
+            used = min(g["qty"], spent)
+            spent -= used
+            unused = g["qty"] - used
+            granted_dt = datetime.fromisoformat(g["at"])
+            if now_dt - granted_dt > timedelta(days=FREE_TICKET_DAYS) and g["at"] not in [d["at"] for d in done]:
+                n = max(0, min(unused, balance))
+                balance -= n
+                expired_total += n
+                done.append({"at": g["at"], "n": n})
+        if len(done) != len(_ledger_get(user["id"], EXPIRE_QNUM)[0]):
+            _ledger_put(user["id"], EXPIRE_QNUM, done, done_exists)  # 기록을 먼저 남겨야 두 번 깎이지 않습니다 (실패하면 아래로 못 내려가 티켓은 그대로)
+            if expired_total > 0:
+                supabase.table("users").update({"ticket_count": balance}).eq("id", user["id"]).execute()
+                user["ticket_count"] = balance
+        return expired_total
+    except Exception:
+        return 0
+
 def blur_photo_url(photo_url, gender):
     """피드에는 서버에서 미리 흐리게 만든 사진만 보여줍니다. 흐린 사본이 없으면 기본 실루엣을 씁니다."""
     marker = "/avatars/avatar_5060_"
@@ -139,11 +201,11 @@ def verify_password(pwd: str, stored: str) -> bool:
         try:
             _, rounds, salt, h = stored.split("$")
             calc = hashlib.pbkdf2_hmac("sha256", pwd.encode("utf-8"), salt.encode("utf-8"), int(rounds)).hex()
-            return hmac.compare_digest(calc, h)
+            return hmac.compare_digest(calc.encode("utf-8"), h.encode("utf-8"))
         except Exception:
             return False
     legacy = hashlib.sha256(pwd.encode("utf-8")).hexdigest()
-    return hmac.compare_digest(stored, legacy) or hmac.compare_digest(stored, pwd)
+    return hmac.compare_digest(stored.encode("utf-8"), legacy.encode("utf-8")) or hmac.compare_digest(stored.encode("utf-8"), pwd.encode("utf-8"))
 
 def is_modern_hash(stored: str) -> bool:
     return bool(stored) and stored.startswith("pbkdf2$")
@@ -199,24 +261,24 @@ KOREA_REGIONS = {
 
 CORE_QUESTIONS_5060 = {
     1: {
-        "text": "1. 이상적인 동반 형태 및 관계 방향?",
-        "options": ["취미·여행을 함께하는 동반자", "일상을 나누며 자주 만나는 가까운 친구", "각자 생활을 지키며 가끔 만나는 편안한 사이", "대화와 안부를 나누는 편안한 친구"]
+        "text": "1. 어떤 만남을 원하세요?",
+        "options": ["취미·여행을 함께하는 동반자", "자주 안부를 나누는 가까운 친구", "각자 생활을 지키며 가끔 만나는 편안한 사이", "대화가 잘 통하는 말벗"]
     },
     2: {
-        "text": "2. 자녀 독립 상태 및 교류 빈도?",
-        "options": ["자녀 완전 출가·독립 (독립적인 둘만의 생활 선호)", "자녀와 정기적 교류 (명절·주말 식사 등)", "자녀 동거 중 (상호 이해와 배려 필요)", "자녀 없음"]
+        "text": "2. 평소 가족·지인과의 시간은 어떠세요?",
+        "options": ["시간이 자유로워 약속 잡기가 쉬워요", "가족과 정기적으로 만나요 (명절·주말 식사 등)", "가족 돌봄 때문에 시간이 제한적이에요", "혼자 보내는 시간이 많아요"]
     },
     3: {
-        "text": "3. 경제 관리 및 생활비 분담 기준?",
-        "options": ["남성 전액 부담 또는 주도적 관리", "각자 자산 독립 관리 + 공동 생활비 반반", "상호 형편에 맞춘 유연한 분담", "사전 협의 후 공정 관리"]
+        "text": "3. 함께 만났을 때 비용은 어떻게 하는 것이 편하세요?",
+        "options": ["번갈아 가며 내는 게 좋아요", "각자 부담하는 게 편해요", "그때그때 형편에 맞춰 정해요", "미리 이야기해서 정해요"]
     },
     4: {
-        "text": "4. 은퇴 후 주거 환경 및 여가 지향점?",
-        "options": ["도심 인프라 및 문화생활 중심", "근교 전원주택/타운하우스 여유로운 삶", "여행·캠핑·골프 등 활동적 여가 공유", "조용하고 정적인 힐링 라이프"]
+        "text": "4. 여가 시간에 가장 하고 싶은 활동은?",
+        "options": ["전시·공연 등 문화생활", "근교 나들이·산책·전원 생활", "여행·캠핑·골프 등 활동적인 취미", "조용한 대화·독서·차 한잔"]
     },
     5: {
-        "text": "5. 종교 및 생활 습관(음주/흡연) 성향?",
-        "options": ["동일 종교 필수", "종교 무관 / 상호 독립성 존중", "비흡연 필수 + 절주형 라이프", "자유로운 라이프스타일 양해"]
+        "text": "5. 만남에서 중요하게 생각하는 생활 습관은?",
+        "options": ["종교가 같으면 좋아요", "종교는 상관없고 서로 존중해요", "비흡연·절주를 선호해요", "생활 습관은 크게 따지지 않아요"]
     }
 }
 
@@ -669,10 +731,9 @@ if not st.session_state.user_id:
             clean_p = re.sub(r'[^0-9]', '', login_phone.strip())
             if not login_name.strip() or not clean_p or not login_pwd.strip():
                 st.error("성명, 휴대폰 번호, 비밀번호를 모두 입력해 주세요.")
+            elif st.session_state.get("login_fail_5060", 0) >= 5:
+                st.error("비밀번호를 여러 번 틀리셨습니다. 잠시 후 페이지를 새로고침하고 다시 시도하거나 고객센터로 문의해 주세요.")
             else:
-                if st.session_state.get("login_fail_5060", 0) >= 5:
-                    st.error("비밀번호를 여러 번 틀리셨습니다. 잠시 후 페이지를 새로고침하고 다시 시도하거나 고객센터로 문의해 주세요.")
-                    st.stop()
                 res = supabase.table("users").select("*").eq("name", login_name.strip()).eq("phone", clean_p).execute()
 
                 if res.data:
@@ -827,7 +888,7 @@ if not st.session_state.user_id:
         j_credit = st.number_input("공인 신용점수 (선택, 배지를 원하실 때만 입력)", 0, 1000, 0, key="j_credit")
         j_doc = st.file_uploader("신용 증빙 서류 첨부 (선택: NICE/KCB 리포트 또는 토스 캡처)", type=["jpg", "png", "pdf"], key="j_doc")
 
-        st.markdown("##### 🎯 5060 필수 가치관 5대 문답")
+        st.markdown("##### 🎯 나와 맞는 친구를 위한 5가지 질문")
         a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], key="jq_1")
         a2 = st.radio(CORE_QUESTIONS_5060[2]["text"], CORE_QUESTIONS_5060[2]["options"], key="jq_2")
         a3 = st.radio(CORE_QUESTIONS_5060[3]["text"], CORE_QUESTIONS_5060[3]["options"], key="jq_3")
@@ -836,7 +897,7 @@ if not st.session_state.user_id:
 
         with st.expander("📄 수집 항목과 이용 안내 (눌러서 읽어 보세요)"):
             st.markdown("""
-            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 가치관 문답 답변, 카카오 계정 식별번호·프로필 사진(카카오로 가입 시)
+            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 질문 5가지 답변, 카카오 계정 식별번호·프로필 사진(카카오로 가입 시)
             **이용 목적**: 회원 가입과 본인 확인, 대화 신청 서비스 제공, 이용 안내 문자 발송, 부정 이용 방지
             **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
             **선택 항목**: 신용점수와 증빙서류(인증 배지용). 확인 후 서류는 파기하며, 배지를 받지 않아도 이용에 불이익이 없습니다.
@@ -904,10 +965,10 @@ if not st.session_state.user_id:
 
                     try:
                         new_u = supabase.table("users").insert(user_data).execute().data[0]
-                    except Exception:
-                        # DB가 'NONE' 값을 허용하지 않는 경우를 대비한 안전장치
-                        if user_data.get("credit_status") == "NONE":
-                            user_data["credit_status"] = "PENDING"
+                    except Exception as ins_err:
+                        # DB가 'NONE' 값을 허용하지 않는 경우(제약조건 오류)에만 다시 시도합니다
+                        if user_data.get("credit_status") == "NONE" and "credit_status" in str(ins_err).lower():
+                            user_data["credit_status"] = "PENDING"  # 서류 없는 PENDING은 심사함에서 걸러냅니다
                             new_u = supabase.table("users").insert(user_data).execute().data[0]
                         else:
                             raise
@@ -936,10 +997,12 @@ if not st.session_state.user_id:
                                     new_total = (new_u.get("ticket_count") or 0) + REFERRAL_BONUS
                                     supabase.table("users").update({"ticket_count": new_total}).eq("id", uid).execute()
                                     new_u["ticket_count"] = new_total
+                                    record_free_grant(ref_id, REFERRAL_BONUS)
                                     ref_msg = f" 친구 추천 선물로 티켓 {REFERRAL_BONUS}장이 더 지급되었습니다."
                         except Exception:
                             pass  # 추천 보상 실패가 가입을 막지 않도록 함
 
+                    record_free_grant(uid, 3 + (REFERRAL_BONUS if ref_msg else 0))
                     st.session_state.user_id = uid
                     st.session_state.user_info = new_u
                     st.success(f"🎉 서류 제출 및 가입이 완료되었습니다! 웰컴 티켓 3장이 지급되었습니다.{ref_msg}")
@@ -950,6 +1013,12 @@ if not st.session_state.user_id:
 # --- 2. 메인 대시보드 화면 ---
 else:
     me = st.session_state.user_info
+    if not st.session_state.get("expiry_checked_5060"):
+        st.session_state.expiry_checked_5060 = True
+        lost = expire_free_tickets(me)
+        if lost > 0:
+            st.session_state.user_info = me
+            st.warning(f"⏳ 지급 후 {FREE_TICKET_DAYS}일이 지난 무료 티켓 {lost}장이 소멸했습니다. (유료 티켓은 소멸하지 않았습니다)")
     my_tickets = me.get('ticket_count', 0)
 
     h_col1, h_col2 = st.columns([2.5, 1.5])
@@ -978,7 +1047,7 @@ else:
     tabs_main = st.tabs(["✨ 추천 피드", "📬 신청 보관함", "💳 티켓 충전", "👤 내 프로필"])
 
     my_ans_data = supabase.table("user_answers").select("question_num, answer_value").eq("user_id", me["id"]).execute().data
-    my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data}
+    my_answers = {item["question_num"]: item["answer_value"] for item in my_ans_data if 1 <= item["question_num"] <= 5}
 
     # --- TAB 1: 추천 피드 ---
     with tabs_main[0]:
@@ -1017,7 +1086,8 @@ else:
                 .in_("user_id", [c["id"] for c in candidates]).execute().data
             ans_by_user = {}
             for item in all_ans:
-                ans_by_user.setdefault(item["user_id"], {})[item["question_num"]] = item["answer_value"]
+                if 1 <= item["question_num"] <= 5:  # 장부용 행(90~92번)은 궁합 계산에서 제외
+                    ans_by_user.setdefault(item["user_id"], {})[item["question_num"]] = item["answer_value"]
             for cand in candidates:
                 c_answers = ans_by_user.get(cand["id"], {})
                 
@@ -1053,7 +1123,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-                with st.expander("🔍 5대 가치관 상세 대조표"):
+                with st.expander("🔍 5가지 질문 상세 비교"):
                     for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
                         q_text = CORE_QUESTIONS_5060[q_num]["text"]
                         m_val = my_answers.get(q_num, "미응답")
@@ -1067,7 +1137,7 @@ else:
                 if req_status == "PENDING":
                     st.button(f"⏳ 수락 대기중 ({cand['name'][0]}*님)", key=f"feed_btn_{cand['id']}", disabled=True)
                 elif req_status == "ACCEPTED":
-                    st.success("🎉 매칭 성공! 보관함에서 선명한 사진과 연락처를 확인하세요.")
+                    st.success("🎉 서로 수락했어요! 보관함에서 선명한 사진과 연락처를 확인하세요.")
                 else:
                     if st.button(f"💌 대화 신청하기 (티켓 1장)", key=f"feed_btn_{cand['id']}"):
                         if my_tickets <= 0:
@@ -1082,10 +1152,10 @@ else:
                                 "status": "PENDING",
                                 "payment_status": "PAID"
                             }).execute()
-                            send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 가치관 기반 대화 신청이 도착했습니다.")
+                            send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 대화 신청이 도착했습니다.")
                             st.rerun()
 
-                st.caption("ℹ️ 대화 신청 시 티켓 1장이 사용되며, 상대방 거절/72시간 미응답 시 티켓은 자동 반환됩니다. (미사용 티켓 7일 이내 100% 환불)")
+                st.caption(f"ℹ️ 대화 신청 시 티켓 1장이 사용되며, 상대방 거절/72시간 미응답 시 티켓은 자동 반환됩니다. (미사용 티켓 7일 이내 100% 환불) · 가입·추천 선물 티켓은 지급일부터 {FREE_TICKET_DAYS}일 후 소멸합니다.")
                 st.write("")
 
     # --- TAB 2: 신청 보관함 ---
@@ -1128,7 +1198,7 @@ else:
                 for req in sent_list:
                     rcv = supabase.table("users").select("*").eq("id", req["receiver_id"]).execute().data[0]
                     if req["status"] == "ACCEPTED":
-                        st.success(f"🎉 **{rcv['name']}** 님과 매칭이 성사되었습니다!")
+                        st.success(f"🎉 **{rcv['name']}** 님과 서로 연결되었습니다!")
                         r_img = esc(rcv.get("photo_url") or DEFAULT_AVATARS.get(rcv["gender"]))
                         st.markdown(f"""
                             <div class="senior-card">
@@ -1186,7 +1256,7 @@ else:
     with tabs_main[2]:
         st.markdown(f"""
             <div style="text-align:center; padding: 10px 0 16px 0;">
-                <h3 style="color:#FFFFFF; margin-bottom:4px;">👑 프라이빗 멤버십 충전</h3>
+                <h3 style="color:#FFFFFF; margin-bottom:4px;">👑 대화 신청 티켓 충전</h3>
                 <div style="font-size:0.9rem; color:#A1A1AA;">현재 회원님의 보유 티켓: <strong style="color:#FDE047; font-size:1.05rem;">{my_tickets}장</strong></div>
             </div>
         """, unsafe_allow_html=True)
@@ -1215,7 +1285,7 @@ else:
                 <div>
                     <span class="shop-badge" style="background:#854D0E;">👑 VIP 추천</span>
                     <div class="shop-title">👑 5회 VIP 전담 패키지</div>
-                    <div class="shop-desc">5회 신청 + 매칭 매니저 우선 주선 (회당 약 {won(round(TICKET_PRICE_5 / 5))} / {d5}% 할인)</div>
+                    <div class="shop-desc">5회 신청 + 담당 매니저 우선 안내 (회당 약 {won(round(TICKET_PRICE_5 / 5))} / {d5}% 할인)</div>
                 </div>
                 <div class="shop-price">{won(TICKET_PRICE_5)}</div>
             </div>
@@ -1303,7 +1373,7 @@ else:
 
         st.markdown("---")
         st.markdown("##### 📸 프로필 사진 등록")
-        st.caption("등록된 사진은 매칭 전까지 실루엣 블러 처리되어 안전하게 보호되며, 상호 수락 시에만 상대방에게 선명하게 공개됩니다.")
+        st.caption("등록된 사진은 서로 수락하기 전까지 흐리게 처리되어 안전하게 보호되며, 상호 수락 시에만 상대방에게 선명하게 공개됩니다.")
         new_avatar = st.file_uploader("사진 파일 선택 (JPG, PNG)", type=["jpg", "png", "jpeg"], key="up_avatar")
         if new_avatar and st.button("사진 등록 및 저장"):
             f_ext = new_avatar.name.split(".")[-1].lower()
@@ -1318,14 +1388,14 @@ else:
             supabase.table("users").update({"photo_url": url}).eq("id", me["id"]).execute()
             me["photo_url"] = url
             st.session_state.user_info = me
-            st.success("사진이 등록되었습니다. 매칭 전에는 블라인드 보호가 자동 적용됩니다.")
+            st.success("사진이 등록되었습니다. 서로 수락하기 전에는 사진 보호가 자동 적용됩니다.")
             st.rerun()
 
     # 👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터
     if me.get("is_admin"):
         st.markdown("---")
         with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
-            pending_users = supabase.table("users").select("*").eq("credit_status", "PENDING").execute().data
+            pending_users = [u for u in supabase.table("users").select("*").eq("credit_status", "PENDING").execute().data if u.get("credit_doc_url")]
             if not pending_users:
                 st.success("현재 심사 대기 중인 회원이 없습니다.")
             else:
@@ -1388,6 +1458,8 @@ else:
         st.session_state.user_id = None
         st.session_state.user_info = None
         st.session_state.kakao_user = None
+        for _k in ("expiry_checked_5060", "login_fail_5060", "ref_id"):
+            st.session_state.pop(_k, None)
         st.rerun()
 
 # --- [법적 필수 표기] 플랫폼 하단 사업자 정보 푸터 ---
