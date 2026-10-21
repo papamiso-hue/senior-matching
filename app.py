@@ -97,6 +97,12 @@ TICKET_PRICE_5 = 43000
 def won(n: int) -> str:
     return f"{n:,}원"
 
+# 친구 추천 보상 설정 (바꾸려면 여기 숫자만 고치세요)
+REFERRAL_BONUS = 1          # 추천한 분 / 가입한 분 각각 받는 티켓 수
+REFERRAL_MAX_REWARDS = 5    # 한 분이 받을 수 있는 추천 보상 최대 횟수
+REFERRAL_QNUM = 90          # 추천 기록을 user_answers에 남길 때 쓰는 번호 (문답 1~5와 겹치지 않음)
+APP_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
+
 def hash_password(pwd: str) -> str:
     if not pwd:
         return ""
@@ -529,6 +535,13 @@ if "reset_target_uid_5060" not in st.session_state:
 
 if "kakao_user" not in st.session_state:
     st.session_state.kakao_user = None
+if "ref_id" not in st.session_state:
+    st.session_state.ref_id = None
+
+# 친구 추천 링크(?ref=...) 기억하기. 카카오 로그인을 거쳐 돌아올 때는 state 값으로 전달됩니다.
+_ref_raw = st.query_params.get("ref") or st.query_params.get("state")
+if _ref_raw and re.fullmatch(r"[A-Za-z0-9\-]{1,64}", str(_ref_raw)):
+    st.session_state.ref_id = str(_ref_raw)
 
 # 카카오 콜백 처리
 params = st.query_params
@@ -597,7 +610,7 @@ if not st.session_state.user_id:
         st.success(f"🎉 **{k_nick}**님, 카카오 본인 확인이 완료되었습니다!\n\n회원 심사를 위해 아래에서 기본 정보와 서류를 제출해 주세요.")
         tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
     else:
-        kakao_login_url = get_kakao_login_url()
+        kakao_login_url = get_kakao_login_url(state=st.session_state.ref_id)
         st.link_button(
             "💬 카카오 계정으로 간편 시작",
             url=kakao_login_url,
@@ -843,9 +856,28 @@ if not st.session_state.user_id:
                         {"user_id": uid, "question_num": 5, "answer_value": a5}
                     ]).execute()
 
+                    # 친구 추천 보상: 추천한 분과 가입한 분 모두 티켓 1장 (추천인당 최대 REFERRAL_MAX_REWARDS명)
+                    ref_msg = ""
+                    ref_id = st.session_state.get("ref_id")
+                    if ref_id and str(ref_id) != str(uid):
+                        try:
+                            ref_rows = supabase.table("users").select("id,ticket_count").eq("id", ref_id).execute().data
+                            if ref_rows:
+                                done = supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_QNUM).eq("answer_value", f"ref:{ref_id}").execute().data
+                                if len(done) < REFERRAL_MAX_REWARDS:
+                                    # 기록이 먼저 성공해야 보상을 줍니다 (중복 지급 방지)
+                                    supabase.table("user_answers").insert({"user_id": uid, "question_num": REFERRAL_QNUM, "answer_value": f"ref:{ref_id}"}).execute()
+                                    supabase.table("users").update({"ticket_count": (ref_rows[0].get("ticket_count") or 0) + REFERRAL_BONUS}).eq("id", ref_id).execute()
+                                    new_total = (new_u.get("ticket_count") or 0) + REFERRAL_BONUS
+                                    supabase.table("users").update({"ticket_count": new_total}).eq("id", uid).execute()
+                                    new_u["ticket_count"] = new_total
+                                    ref_msg = f" 친구 추천 선물로 티켓 {REFERRAL_BONUS}장이 더 지급되었습니다."
+                        except Exception:
+                            pass  # 추천 보상 실패가 가입을 막지 않도록 함
+
                     st.session_state.user_id = uid
                     st.session_state.user_info = new_u
-                    st.success("🎉 서류 제출 및 가입이 완료되었습니다! 웰컴 티켓 3장이 지급되었습니다.")
+                    st.success(f"🎉 서류 제출 및 가입이 완료되었습니다! 웰컴 티켓 3장이 지급되었습니다.{ref_msg}")
                     st.rerun()
                 except Exception as e:
                     st.error(f"가입 처리 중 오류 발생: {e}")
@@ -1165,6 +1197,15 @@ else:
                 <div style="font-size:0.9rem; color:#D4D4D8;">📍 {esc(me['region'])} | 💼 {esc(me.get('job'))}</div>
             </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("##### 🎁 친구 초대하고 티켓 받기")
+        try:
+            invited = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_QNUM).eq("answer_value", f"ref:{me['id']}").execute().data)
+        except Exception:
+            invited = 0
+        st.caption(f"아래 링크로 친구가 가입하면 두 분 모두 티켓 {REFERRAL_BONUS}장을 받습니다. (최대 {REFERRAL_MAX_REWARDS}명 · 현재 {invited}명 초대 완료)")
+        st.code(f"{APP_URL}/?ref={me['id']}", language=None)
+        st.markdown("---")
 
         st.markdown("##### ✏️ 자기소개 및 경력·취미 정보 수정")
         edit_job = st.text_input("직업 또는 경력 수정", value=me.get("job", ""), key="edit_job")

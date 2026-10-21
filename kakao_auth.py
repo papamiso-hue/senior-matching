@@ -4,13 +4,16 @@ import requests
 KAKAO_REST_API_KEY = "53c242a5a25a23e264cd7e845b124a82"
 KAKAO_REDIRECT_URI = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
 
-def get_kakao_login_url():
-    return (
+def get_kakao_login_url(state=None):
+    url = (
         f"https://kauth.kakao.com/oauth/authorize?"
         f"client_id={KAKAO_REST_API_KEY}&"
         f"redirect_uri={KAKAO_REDIRECT_URI}&"
         f"response_type=code"
     )
+    if state:
+        url += f"&state={state}"  # 친구 추천 코드를 로그인 후에도 이어받기 위함
+    return url
 
 def get_kakao_user_info(auth_code):
     token_url = "https://kauth.kakao.com/oauth/token"
