@@ -2163,6 +2163,13 @@ def render_faq():
 
 render_faq()
 
+# --- 이용약관·개인정보 처리방침 (누구나 로그인 없이 읽을 수 있음) ---
+from legal_text import TERMS_MD, PRIVACY_MD
+with st.expander("📜 이용약관"):
+    st.markdown(TERMS_MD)
+with st.expander("🔒 개인정보 처리방침"):
+    st.markdown(PRIVACY_MD)
+
 # --- [법적 필수 표기] 플랫폼 하단 사업자 정보 푸터 ---
 st.markdown("""
     <div style="margin-top: 50px; padding: 22px 14px; border-top: 2px solid #D9C48F; font-size: 0.92rem; color: #4A4A4A; line-height: 1.7; word-break: keep-all;">
