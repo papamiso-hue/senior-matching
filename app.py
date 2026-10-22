@@ -83,7 +83,9 @@ st.markdown(f"""
 # 3. 서비스 기본 상수 및 보안 Secrets 연동
 BRAND_NAME_KR = "노블레스 라온"
 BRAND_NAME_EN = "NOBLESSE RAON 5060"
-SITE_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app/"
+import os as _os
+_BASE_URL = _os.environ.get("SITE_URL", "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app").rstrip("/")  # Render 이사 후에는 환경변수 SITE_URL=https://noblesseraon.com
+SITE_URL = _BASE_URL + "/"
 OG_IMAGE_URL = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1200&auto=format&fit=crop"
 KAKAO_CHAT_URL = "https://open.kakao.com/o/sRas35Li"
 
@@ -302,7 +304,7 @@ REFERRAL_PAID_QNUM = 93     # 추천 보상 지급 완료 기록 (친구가 첫 
 PURCHASE_QNUM = 94          # 유료 티켓 충전 기록 (사람당 1줄, JSON)
 REFERRAL_MAX_REWARDS = 5    # 한 분이 받을 수 있는 추천 보상 최대 횟수
 REFERRAL_QNUM = 90          # 추천 기록을 user_answers에 남길 때 쓰는 번호 (문답 1~5와 겹치지 않음)
-APP_URL = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
+APP_URL = _BASE_URL
 SHARE_URL = "https://noblesseraon.com"   # 친구 초대 링크에 쓰는 대표 도메인 (접속하면 사이트로 이동하고 ?ref= 값은 유지됩니다)
 
 PBKDF2_ROUNDS = 200_000
@@ -2112,7 +2114,7 @@ else:
 # --- 자주 묻는 질문 (로그인 전·후 모두 하단에 표시) ---
 FAQ_ITEMS = [
     ("노블레스 라온은 어떤 서비스인가요?",
-     "만 48세~75세 성인이 **동반자·친구**를 만나도록 돕는 온라인 서비스입니다. 회원이 직접 프로필을 보고 대화를 신청합니다. 회사는 혼인·결혼 상담이나 소개(알선)를 하지 않습니다."),
+     "만 48세~75세 성인이 **동반자·친구**를 만나도록 돕는 온라인 서비스입니다. 회원이 직접 프로필을 보고 대화를 신청합니다. 노블레스 라온은 동반자·친구 만남만 돕습니다."),
     ("가입은 어떻게 하나요?",
      "**카카오로 시작하기**를 누르신 뒤 이름, 휴대폰 번호, 간단한 정보를 적으시면 됩니다. 카카오를 쓰지 않으실 때는 이메일로 받은 6자리 인증번호를 입력해 주세요. 신용점수와 서류는 **선택**이라 건너뛰셔도 됩니다."),
     ("가입비가 있나요? 무료로 써 볼 수 있나요?",
