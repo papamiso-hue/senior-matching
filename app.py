@@ -290,9 +290,9 @@ def detect_key_role() -> str:
         return "알 수 없음"
 
 # 티켓 가격표 (원). 가격을 바꿀 때는 여기 숫자만 고치면 화면과 환불 안내에 같이 반영됩니다.
-TICKET_PRICE_1 = 10000
-TICKET_PRICE_3 = 27000
-TICKET_PRICE_5 = 43000
+TICKET_PRICE_1 = 3300
+TICKET_PRICE_3 = 9000
+TICKET_PRICE_5 = 14300
 
 def won(n: int) -> str:
     return f"{n:,}원"
