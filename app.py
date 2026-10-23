@@ -373,6 +373,12 @@ def expire_free_tickets(user) -> int:
     except Exception:
         return 0
 
+BLUR_BUCKET = "avatars-blur"  # 흐린 사본만 담는 공개 보관함 (원본 보관함 avatars는 비공개)
+
+def own_photo_url(photo_url, gender):
+    """본인 사진 표시용: 원본 보관함이 비공개라서 임시 주소(60분)로 보여 줍니다."""
+    return clear_photo_url(photo_url, gender)
+
 def _blur_token(orig_fname: str) -> str:
     """원본 파일명으로부터 흐린 사본의 '추측 불가능한' 이름 조각을 만듭니다 (서버 비밀키로 만들어 외부에서는 계산할 수 없음)."""
     key = str(SUPABASE_KEY or "").encode()
@@ -391,9 +397,8 @@ def blur_photo_url(photo_url, gender):
     """피드에는 서버에서 미리 흐리게 만든 사진만 보여줍니다. 원본 주소는 화면에 절대 내보내지 않습니다."""
     marker = "/avatars/avatar_5060_"
     if photo_url and marker in photo_url:
-        base, fn = photo_url.rsplit("/avatars/", 1)
-        fn = fn.split("?")[0]
-        return f"{base}/avatars/{blur_fname_for(fn)}"
+        fn = photo_url.rsplit("/avatars/", 1)[1].split("?")[0]
+        return f"{SUPABASE_URL}/storage/v1/object/public/{BLUR_BUCKET}/{blur_fname_for(fn)}"
     return DEFAULT_AVATARS.get(gender)
 
 def clear_photo_url(photo_url, gender):
@@ -875,23 +880,28 @@ def _avatar_names_from_url(photo_url):
     return names
 
 def remove_avatar_files(uid=None, photo_url=None) -> int:
-    """보관함의 사진 원본과 흐린 사본(blur_)을 지웁니다. uid를 주면 예전에 올린 사진까지 모두 찾아 지웁니다."""
+    """원본 보관함(avatars)과 흐린 사본 보관함(avatars-blur)의 사진을 지웁니다. uid를 주면 예전에 올린 사진까지 모두 찾아 지웁니다."""
     names = _avatar_names_from_url(photo_url)
+    blur_names = set(n for n in names if n.startswith("blur_"))
+    orig_names = set(n for n in names if not n.startswith("blur_"))
     if uid:
         # 끝에 "_"를 붙여야 합니다: 번호가 숫자형일 때 1번 회원 탈퇴가 10~19번 회원 사진까지 지우는 사고를 막습니다
-        for prefix in (f"avatar_5060_{uid}_", f"blur_avatar_5060_{uid}_"):
+        for bucket, prefix, target in (("avatars", f"avatar_5060_{uid}_", orig_names),
+                                       (BLUR_BUCKET, f"blur_avatar_5060_{uid}_", blur_names),
+                                       ("avatars", f"blur_avatar_5060_{uid}_", orig_names)):
             try:
-                for it in supabase.storage.from_("avatars").list("", {"search": prefix, "limit": 200}) or []:
+                for it in supabase.storage.from_(bucket).list("", {"search": prefix, "limit": 200}) or []:
                     n = it.get("name", "")
                     if n.startswith(prefix):
-                        names.add(n)
+                        target.add(n)
             except Exception:
                 pass
-    if names:
-        try:
-            supabase.storage.from_("avatars").remove(list(names))
-        except Exception:
-            pass
+    for bucket, group in (("avatars", orig_names), (BLUR_BUCKET, blur_names)):
+        if group:
+            try:
+                supabase.storage.from_(bucket).remove(list(group))
+            except Exception:
+                pass
     return len(names)
 
 def withdraw_member(uid):
@@ -1904,7 +1914,7 @@ else:
 
     # --- TAB 4: 프로필 관리 ---
     with tabs_main[3]:
-        my_avatar = esc(me.get("photo_url") or DEFAULT_AVATARS.get(me["gender"]))
+        my_avatar = esc(own_photo_url(me.get("photo_url"), me["gender"]))
         st.markdown(f"""
             <div style="text-align:center; padding:10px 0 20px 0;">
                 <img src="{my_avatar}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #B7791F;">
@@ -1968,7 +1978,7 @@ else:
                     fname = f"avatar_5060_{me['id']}_{uuid.uuid4().hex}.jpg"  # 32자 무작위 꼬리: 주소를 추측할 수 없음
                     supabase.storage.from_("avatars").upload(fname, clean_jpg, {"content-type": "image/jpeg"})
                     try:
-                        supabase.storage.from_("avatars").upload(blur_fname_for(fname), make_blurred_copy(clean_jpg), {"content-type": "image/jpeg"})
+                        supabase.storage.from_(BLUR_BUCKET).upload(blur_fname_for(fname), make_blurred_copy(clean_jpg), {"content-type": "image/jpeg"})
                     except Exception:
                         st.warning("흐림 처리 사본을 만들지 못해 피드에는 기본 이미지가 표시됩니다.")
                     url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{fname}"
