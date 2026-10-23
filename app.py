@@ -1547,7 +1547,7 @@ if not st.session_state.user_id:
         with st.expander("📄 수집 항목과 이용 안내 (눌러서 읽어 보세요)"):
             st.markdown("""
             **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 질문 5가지 답변, 이메일(이메일 가입 시 필수, 카카오 가입 시 선택), 카카오 계정 식별번호·프로필 사진(카카오로 가입 시), 아는 분 휴대폰 번호(차단 목록, 선택), 무통장 입금 신청 내용(입금자명·입금 예정일), 익명 방문 기록(개인을 알아볼 수 없음)
-            **이용 목적**: 회원 가입과 본인 확인, 대화 신청 서비스 제공, 인증번호·이용 안내 발송, 부정 이용 방지
+            **이용 목적**: 회원 가입과 가입 의사 확인, 대화 신청 서비스 제공, 인증번호·이용 안내 발송, 부정 이용 방지
             **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
             **선택 항목**: 프로필 사진, 이메일(카카오 가입 시), 아는 분 번호(차단 목록). 신용정보는 받지 않습니다.
             동의를 거부할 수 있으나, 필수 항목은 거부하면 가입이 어렵습니다.
@@ -1591,7 +1591,7 @@ if not st.session_state.user_id:
                         "credit_score": 0,
                         "credit_doc_url": "",
                         "credit_status": "NONE",
-                        "is_verified": True,   # 카카오 로그인 또는 이메일 인증번호 확인을 마친 가입자 → '가입 확인 완료' 표시
+                        "is_verified": True,   
                         "ticket_count": WELCOME_TICKETS,
                         "is_vip": False,
                         "blocked_phones": [],
@@ -1713,6 +1713,7 @@ else:
         if (me.get("gender") or "") not in ("남", "여"):
             st.warning("추천을 보시려면 [내 프로필]에서 성별을 먼저 입력해 주세요.")
             st.stop()
+        st.caption("✅ 가입 절차 완료 표시는 가입 절차를 마쳤다는 뜻이며, 신분·재산·신용을 보증하지 않습니다.")
         raw_candidates = supabase.table("users")\
             .select("id,name,phone,gender,age,region,job,intro,photo_url,is_verified,blocked_phones,is_admin")\
             .neq("id", me["id"])\
@@ -1779,7 +1780,7 @@ else:
                             </div>
                             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
                                 <span class="badge-pill-gold">💼 {esc(cand.get('job') or '경력 인증')}</span>
-                                {'<span class="badge-pill-credit">✅ 가입 확인 완료</span>' if cand.get('is_verified') else ''}
+                                {'<span class="badge-pill-credit">✅ 가입 절차 완료</span>' if cand.get('is_verified') else ''}
                             </div>
                             <div class="senior-intro">"{intro_txt}"</div>
                         </div>
@@ -2298,7 +2299,7 @@ FAQ_ITEMS = [
     ("특정 사람에게 내 정보가 안 보이게 하고 싶어요.",
      "프로필 화면의 **아는 분 번호 차단**에 그분 휴대폰 번호를 넣으시면 서로 보이지 않습니다. (차단 번호는 목록을 거른 용도로만 쓰입니다.)"),
     ("신용점수나 서류를 내야 하나요?",
-     "아니요. 노블레스 라온은 **신용점수와 신용 서류를 받지 않습니다.** 카카오 로그인 또는 이메일 인증번호 확인을 마친 회원에게는 프로필에 '✅ 가입 확인 완료' 표시가 붙습니다."),
+     "아니요. 노블레스 라온은 **신용점수와 신용 서류를 받지 않습니다.** 카카오 로그인 또는 이메일 인증번호 확인을 마친 회원에게는 프로필에 '✅ 가입 절차 완료' 표시가 붙습니다."),
     ("친구를 초대하면 어떤 혜택이 있나요?",
      "[내 프로필]의 초대 링크로 친구가 가입하고 **첫 유료 티켓을 구매하면** 두 분 모두 티켓 1장을 받습니다. 한 분이 보상받을 수 있는 초대는 최대 5명입니다. 연락처를 모아서 보내는 것은 하지 말아 주세요."),
     ("탈퇴하고 싶어요.",
