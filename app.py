@@ -1435,6 +1435,7 @@ if not st.session_state.user_id:
 
     with tab_join:
         st.markdown("##### 👤 기본 인적사항 (만 48~75세 대상)")
+        st.caption("⏱️ 약 2분이면 끝납니다. ① 기본 정보 → ② 5가지 질문 → ③ 동의 후 '가입 완료'. 직업·취미·소개는 나중에 써도 됩니다.")
         
         default_name = ""
         if st.session_state.kakao_user:
@@ -1520,23 +1521,6 @@ if not st.session_state.user_id:
             j_sigungu = st.selectbox("시·군·구", KOREA_REGIONS[j_sido], index=0, key="j_sigungu")
         j_region = f"{j_sido} {j_sigungu}"
 
-        st.markdown("##### 💼 경력 및 라이프스타일")
-        j_job = st.text_input("직업 또는 이전 경력", placeholder="예: 사업체 운영 / 전문직 퇴직 / 프리랜서", key="j_job")
-        job_typos = audit_text_typos(j_job)
-        if job_typos:
-            st.caption(f"💡 표현 교정 안내: {', '.join(job_typos)}")
-
-        j_hobbies = st.text_input("취미 및 여가 생활", placeholder="예: 골프, 전원생활, 등산, 클래식 감상", key="j_hobbies")
-        hobby_typos = audit_text_typos(j_hobbies)
-        if hobby_typos:
-            st.caption(f"💡 표현 교정 안내: {', '.join(hobby_typos)}")
-
-        j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="", placeholder="예: 인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다. (비워 두면 이 문장이 들어갑니다)", max_chars=500, key="j_intro")
-        st.caption("💡 전화번호·카카오톡 아이디 같은 연락처는 쓸 수 없어요. 서로 수락한 뒤 대화에서 나누세요.")
-        intro_typos = audit_text_typos(j_intro)
-        if intro_typos:
-            st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
-
         st.markdown("##### 🎯 나와 맞는 친구를 위한 5가지 질문")
         a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], key="jq_1")
         a2 = st.radio(CORE_QUESTIONS_5060[2]["text"], CORE_QUESTIONS_5060[2]["options"], key="jq_2")
@@ -1544,12 +1528,30 @@ if not st.session_state.user_id:
         a4 = st.radio(CORE_QUESTIONS_5060[4]["text"], CORE_QUESTIONS_5060[4]["options"], key="jq_4")
         a5 = st.radio(CORE_QUESTIONS_5060[5]["text"], CORE_QUESTIONS_5060[5]["options"], key="jq_5")
 
+        with st.expander("✏️ (선택) 직업·취미·소개 적기 — 비워 두셔도 되고, 가입 후 [내 프로필]에서 언제든 쓸 수 있어요"):
+            j_job = st.text_input("직업 또는 이전 경력", placeholder="예: 사업체 운영 / 전문직 퇴직 / 프리랜서", key="j_job")
+            job_typos = audit_text_typos(j_job)
+            if job_typos:
+                st.caption(f"💡 표현 교정 안내: {', '.join(job_typos)}")
+
+            j_hobbies = st.text_input("취미 및 여가 생활", placeholder="예: 골프, 전원생활, 등산, 클래식 감상", key="j_hobbies")
+            hobby_typos = audit_text_typos(j_hobbies)
+            if hobby_typos:
+                st.caption(f"💡 표현 교정 안내: {', '.join(hobby_typos)}")
+
+            j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="", placeholder="예: 인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다. (비워 두면 이 문장이 들어갑니다)", max_chars=500, key="j_intro")
+            st.caption("💡 전화번호·카카오톡 아이디 같은 연락처는 쓸 수 없어요. 서로 수락한 뒤 대화에서 나누세요.")
+            intro_typos = audit_text_typos(j_intro)
+            if intro_typos:
+                st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
+
+
         with st.expander("📄 수집 항목과 이용 안내 (눌러서 읽어 보세요)"):
             st.markdown("""
-            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 질문 5가지 답변, 이메일(이메일 가입 시 필수, 카카오 가입 시 선택), 카카오 계정 식별번호·프로필 사진(카카오로 가입 시), 아는 분 휴대폰 번호(차단 목록, 선택), 무통장 입금 신청 내용(입금자명·입금 예정일), 익명 방문 기록(개인을 알아볼 수 없음)
+            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 질문 5가지 답변, 이메일(이메일 가입 시 필수, 카카오 가입 시 선택), 카카오 계정 식별번호·프로필 사진(카카오로 가입 시), 아는 분 휴대폰 번호(차단 목록, 선택), 무통장 입금 신청 내용(입금자명·입금 예정일), 익명 방문 기록(개인을 알아볼 수 없음)
             **이용 목적**: 회원 가입과 가입 의사 확인, 대화 신청 서비스 제공, 인증번호·이용 안내 발송, 부정 이용 방지
             **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
-            **선택 항목**: 프로필 사진, 이메일(카카오 가입 시), 아는 분 번호(차단 목록). 신용정보는 받지 않습니다.
+            **선택 항목**: 직업, 취미, 소개글, 프로필 사진, 이메일(카카오 가입 시), 아는 분 번호(차단 목록). 신용정보는 받지 않습니다.
             동의를 거부할 수 있으나, 필수 항목은 거부하면 가입이 어렵습니다.
             """)
         agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관에 동의합니다.", key="agree_terms")
