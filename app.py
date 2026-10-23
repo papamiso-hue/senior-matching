@@ -141,9 +141,16 @@ PHONE_RE = re.compile(r"01[016789]\d{7,8}")
 def valid_phone(p: str) -> bool:
     return bool(PHONE_RE.fullmatch(p or ""))
 
-PWD_MIN, PWD_MAX = 4, 20
+PWD_MIN, PWD_MAX = 6, 20
+_WEAK_PWDS = {"123456", "1234567", "12345678", "654321", "000000", "111111", "123123", "121212", "112233",
+              "password", "qwerty", "abc123", "123456789", "1234567890", "5060", "505050", "506050"}
 def valid_pwd(p: str) -> bool:
-    return PWD_MIN <= len((p or "").strip()) <= PWD_MAX
+    p = (p or "").strip()
+    if not (PWD_MIN <= len(p) <= PWD_MAX):
+        return False
+    if p.lower() in _WEAK_PWDS or len(set(p)) == 1:   # 쉬운 번호(같은 글자 반복 등)는 거절
+        return False
+    return True
 
 def _h(value) -> str:
     """전화번호 등을 메모리 속 시도 횟수 장부에 그대로 두지 않기 위한 해시"""
@@ -1222,7 +1229,7 @@ if not st.session_state.user_id:
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
         login_phone = st.text_input("휴대폰 번호 (- 제외 숫자만)", placeholder="01012345678", key="l_phone")
-        login_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", key="l_pwd")
+        login_pwd = st.text_input("간편 비밀번호", type="password", key="l_pwd")
 
         if st.button("안심 본인인증 로그인", key="btn_login"):
             clean_p = re.sub(r'[^0-9]', '', login_phone.strip())
@@ -1306,7 +1313,7 @@ if not st.session_state.user_id:
 
             if st.session_state.get("reset_form_open_5060"):
                 in_fcode = st.text_input("이메일 인증번호 6자리", key="in_find_code_5060")
-                new_reset_pwd = st.text_input("새로운 간편 비밀번호 (4~6자리)", type="password", key="new_reset_pwd_5060")
+                new_reset_pwd = st.text_input("새로운 간편 비밀번호 (6자리 이상, 쉬운 번호 제외)", type="password", key="new_reset_pwd_5060")
 
                 if st.button("새 비밀번호로 변경 및 저장", key="btn_do_reset_5060"):
                     tgt_key = st.session_state.get("reset_verified_phone_5060")  # 인증번호를 받은 이메일 기준으로만 확인
@@ -1315,7 +1322,7 @@ if not st.session_state.user_id:
                     if not ok_c:
                         st.error(msg_c)
                     elif not valid_pwd(new_reset_pwd):
-                        st.error(f"비밀번호는 {PWD_MIN}자리 이상 {PWD_MAX}자리 이하로 입력해 주세요.")
+                        st.error(f"비밀번호는 {PWD_MIN}자리 이상 {PWD_MAX}자리 이하로, 111111·123456 같은 쉬운 번호는 피해서 입력해 주세요.")
                     elif not st.session_state.reset_target_uid_5060:
                         st.error("인증번호가 일치하지 않거나 유효시간이 지났습니다. 새 인증번호를 받아 주세요.")
                     else:
@@ -1404,7 +1411,7 @@ if not st.session_state.user_id:
                         else:
                             st.error(msg_c)
 
-        j_pwd = st.text_input("간편 비밀번호 (4~6자리)", type="password", key="j_pwd")
+        j_pwd = st.text_input("간편 비밀번호 (6자리 이상, 쉬운 번호 제외)", type="password", key="j_pwd")
         j_gender = st.radio("성별", ["남", "여"], horizontal=True, key="j_gender")
         j_age = st.number_input("나이 (만 나이)", 48, 75, 58, key="j_age")
 
@@ -1471,7 +1478,7 @@ if not st.session_state.user_id:
             elif supabase.table("users").select("id").eq("phone", clean_jp).execute().data:
                 st.error("이미 등록된 휴대폰 번호입니다.")
             elif not valid_pwd(j_pwd):
-                st.error(f"비밀번호는 {PWD_MIN}자리 이상 {PWD_MAX}자리 이하로 입력해 주세요.")
+                st.error(f"비밀번호는 {PWD_MIN}자리 이상 {PWD_MAX}자리 이하로, 111111·123456 같은 쉬운 번호는 피해서 입력해 주세요.")
             elif j_doc and j_credit <= 0:
                 st.error("서류를 올리셨다면 신용점수도 함께 입력해 주세요. (배지가 필요 없으면 서류를 지워 주세요)")
             elif len(j_job) > 60 or len(j_hobbies) > 100 or len(j_intro) > 500:
