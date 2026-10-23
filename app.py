@@ -373,12 +373,43 @@ def expire_free_tickets(user) -> int:
     except Exception:
         return 0
 
+def _blur_token(orig_fname: str) -> str:
+    """원본 파일명으로부터 흐린 사본의 '추측 불가능한' 이름 조각을 만듭니다 (서버 비밀키로 만들어 외부에서는 계산할 수 없음)."""
+    key = str(SUPABASE_KEY or "").encode()
+    return hmac.new(key, orig_fname.encode(), hashlib.sha256).hexdigest()[:24]
+
+def blur_fname_for(orig_fname: str) -> str:
+    """원본 파일명 -> 흐린 사본 파일명. 새 사진(긴 무작위 꼬리)은 원본 이름을 알아낼 수 없는 이름을 씁니다."""
+    # 형식: avatar_5060_{회원번호}_{꼬리}.jpg  (예전 사진의 꼬리는 6자, 새 사진은 32자)
+    stem = orig_fname.rsplit(".", 1)[0]
+    uid_part, _, tail = stem[len("avatar_5060_"):].rpartition("_")
+    if len(tail) >= 32:
+        return f"blur_avatar_5060_{uid_part}_{_blur_token(orig_fname)}.jpg"
+    return "blur_" + orig_fname  # 예전 사진: 기존 이름 유지(호환)
+
 def blur_photo_url(photo_url, gender):
-    """피드에는 서버에서 미리 흐리게 만든 사진만 보여줍니다. 흐린 사본이 없으면 기본 실루엣을 씁니다."""
+    """피드에는 서버에서 미리 흐리게 만든 사진만 보여줍니다. 원본 주소는 화면에 절대 내보내지 않습니다."""
     marker = "/avatars/avatar_5060_"
     if photo_url and marker in photo_url:
-        return photo_url.replace(marker, "/avatars/blur_avatar_5060_")
+        base, fn = photo_url.rsplit("/avatars/", 1)
+        fn = fn.split("?")[0]
+        return f"{base}/avatars/{blur_fname_for(fn)}"
     return DEFAULT_AVATARS.get(gender)
+
+def clear_photo_url(photo_url, gender):
+    """상대가 대화를 수락한 뒤에만 부릅니다. 가능하면 60분짜리 임시 주소(서명 URL)로 원본을 내보냅니다."""
+    if not photo_url:
+        return DEFAULT_AVATARS.get(gender)
+    if "/avatars/avatar_5060_" in photo_url:
+        fn = photo_url.split("/avatars/")[-1].split("?")[0]
+        try:
+            r = supabase.storage.from_("avatars").create_signed_url(fn, 3600)
+            u = (r or {}).get("signedURL") or (r or {}).get("signedUrl")
+            if u:
+                return u if u.startswith("http") else f"{SUPABASE_URL}/storage/v1{u}"
+        except Exception:
+            pass
+    return photo_url
 
 def make_blurred_copy(raw_bytes: bytes) -> bytes:
     from PIL import Image, ImageFilter
@@ -839,7 +870,8 @@ def _avatar_names_from_url(photo_url):
         fn = photo_url.split("/avatars/")[-1].split("?")[0]
         if fn.startswith("avatar_5060_"):
             names.add(fn)
-            names.add("blur_" + fn)
+            names.add("blur_" + fn)           # 예전 이름
+            names.add(blur_fname_for(fn))     # 새 이름
     return names
 
 def remove_avatar_files(uid=None, photo_url=None) -> int:
@@ -1741,7 +1773,7 @@ else:
                     rcv = _rr[0]
                     if req["status"] == "ACCEPTED":
                         st.success(f"🎉 **{md_esc(rcv['name'])}** 님과 서로 연결되었습니다!")
-                        r_img = esc(rcv.get("photo_url") or DEFAULT_AVATARS.get(rcv["gender"]))
+                        r_img = esc(clear_photo_url(rcv.get("photo_url"), rcv["gender"]))
                         st.markdown(f"""
                             <div class="senior-card">
                                 <div class="senior-img-box">
@@ -1771,7 +1803,7 @@ else:
                     st.markdown(f"**{snd['name'][0]}*님** ({snd['gender']} · {snd['age']}세 · {md_esc(snd.get('job'))})")
                     if req["status"] == "ACCEPTED":
                         st.success("🤝 대화 수락 완료! 연락처가 공개되었습니다.")
-                        s_img = esc(snd.get("photo_url") or DEFAULT_AVATARS.get(snd["gender"]))
+                        s_img = esc(clear_photo_url(snd.get("photo_url"), snd["gender"]))
                         st.markdown(f"""
                             <div class="senior-card">
                                 <div class="senior-img-box">
@@ -1933,10 +1965,10 @@ else:
             else:
                 try:
                     clean_jpg = sanitize_image(new_avatar.getvalue())  # JPEG로 다시 저장 (위치정보 등 숨은 정보 제거, 크기 축소)
-                    fname = f"avatar_5060_{me['id']}_{uuid.uuid4().hex[:6]}.jpg"
+                    fname = f"avatar_5060_{me['id']}_{uuid.uuid4().hex}.jpg"  # 32자 무작위 꼬리: 주소를 추측할 수 없음
                     supabase.storage.from_("avatars").upload(fname, clean_jpg, {"content-type": "image/jpeg"})
                     try:
-                        supabase.storage.from_("avatars").upload(f"blur_{fname}", make_blurred_copy(clean_jpg), {"content-type": "image/jpeg"})
+                        supabase.storage.from_("avatars").upload(blur_fname_for(fname), make_blurred_copy(clean_jpg), {"content-type": "image/jpeg"})
                     except Exception:
                         st.warning("흐림 처리 사본을 만들지 못해 피드에는 기본 이미지가 표시됩니다.")
                     url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{fname}"
