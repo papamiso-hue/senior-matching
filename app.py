@@ -42,12 +42,12 @@ manifest_5060 = {
     "theme_color": "#1F190B",
     "icons": [
         {
-            "src": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop",
+            "src": "https://noblesseraon.com/app/static/icon-192.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=512&auto=format&fit=crop",
+            "src": "https://noblesseraon.com/app/static/icon-512.png",
             "sizes": "512x512",
             "type": "image/png"
         }
@@ -63,8 +63,8 @@ st.markdown(f"""
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="theme-color" content="#1F190B">
-        <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
-        <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=192&auto=format&fit=crop">
+        <link rel="apple-touch-icon" href="https://noblesseraon.com/app/static/icon-192.png">
+        <link rel="icon" type="image/png" href="https://noblesseraon.com/app/static/icon-192.png">
     </head>
     <script>
         const manifestBlob = new Blob([`{manifest_5060_json}`], {{type: 'application/json'}});
@@ -2365,9 +2365,17 @@ def render_home_guide():
 
 그래도 어려우시면 카카오톡 1:1 상담창이나 **050-6798-3349** 로 연락 주세요. 천천히 도와드립니다.
 """
-    for _t, _m in zip(tabs, [iphone if is_iphone else galaxy, galaxy if is_iphone else iphone, kakao]):
+    _imgs = {0: [], 1: [], 2: []}
+    _base = _os.path.dirname(_os.path.abspath(__file__))
+    _g = [_os.path.join(_base, "static", f"guide-galaxy-{i}.png") for i in (1, 2, 3)]
+    _i = [_os.path.join(_base, "static", f"guide-iphone-{i}.png") for i in (1, 2, 3)]
+    _first, _second = (_i, _g) if is_iphone else (_g, _i)
+    for _t, _m, _pics in zip(tabs, [iphone if is_iphone else galaxy, galaxy if is_iphone else iphone, kakao], [_first, _second, []]):
         with _t:
             st.markdown(_m)
+            for _p in _pics:
+                if _os.path.exists(_p):
+                    st.image(_p, use_container_width=True)
 
 def render_faq():
     st.markdown("---")
