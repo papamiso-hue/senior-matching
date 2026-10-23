@@ -1059,6 +1059,16 @@ _ref_raw = st.query_params.get("ref") or st.query_params.get("state")
 if _ref_raw and re.fullmatch(r"[A-Za-z0-9\-]{1,64}", str(_ref_raw)):
     st.session_state.ref_id = str(_ref_raw)
 
+# 방문 기록(개인정보 없음): 새 접속 1회당 1줄. 날짜·무작위 접속번호·유입 표시(?src=)만 저장합니다.
+if not st.session_state.get("visit_logged"):
+    st.session_state.visit_logged = True
+    try:
+        _src = str(st.query_params.get("src") or "")
+        _src = _src if re.fullmatch(r"[A-Za-z0-9_\-]{1,20}", _src) else "direct"
+        supabase.table("site_visits").insert({"session_id": uuid.uuid4().hex, "src": _src}).execute()
+    except Exception:
+        pass
+
 # 카카오 콜백 처리
 params = st.query_params
 if "code" in params and not st.session_state.user_id:
