@@ -7,8 +7,7 @@ logger = logging.getLogger("raon")
 # 카카오 REST API 키는 로그인 주소(브라우저 주소창)에 그대로 나타나는 '공개용' 값입니다. 비밀값이 아닙니다.
 # (카카오 개발자 콘솔에서 'Client Secret'을 쓰고 있다면 그 값은 코드에 넣지 말고 Streamlit secrets에 두세요.)
 KAKAO_REST_API_KEY = "53c242a5a25a23e264cd7e845b124a82"
-import os
-KAKAO_REDIRECT_URI = os.environ.get("SITE_URL", "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app").rstrip("/")  # 카카오 개발자 설정의 Redirect URI와 반드시 같아야 함
+KAKAO_REDIRECT_URI = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
 
 def get_kakao_login_url(state=None):
     url = (
