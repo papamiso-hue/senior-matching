@@ -455,7 +455,7 @@ def charge_tickets(t, qty):
                 paid_cnt = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_PAID_QNUM).eq("answer_value", f"rewarded:{rid}").execute().data)
                 if paid_cnt < REFERRAL_MAX_REWARDS:
                     supabase.table("user_answers").insert({"user_id": t["id"], "question_num": REFERRAL_PAID_QNUM, "answer_value": f"rewarded:{rid}"}).execute()
-                    r_rows = supabase.table("users").select("id,ticket_count").eq("id", rid).execute().data
+                    r_rows = [x for x in (supabase.table("users").select("id,ticket_count,is_suspended").eq("id", rid).execute().data or []) if not x.get("is_suspended")]
                     if r_rows:
                         adjust_tickets(rid, REFERRAL_BONUS)
                         record_free_grant(rid, REFERRAL_BONUS)
@@ -471,9 +471,15 @@ def refund_tickets(t, qty, amount):
     bal = (supabase.table("users").select("ticket_count").eq("id", t["id"]).execute().data or [{}])[0].get("ticket_count", 0) or 0
     if qty > bal:
         return False, f"회수하려는 티켓({qty}장)이 현재 보유 티켓({bal}장)보다 많습니다."
+    purchases, p_exists = _ledger_get(t["id"], PURCHASE_QNUM)
+    bought_left = sum(int(x.get("qty", 0)) for x in purchases)   # 구매 합계 − 이미 환불한 합계
+    paid_left = sum(int(x.get("price", 0)) for x in purchases)
+    if qty > bought_left:
+        return False, f"장부상 환불할 수 있는 유료 티켓은 {max(bought_left, 0)}장입니다. 더 많이 회수할 수 없습니다."
+    if int(amount) > paid_left:
+        return False, f"장부상 환불할 수 있는 금액은 {max(paid_left, 0):,}원입니다. 더 많이 기록할 수 없습니다."
     if adjust_tickets(t["id"], -qty) is None:
         return False, "티켓 회수에 실패했습니다. 다시 시도해 주세요."
-    purchases, p_exists = _ledger_get(t["id"], PURCHASE_QNUM)
     purchases.append({"qty": -qty, "price": -int(amount), "refund": True, "at": datetime.now(timezone.utc).isoformat()})
     try:
         _ledger_put(t["id"], PURCHASE_QNUM, purchases, p_exists)
@@ -526,7 +532,7 @@ PLATFORM_TYPO_RULES = {
 }
 
 _BANNED_WORDS = ["결혼", "혼인", "배우자", "재혼", "맞선", "신랑", "신부", "결혼정보"]
-_CONTACT_HINTS = ["카톡", "카카오", "kakao", "오픈채팅", "오픈톡", "라인", "line.me", "텔레그램", "telegram", "t.me", "인스타", "instagram", "http", "www.", ".com", ".kr", ".net", ".co.", "@"]
+_CONTACT_HINTS = ["카톡", "카카오톡", "카카오id", "카카오아이디", "kakao.com", "kakaotalk", "오픈채팅", "오픈톡", "라인id", "라인아이디", "line.me", "텔레그램", "telegram", "t.me", "인스타그램", "인스타id", "instagram.com", "http", "www.", ".com", ".kr", ".net", ".co.", "@"]
 def text_policy_error(text: str) -> str:
     """소개글·직업·취미에 쓰면 안 되는 말(결혼 관련 말, 연락처)이 있으면 안내 문구를 돌려줍니다. 없으면 빈 문자열."""
     t = (text or "")
@@ -534,8 +540,9 @@ def text_policy_error(text: str) -> str:
     for w in _BANNED_WORDS:
         if w in flat:
             return "노블레스 라온은 동반자·친구 만남만 돕는 곳입니다. 이 목적과 맞지 않는 말은 쓰실 수 없어요. '동반자', '친구', '대화' 같은 말로 바꿔 써 주세요."
-    digits = re.sub(r"\D", "", t)
-    if re.search(r"01[016789]\d{7,8}", digits) or len(digits) >= 9:
+    # 숫자가 (공백·하이픈·점 정도만 사이에 두고) 9자리 이상 이어질 때만 연락처로 봅니다. '1960년 12월 5일생' 같은 글은 통과합니다.
+    runs = [re.sub(r"\D", "", m) for m in re.findall(r"\d(?:[\s\-\.]?\d){8,}", t)]
+    if runs:
         return "전화번호 같은 연락처는 소개글에 적지 마세요. 서로 수락한 뒤 대화에서 안전하게 나누실 수 있어요."
     low = re.sub(r"\s", "", t).lower()   # 마침표는 남겨 두어야 .com 같은 주소를 잡을 수 있습니다
     if any(h in low for h in _CONTACT_HINTS):
@@ -1010,6 +1017,13 @@ def withdraw_member(uid):
         except Exception:
             pass
 
+    # 입금 신청 기록: 대기·취소 건은 삭제, 충전 완료 건은 결제 기록(날짜·수량·금액)만 남기고 입금자명을 지웁니다.
+    try:
+        supabase.table("payment_requests").delete().eq("user_id", uid).in_("status", ["REQUESTED", "CANCELED"]).execute()
+        supabase.table("payment_requests").update({"depositor": "(삭제됨)"}).eq("user_id", uid).execute()
+    except Exception:
+        pass
+
     # 3) 문답·장부 삭제 (유료 충전 장부는 법정 보관 때문에 조건부로 남김)
     purchases, _ = _ledger_get(uid, PURCHASE_QNUM)
     if purchases:
@@ -1042,7 +1056,7 @@ def send_aligo_sms(receiver_phone, auth_code):
             "user_id": ALIGO_USER_ID,
             "sender": ALIGO_SENDER,
             "receiver": receiver_phone,
-            "msg": f"[{BRAND_NAME_KR}] 본인인증 번호는 [{auth_code}] 입니다. (타인 유출 주의)",
+            "msg": f"[{BRAND_NAME_KR}] 인증번호는 [{auth_code}] 입니다. (타인 유출 주의)",
             "testmode_yn": "N"
         }
         res = requests.post(url, data=payload, timeout=6)
@@ -1149,11 +1163,12 @@ def sweep_expired_requests():
             return
         rl_hit("sweep_expired", 600)
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=72)).isoformat()
-        rows = supabase.table("match_requests").select("id,sender_id").eq("status", "PENDING").lt("created_at", cutoff).limit(200).execute().data or []
+        rows = supabase.table("match_requests").select("id,sender_id").eq("status", "PENDING").lt("created_at", cutoff).limit(30).execute().data or []
         for r in rows:
             # 아직 '대기중'인 것만 바꾸고, 실제로 바뀐 건수만 티켓을 돌려줍니다 (중복 반환 방지)
             if supabase.table("match_requests").update({"status": "EXPIRED"}).eq("id", r["id"]).eq("status", "PENDING").execute().data:
-                adjust_tickets(r["sender_id"], 1)
+                if adjust_tickets(r["sender_id"], 1) is None:   # 티켓 반환에 실패하면 다음 정리 때 다시 하도록 되돌립니다
+                    supabase.table("match_requests").update({"status": "PENDING"}).eq("id", r["id"]).eq("status", "EXPIRED").execute()
     except Exception:
         pass
 
@@ -1536,7 +1551,7 @@ if not st.session_state.user_id:
 
         with st.expander("📄 수집 항목과 이용 안내 (눌러서 읽어 보세요)"):
             st.markdown("""
-            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 질문 5가지 답변, 이메일(이메일 가입 시 필수, 카카오 가입 시 선택), 카카오 계정 식별번호·프로필 사진(카카오로 가입 시)
+            **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 질문 5가지 답변, 이메일(이메일 가입 시 필수, 카카오 가입 시 선택), 카카오 계정 식별번호·프로필 사진(카카오로 가입 시), 아는 분 휴대폰 번호(차단 목록, 선택), 무통장 입금 신청 내용(입금자명·입금 예정일), 익명 방문 기록(개인을 알아볼 수 없음)
             **이용 목적**: 회원 가입과 본인 확인, 대화 신청 서비스 제공, 인증번호·이용 안내 발송, 부정 이용 방지
             **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
             **선택 항목**: 신용점수와 증빙서류(인증 배지용). 확인 후 서류는 파기하며, 배지를 받지 않아도 이용에 불이익이 없습니다.
@@ -1723,10 +1738,13 @@ else:
     with tabs_main[0]:
         # 이성만 추천합니다(대표님 결정). 본인·관리자·정지 계정은 제외하고 최근 접속순으로 나옵니다.
         # 비밀번호 등 불필요한 정보는 가져오지 않고, 최근 접속자 위주로 최대 300명만 불러옵니다.
+        if (me.get("gender") or "") not in ("남", "여"):
+            st.warning("추천을 보시려면 [내 프로필]에서 성별을 먼저 입력해 주세요.")
+            st.stop()
         raw_candidates = supabase.table("users")\
             .select("id,name,phone,gender,age,region,job,intro,photo_url,credit_score,credit_status,blocked_phones,is_admin")\
             .neq("id", me["id"])\
-            .neq("gender", me.get("gender") or "")\
+            .eq("gender", "여" if me["gender"] == "남" else "남")\
             .gte("age", 48)\
             .lte("age", 75)\
             .eq("is_suspended", False)\
@@ -1751,7 +1769,7 @@ else:
         sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
 
         if not candidates:
-            st.info("아직 이 지역에서 만나실 분이 많지 않아요. 곧 새로운 분들이 들어옵니다. 주변의 좋은 분께 노블레스 라온을 소개해 주시면 더 빨리 만나실 수 있어요. ([내 프로필]에서 초대 링크를 확인하세요)")
+            st.info("아직 만나실 분이 많지 않아요. 곧 새로운 분들이 들어옵니다. 주변의 좋은 분께 노블레스 라온을 소개해 주시면 더 빨리 만나실 수 있어요. ([내 프로필]에서 초대 링크를 확인하세요)")
         else:
             cand_scores = []
             # 후보 전원의 답변을 한 번에 가져옵니다 (후보마다 따로 조회하면 느려집니다).
@@ -2020,8 +2038,10 @@ else:
                     supabase.table("payment_requests").insert({
                         "user_id": me["id"], "qty": int(pr_qty), "amount": PRICE_BY_QTY[int(pr_qty)],
                         "depositor": pr_name.strip(), "deposit_date": str(pr_date)}).execute()
-                    st.success("입금 신청이 접수되었습니다. 확인 후 티켓을 충전해 드립니다.")
+                    st.session_state.pr_done_msg = "입금 신청이 접수되었습니다. 확인 후 티켓을 충전해 드립니다."
                     st.rerun()
+        if st.session_state.get("pr_done_msg"):
+            st.success(st.session_state.pop("pr_done_msg"))
         _label = {"REQUESTED": "⏳ 확인 대기", "CHARGED": "✅ 충전 완료", "CANCELED": "⚪ 취소됨"}
         if _my_reqs:
             st.markdown("**내 입금 신청·충전 내역**")
@@ -2034,7 +2054,7 @@ else:
             * 구매한 이용권(티켓)은 결제(입금 확인) 후 즉시 내 계정에 충전되며, 별도 배송은 없습니다. 유료 티켓은 구매일부터 1년간 사용할 수 있고, 가입·추천 선물 티켓은 지급일부터 {FREE_TICKET_DAYS}일 후 소멸합니다.
 
             **1. 미사용 티켓 100% 청약철회 (환불)**
-            * 구매 후 **7일 이내에 전혀 사용하지 않은 티켓**은 전자상거래법 제17조에 따라 별도의 수수료 없이 **결제 금액 전액(100%) 환불**됩니다.
+            * 입금 확인일부터 **7일 이내에 전혀 사용하지 않은 티켓**은 전자상거래법 제17조에 따라 별도의 수수료 없이 **결제 금액 전액(100%) 환불**됩니다.
 
             **2. 사용한 티켓의 환불 제한**
             * 상대방 프로필에 대화 신청을 전송하여 **이미 사용(차감)된 티켓은 디지털 용역 제공이 완료된 것으로 간주되어 환불이 불가**합니다.
@@ -2186,8 +2206,12 @@ else:
             _reqs = supabase.table("payment_requests").select("*").eq("status", "REQUESTED").order("created_at").limit(50).execute().data or []
             if not _reqs:
                 st.success("확인 대기 중인 입금 신청이 없습니다.")
+            _umap = {}
+            if _reqs:
+                for _x in supabase.table("users").select("id,name,phone,ticket_count").in_("id", list({r["user_id"] for r in _reqs})).execute().data or []:
+                    _umap[_x["id"]] = _x
             for rq in _reqs:
-                _u = (supabase.table("users").select("id,name,phone,ticket_count").eq("id", rq["user_id"]).execute().data or [None])[0]
+                _u = _umap.get(rq["user_id"])
                 if not _u:
                     continue
                 st.markdown(f"**{md_esc(_u['name'])}** ({only_digits(_u['phone'])}) | {rq['qty']}회 {won(rq['amount'])} | 입금자명 **{md_esc(rq['depositor'])}** | 입금일 {rq.get('deposit_date') or '-'} | 현재 티켓 {_u.get('ticket_count', 0)}장")
@@ -2251,8 +2275,12 @@ else:
                     st.error("해당 번호의 회원을 찾지 못했습니다.")
                 elif rf_amt <= 0:
                     st.error("환불한 금액을 입력해 주세요.")
+                elif st.session_state.get("adm_last_refund") and st.session_state.adm_last_refund[0] == f"{rcp}:{int(rf_qty)}:{int(rf_amt)}" and time.time() - st.session_state.adm_last_refund[1] < 120:
+                    st.warning("방금 같은 환불을 기록했습니다. 중복 기록을 막기 위해 2분 뒤에 다시 시도해 주세요.")
                 else:
                     ok, msg = refund_tickets(rtgt[0], int(rf_qty), int(rf_amt))
+                    if ok:
+                        st.session_state.adm_last_refund = (f"{rcp}:{int(rf_qty)}:{int(rf_amt)}", time.time())
                     (st.success if ok else st.error)(msg)
         st.markdown("---")
         with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
@@ -2340,7 +2368,7 @@ FAQ_ITEMS = [
     ("입금했는데 티켓이 안 들어왔어요.",
      "입금 확인 후 티켓을 넣어 드립니다. 확인에 시간이 걸릴 수 있습니다. 카카오톡 1:1 상담창이나 대표전화로 **입금자명, 입금 날짜, 금액**을 알려 주시면 더 빨리 확인합니다. 안내된 법인 계좌 외에는 입금하지 마세요."),
     ("환불받고 싶어요.",
-     f"구매 후 **7일 안에** 티켓을 하나도 쓰지 않으셨다면 전액 환불해 드립니다. 일부 쓰셨다면 결제 금액에서 쓰신 횟수만큼 1회 정가({won(TICKET_PRICE_1)})를 뺀 금액을 돌려 드립니다. 환불은 카카오톡 1:1 상담창이나 대표전화로 요청해 주세요. 확인 후 3영업일 안에 처리합니다. 이미 쓴 티켓은 환불되지 않지만, 아래 거절·미응답 반환은 별도입니다."),
+     f"입금 확인일부터 **7일 안에** 티켓을 하나도 쓰지 않으셨다면 전액 환불해 드립니다. 일부 쓰셨다면 결제 금액에서 쓰신 횟수만큼 1회 정가({won(TICKET_PRICE_1)})를 뺀 금액을 돌려 드립니다. 환불은 카카오톡 1:1 상담창이나 대표전화로 요청해 주세요. 확인 후 3영업일 안에 처리합니다. 이미 쓴 티켓은 환불되지 않지만, 아래 거절·미응답 반환은 별도입니다."),
     ("상대가 거절하면 티켓은 어떻게 되나요?",
      "상대가 거절하거나 **72시간 안에 답이 없으면** 티켓 1장이 자동으로 돌아옵니다. [신청 보관함]에서 상태를 확인해 주세요. 화면에 안 보이면 새로고침해 주세요."),
     ("72시간이 지났는데 티켓이 안 돌아왔어요.",
