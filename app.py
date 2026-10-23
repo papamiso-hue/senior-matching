@@ -476,6 +476,22 @@ PLATFORM_TYPO_RULES = {
     r"신용점숫": "신용점수"
 }
 
+_BANNED_WORDS = ["결혼", "혼인", "배우자", "재혼", "맞선", "신랑", "신부", "결혼정보"]
+_CONTACT_HINTS = ["카톡", "카카오톡", "오픈채팅", "오픈톡", "라인id", "텔레그램", "인스타", "http", "www.", ".com", ".kr", "@"]
+def text_policy_error(text: str) -> str:
+    """소개글·직업·취미에 쓰면 안 되는 말(결혼 관련 말, 연락처)이 있으면 안내 문구를 돌려줍니다. 없으면 빈 문자열."""
+    t = (text or "")
+    flat = re.sub(r"[\s\-\.\_\(\)]", "", t).lower()
+    for w in _BANNED_WORDS:
+        if w in flat:
+            return "노블레스 라온은 동반자·친구 만남만 돕는 곳입니다. '결혼'과 관련된 말은 쓰실 수 없어요. '동반자', '친구', '대화' 같은 말로 바꿔 써 주세요."
+    digits = re.sub(r"\D", "", t)
+    if re.search(r"01[016789]\d{7,8}", digits) or len(digits) >= 9:
+        return "전화번호 같은 연락처는 소개글에 적지 마세요. 서로 수락한 뒤 대화에서 안전하게 나누실 수 있어요."
+    if any(h in flat for h in _CONTACT_HINTS):
+        return "카카오톡 아이디·링크·이메일 같은 연락처는 소개글에 적지 마세요. 서로 수락한 뒤 대화에서 안전하게 나누실 수 있어요."
+    return ""
+
 def audit_text_typos(text: str):
     if not text:
         return []
@@ -1434,6 +1450,7 @@ if not st.session_state.user_id:
             st.caption(f"💡 표현 교정 안내: {', '.join(hobby_typos)}")
 
         j_intro = st.text_area("동반자에게 전하고 싶은 말씀", value="", placeholder="예: 인생의 후반전을 서로 존중하며 함께 이야기 나눌 좋은 친구를 찾습니다. (비워 두면 이 문장이 들어갑니다)", max_chars=500, key="j_intro")
+        st.caption("💡 전화번호·카카오톡 아이디 같은 연락처와 '결혼' 관련 말은 쓸 수 없어요. 서로 수락한 뒤 대화에서 나누세요.")
         intro_typos = audit_text_typos(j_intro)
         if intro_typos:
             st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
@@ -1483,6 +1500,8 @@ if not st.session_state.user_id:
                 st.error("서류를 올리셨다면 신용점수도 함께 입력해 주세요. (배지가 필요 없으면 서류를 지워 주세요)")
             elif len(j_job) > 60 or len(j_hobbies) > 100 or len(j_intro) > 500:
                 st.error("직업은 60자, 취미는 100자, 소개글은 500자 이내로 적어 주세요.")
+            elif text_policy_error(j_job) or text_policy_error(j_hobbies) or text_policy_error(j_intro):
+                st.error(text_policy_error(j_job) or text_policy_error(j_hobbies) or text_policy_error(j_intro))
             elif j_doc and check_doc_upload(j_doc):
                 st.error(check_doc_upload(j_doc))
             else:
@@ -1961,6 +1980,7 @@ else:
             st.caption(f"💡 권장 수정: {', '.join(hobby_errs)}")
 
         edit_intro = st.text_area("한 줄 소개 수정", value=me.get("intro", ""), key="edit_intro")
+        st.caption("💡 전화번호·카카오톡 아이디 같은 연락처와 '결혼' 관련 말은 쓸 수 없어요.")
         intro_errs = audit_text_typos(edit_intro)
         if intro_errs:
             st.caption(f"💡 권장 수정: {', '.join(intro_errs)}")
@@ -1968,6 +1988,8 @@ else:
         if st.button("프로필 정보 업데이트"):
             if len(edit_job) > 60 or len(edit_hobbies) > 100 or len(edit_intro) > 500:
                 st.error("직업은 60자, 취미는 100자, 소개글은 500자 이내로 적어 주세요.")
+            elif text_policy_error(edit_job) or text_policy_error(edit_hobbies) or text_policy_error(edit_intro):
+                st.error(text_policy_error(edit_job) or text_policy_error(edit_hobbies) or text_policy_error(edit_intro))
             else:
                 supabase.table("users").update({
                     "job": edit_job.strip(),
