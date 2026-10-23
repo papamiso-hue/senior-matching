@@ -1313,7 +1313,7 @@ if not st.session_state.user_id:
     # 🌟 카카오 인증 완료 회원이면 환영 박스 표시 & 신규 가입 탭 우선 활성화
     if st.session_state.kakao_user:
         k_nick = st.session_state.kakao_user.get("nickname", "회원")
-        st.success(f"🎉 **{md_esc(k_nick)}**님, 카카오 로그인이 완료되었습니다!\n\n아래에서 기본 정보를 입력하고 가입을 마무리해 주세요. (신용 서류는 선택입니다)")
+        st.success(f"🎉 **{md_esc(k_nick)}**님, 카카오 로그인이 완료되었습니다!\n\n아래에서 기본 정보를 입력하고 가입을 마무리해 주세요. ")
         tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
     else:
         kakao_login_url = get_kakao_login_url(state=st.session_state.ref_id)
@@ -1537,11 +1537,6 @@ if not st.session_state.user_id:
         if intro_typos:
             st.caption(f"💡 소개글 맞춤법 안내: {', '.join(intro_typos)}")
 
-        st.markdown("##### 🛡️ 인증 배지 (선택)")
-        st.caption("ℹ️ 신용점수와 증빙서류 제출은 **선택**입니다. 제출하면 프로필에 '인증 배지'가 붙어 신뢰도가 올라갑니다. 서류는 확인 즉시 파기됩니다.")
-        j_credit = st.number_input("공인 신용점수 (선택, 배지를 원하실 때만 입력)", 0, 1000, 0, key="j_credit")
-        j_doc = st.file_uploader("신용 증빙 서류 첨부 (선택: NICE/KCB 리포트 또는 토스 캡처)", type=["jpg", "png", "pdf"], key="j_doc")
-
         st.markdown("##### 🎯 나와 맞는 친구를 위한 5가지 질문")
         a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], key="jq_1")
         a2 = st.radio(CORE_QUESTIONS_5060[2]["text"], CORE_QUESTIONS_5060[2]["options"], key="jq_2")
@@ -1554,18 +1549,15 @@ if not st.session_state.user_id:
             **수집 항목(필수)**: 성명, 휴대폰 번호, 비밀번호(암호화 저장), 성별, 나이, 지역, 직업, 취미, 소개글, 질문 5가지 답변, 이메일(이메일 가입 시 필수, 카카오 가입 시 선택), 카카오 계정 식별번호·프로필 사진(카카오로 가입 시), 아는 분 휴대폰 번호(차단 목록, 선택), 무통장 입금 신청 내용(입금자명·입금 예정일), 익명 방문 기록(개인을 알아볼 수 없음)
             **이용 목적**: 회원 가입과 본인 확인, 대화 신청 서비스 제공, 인증번호·이용 안내 발송, 부정 이용 방지
             **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
-            **선택 항목**: 신용점수와 증빙서류(인증 배지용). 확인 후 서류는 파기하며, 배지를 받지 않아도 이용에 불이익이 없습니다.
+            **선택 항목**: 프로필 사진, 이메일(카카오 가입 시), 아는 분 번호(차단 목록). 신용정보는 받지 않습니다.
             동의를 거부할 수 있으나, 필수 항목은 거부하면 가입이 어렵습니다.
             """)
         agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관에 동의합니다.", key="agree_terms")
         agree_privacy = st.checkbox("[필수] 개인정보 수집·이용에 동의합니다. (위 안내 참고)", key="agree_privacy")
-        agree_credit = st.checkbox("[선택] 신용점수·증빙서류 수집·이용에 동의합니다. (인증 배지를 받을 때만)", key="agree_credit")
 
         if st.button("가입 완료", key="btn_submit_join"):
             if not agree_terms or not agree_privacy:
                 st.error("필수 항목(이용약관, 개인정보 수집·이용)에 동의해 주세요.")
-            elif j_doc and not agree_credit:
-                st.error("서류를 올리시려면 [선택] 신용정보 수집·이용에 동의해 주세요. (배지가 필요 없으면 서류를 지워 주세요)")
             elif not j_name.strip() or len(j_name.strip()) > 30:
                 st.error("성명을 입력해 주세요. (30자 이내)")
             elif not valid_phone(clean_jp):
@@ -1578,27 +1570,12 @@ if not st.session_state.user_id:
                 st.error("이미 등록된 휴대폰 번호입니다.")
             elif not valid_pwd(j_pwd):
                 st.error(f"비밀번호는 {PWD_MIN}자리 이상 {PWD_MAX}자리 이하로, 111111·123456 같은 쉬운 번호는 피해서 입력해 주세요.")
-            elif j_doc and j_credit <= 0:
-                st.error("서류를 올리셨다면 신용점수도 함께 입력해 주세요. (배지가 필요 없으면 서류를 지워 주세요)")
             elif len(j_job) > 60 or len(j_hobbies) > 100 or len(j_intro) > 500:
                 st.error("직업은 60자, 취미는 100자, 소개글은 500자 이내로 적어 주세요.")
             elif text_policy_error(j_job) or text_policy_error(j_hobbies) or text_policy_error(j_intro):
                 st.error(text_policy_error(j_job) or text_policy_error(j_hobbies) or text_policy_error(j_intro))
-            elif j_doc and check_doc_upload(j_doc):
-                st.error(check_doc_upload(j_doc))
             else:
-                has_doc = bool(j_doc)
-                doc_name = ""
                 try:
-                    if has_doc:
-                        doc_bytes = j_doc.getvalue()
-                        doc_ext = detect_doc_type(doc_bytes)  # 파일 이름이 아니라 내용으로 판별 (위에서 이미 검사 통과)
-                        doc_name = f"verify_{uuid.uuid4().hex}.{doc_ext}"  # 파일 이름에 전화번호 등 개인정보를 넣지 않음
-                        supabase.storage.from_("credit-docs").upload(
-                            doc_name,
-                            doc_bytes,
-                            {"content-type": {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png"}[doc_ext]}
-                        )
                     now_utc = datetime.now(timezone.utc).isoformat()
 
                     kakao_id_val = str(st.session_state.kakao_user["id"]) if st.session_state.kakao_user else None
@@ -1611,10 +1588,10 @@ if not st.session_state.user_id:
                         "gender": j_gender,
                         "age": int(j_age),
                         "region": j_region,
-                        "credit_score": int(j_credit) if has_doc else 0,
-                        "credit_doc_url": doc_name if has_doc else "",
-                        "credit_status": "PENDING" if has_doc else "NONE",
-                        "is_verified": False,
+                        "credit_score": 0,
+                        "credit_doc_url": "",
+                        "credit_status": "NONE",
+                        "is_verified": True,   # 카카오 로그인 또는 이메일 인증번호 확인을 마친 가입자 → '가입 확인 완료' 표시
                         "ticket_count": WELCOME_TICKETS,
                         "is_vip": False,
                         "blocked_phones": [],
@@ -1635,7 +1612,7 @@ if not st.session_state.user_id:
                     except Exception as ins_err:
                         # DB가 'NONE' 값을 허용하지 않는 경우(제약조건 오류)에만 다시 시도합니다
                         if user_data.get("credit_status") == "NONE" and "credit_status" in str(ins_err).lower():
-                            user_data["credit_status"] = "PENDING"  # 서류 없는 PENDING은 심사함에서 걸러냅니다
+                            user_data["credit_status"] = "VERIFIED"
                             new_u = supabase.table("users").insert(user_data).execute().data[0]
                         else:
                             raise
@@ -1670,14 +1647,9 @@ if not st.session_state.user_id:
                     record_free_grant(uid, WELCOME_TICKETS)
                     st.session_state.user_id = uid
                     st.session_state.user_info = new_u
-                    st.success(f"🎉 서류 제출 및 가입이 완료되었습니다! 가입 선물 티켓 {WELCOME_TICKETS}장이 지급되었습니다.{ref_msg}")
+                    st.success(f"🎉 가입이 완료되었습니다! 가입 선물 티켓 {WELCOME_TICKETS}장이 지급되었습니다.{ref_msg}")
                     st.rerun()
                 except Exception as e:
-                    if doc_name:  # 가입이 실패했으면 올라간 서류도 남기지 않음
-                        try:
-                            supabase.storage.from_("credit-docs").remove([doc_name])
-                        except Exception:
-                            pass
                     st.error(friendly_error("join", e, "가입 처리 중"))
 
 # --- 2. 메인 대시보드 화면 ---
@@ -1742,7 +1714,7 @@ else:
             st.warning("추천을 보시려면 [내 프로필]에서 성별을 먼저 입력해 주세요.")
             st.stop()
         raw_candidates = supabase.table("users")\
-            .select("id,name,phone,gender,age,region,job,intro,photo_url,credit_score,credit_status,blocked_phones,is_admin")\
+            .select("id,name,phone,gender,age,region,job,intro,photo_url,is_verified,blocked_phones,is_admin")\
             .neq("id", me["id"])\
             .eq("gender", "여" if me["gender"] == "남" else "남")\
             .gte("age", 48)\
@@ -1807,7 +1779,7 @@ else:
                             </div>
                             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
                                 <span class="badge-pill-gold">💼 {esc(cand.get('job') or '경력 인증')}</span>
-                                {'<span class="badge-pill-credit">🛡️ 인증 회원</span>' if cand.get('credit_status') == 'VERIFIED' else ''}
+                                {'<span class="badge-pill-credit">✅ 가입 확인 완료</span>' if cand.get('is_verified') else ''}
                             </div>
                             <div class="senior-intro">"{intro_txt}"</div>
                         </div>
@@ -2282,66 +2254,6 @@ else:
                     if ok:
                         st.session_state.adm_last_refund = (f"{rcp}:{int(rf_qty)}:{int(rf_amt)}", time.time())
                     (st.success if ok else st.error)(msg)
-        st.markdown("---")
-        with st.expander("👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터"):
-            pending_users = [u for u in supabase.table("users").select("*").eq("credit_status", "PENDING").execute().data if u.get("credit_doc_url")]
-            if not pending_users:
-                st.success("현재 심사 대기 중인 회원이 없습니다.")
-            else:
-                st.caption(f"총 {len(pending_users)}명의 서류 검토 대기자가 있습니다.")
-                for pu in pending_users:
-                    st.markdown(f"**신청자:** {md_esc(pu['name'])} ({pu['gender']} · {pu['age']}세 · {md_esc(pu.get('job'))} · 신용 {pu['credit_score']}점)")
-                    st.caption(f"연락처: {only_digits(pu['phone'])}")
-                    
-                    doc_path = pu.get("credit_doc_url", "")
-                    if doc_path and not doc_path.startswith("["):
-                        try:
-                            raw_path = doc_path.split("/")[-1]
-                            signed = supabase.storage.from_("credit-docs").create_signed_url(raw_path, 60)
-                            s_url = signed.get("signedURL") or signed.get("signedUrl")
-                            if s_url:
-                                st.markdown(f'<a href="{s_url}" target="_blank">📄 [안심 열람] 증빙서류 1회용 링크 열기 (60초 후 만료)</a>', unsafe_allow_html=True)
-                        except Exception as err:
-                            st.caption(f"서류 링크를 만들지 못했습니다. (문의번호 {log_error('doc_link', err)})")
-
-                    col_ap, col_rj = st.columns(2)
-                    with col_ap:
-                        if st.button(f"✅ 승인 및 서류 영구 파기", key=f"btn_ap_5060_{pu['id']}"):
-                            raw_fname = doc_path.split("/")[-1]
-                            try:
-                                supabase.storage.from_("credit-docs").remove([raw_fname])
-                            except Exception:
-                                pass
-                            
-                            supabase.table("users").update({
-                                "is_verified": True,
-                                "credit_status": "VERIFIED",
-                                "credit_doc_url": "[심사 완료 후 안전 파기됨]"
-                            }).eq("id", pu["id"]).execute()
-
-                            send_aligo_notice_sms(pu["phone"], "노블레스 라온 신용 서류 심사가 완료되었습니다. 제출 서류는 안전하게 영구 파기되었습니다.")
-                            st.success(f"{md_esc(pu['name'])} 님이 정회원으로 승인되었습니다.")
-                            st.rerun()
-
-                    with col_rj:
-                        if st.button(f"🚫 반려 및 서류 파기", key=f"btn_rj_5060_{pu['id']}"):
-                            raw_fname = doc_path.split("/")[-1]
-                            try:
-                                supabase.storage.from_("credit-docs").remove([raw_fname])
-                            except Exception:
-                                pass
-                            
-                            supabase.table("users").update({
-                                "is_verified": False,
-                                "credit_status": "REJECTED",
-                                "credit_doc_url": "[반려 후 안전 파기됨]"
-                            }).eq("id", pu["id"]).execute()
-
-                            send_aligo_notice_sms(pu["phone"], "제출하신 증빙 서류가 기준에 미달하여 반려되었습니다. 다시 등록해 주세요.")
-                            st.warning(f"{md_esc(pu['name'])} 님의 신청이 반려되었습니다.")
-                            st.rerun()
-                    st.divider()
-
     st.markdown("---")
     if st.button("로그아웃"):
         st.session_state.user_id = None
@@ -2356,7 +2268,7 @@ FAQ_ITEMS = [
     ("노블레스 라온은 어떤 서비스인가요?",
      "만 48세~75세 성인이 **동반자·친구**를 만나도록 돕는 온라인 서비스입니다. 회원이 직접 프로필을 보고 대화를 신청합니다. 노블레스 라온은 동반자·친구 만남만 돕습니다."),
     ("가입은 어떻게 하나요?",
-     "**카카오로 시작하기**를 누르신 뒤 이름, 휴대폰 번호, 간단한 정보를 적으시면 됩니다. 카카오를 쓰지 않으실 때는 이메일로 받은 6자리 인증번호를 입력해 주세요. 신용점수와 서류는 **선택**이라 건너뛰셔도 됩니다."),
+     "**카카오로 시작하기**를 누르신 뒤 이름, 휴대폰 번호, 간단한 정보를 적으시면 됩니다. 카카오를 쓰지 않으실 때는 이메일로 받은 6자리 인증번호를 입력해 주세요."),
     ("가입비가 있나요? 무료로 써 볼 수 있나요?",
      "가입은 무료입니다. 가입하시면 대화 신청 티켓 **1장**을 드립니다. 이 무료 티켓은 지급일부터 **90일 안에** 쓰셔야 하며, 기간이 지나면 사라집니다."),
     ("티켓은 무엇이고 얼마인가요?",
@@ -2385,8 +2297,8 @@ FAQ_ITEMS = [
      "불편을 드려 죄송합니다. 상대방의 보이는 정보(이름 첫 글자, 나이, 지역, 신청 시기)를 **카카오톡 1:1 상담창이나 이메일**로 알려 주세요. 확인 후 조치합니다. **돈을 보내셨다면 먼저 경찰(112)과 은행에 알려 주세요.** 돈, 계좌번호, 투자를 요구하는 분은 응하지 않으시는 것이 안전합니다."),
     ("특정 사람에게 내 정보가 안 보이게 하고 싶어요.",
      "프로필 화면의 **아는 분 번호 차단**에 그분 휴대폰 번호를 넣으시면 서로 보이지 않습니다. (차단 번호는 목록을 거른 용도로만 쓰입니다.)"),
-    ("신용점수와 서류는 꼭 내야 하나요?",
-     "**선택**입니다. 내지 않으셔도 이용에 불이익이 없습니다. 내시면 확인 후 '인증 회원' 표시가 붙고, 제출한 서류는 확인 후 파기합니다. 주민등록번호 등은 가리고 올려 주세요."),
+    ("신용점수나 서류를 내야 하나요?",
+     "아니요. 노블레스 라온은 **신용점수와 신용 서류를 받지 않습니다.** 카카오 로그인 또는 이메일 인증번호 확인을 마친 회원에게는 프로필에 '✅ 가입 확인 완료' 표시가 붙습니다."),
     ("친구를 초대하면 어떤 혜택이 있나요?",
      "[내 프로필]의 초대 링크로 친구가 가입하고 **첫 유료 티켓을 구매하면** 두 분 모두 티켓 1장을 받습니다. 한 분이 보상받을 수 있는 초대는 최대 5명입니다. 연락처를 모아서 보내는 것은 하지 말아 주세요."),
     ("탈퇴하고 싶어요.",
