@@ -1,13 +1,16 @@
 import streamlit as st
 import requests
 import logging
+import os
 
 logger = logging.getLogger("raon")
 
 # 카카오 REST API 키는 로그인 주소(브라우저 주소창)에 그대로 나타나는 '공개용' 값입니다. 비밀값이 아닙니다.
 # (카카오 개발자 콘솔에서 'Client Secret'을 쓰고 있다면 그 값은 코드에 넣지 말고 Streamlit secrets에 두세요.)
 KAKAO_REST_API_KEY = "53c242a5a25a23e264cd7e845b124a82"
-KAKAO_REDIRECT_URI = "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app"
+# 로그인 후 돌아올 주소. Render 환경변수 KAKAO_REDIRECT_URI 가 있으면 그 값을 쓰고, 없으면 예전 주소를 씁니다.
+# (새 주소 https://noblesseraon.com 은 카카오 개발자 콘솔 [카카오 로그인 > Redirect URI]에 먼저 등록해야 합니다.)
+KAKAO_REDIRECT_URI = os.environ.get("KAKAO_REDIRECT_URI", "https://senior-matching-xtflgt6cnpp6q9o53z79pb.streamlit.app").rstrip("/")
 
 def get_kakao_login_url(state=None):
     url = (
