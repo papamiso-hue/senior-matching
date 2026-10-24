@@ -451,6 +451,8 @@ def charge_tickets(t, qty):
         try:
             inv = supabase.table("user_answers").select("answer_value").eq("user_id", t["id"]).eq("question_num", REFERRAL_QNUM).execute().data
             rid = inv[0]["answer_value"].split("ref:")[1] if inv and "ref:" in inv[0]["answer_value"] else None
+            if rid and supabase.table("user_answers").select("user_id").eq("user_id", t["id"]).eq("question_num", REFERRAL_PAID_QNUM).execute().data:
+                rid = None   # 가입 때 이미 추천 보상을 받은 분은 다시 주지 않습니다
             if rid:
                 paid_cnt = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_PAID_QNUM).eq("answer_value", f"rewarded:{rid}").execute().data)
                 if paid_cnt < REFERRAL_MAX_REWARDS:
@@ -1554,14 +1556,16 @@ if not st.session_state.user_id:
             **이용 목적**: 회원 가입과 가입 의사 확인, 대화 신청 서비스 제공, 인증번호·이용 안내 발송, 부정 이용 방지
             **보유 기간**: 탈퇴 시까지. 단, 결제·환불 기록은 전자상거래법에 따라 5년 보관합니다.
             **선택 항목**: 직업, 취미, 소개글, 프로필 사진, 이메일(카카오 가입 시), 아는 분 번호(차단 목록). 신용정보는 받지 않습니다.
+            **국외 이전**: 서비스 서버는 싱가포르(Render Services, Inc.)에 있고, 이메일 인증번호는 미국 Google 서버를 거칩니다(이메일 가입자). 이전 항목은 위 수집 항목, 목적은 서비스 운영·인증번호 발송, 보유는 이용 종료 시까지입니다. 이전을 원하지 않으시면 가입하지 않으실 수 있으며, 이 경우 서비스 이용이 어렵습니다.
             동의를 거부할 수 있으나, 필수 항목은 거부하면 가입이 어렵습니다.
             """)
         agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관에 동의합니다.", key="agree_terms")
         agree_privacy = st.checkbox("[필수] 개인정보 수집·이용에 동의합니다. (위 안내 참고)", key="agree_privacy")
+        agree_overseas = st.checkbox("[필수] 개인정보 국외 이전(싱가포르·미국)에 동의합니다. (위 안내 참고)", key="agree_overseas")
 
         if st.button("가입 완료", key="btn_submit_join"):
-            if not agree_terms or not agree_privacy:
-                st.error("필수 항목(이용약관, 개인정보 수집·이용)에 동의해 주세요.")
+            if not agree_terms or not agree_privacy or not agree_overseas:
+                st.error("필수 항목(이용약관, 개인정보 수집·이용, 국외 이전)에 동의해 주세요.")
             elif not j_name.strip() or len(j_name.strip()) > 30:
                 st.error("성명을 입력해 주세요. (30자 이내)")
             elif not valid_phone(clean_jp):
@@ -1644,7 +1648,15 @@ if not st.session_state.user_id:
                             ref_rows = supabase.table("users").select("id").eq("id", ref_id).execute().data
                             if ref_rows:
                                 supabase.table("user_answers").insert({"user_id": uid, "question_num": REFERRAL_QNUM, "answer_value": f"ref:{ref_id}"}).execute()
-                                ref_msg = f" 첫 유료 티켓을 구매하시면 초대해 주신 분과 함께 티켓 {REFERRAL_BONUS}장씩 드립니다."
+                                ref_msg = ""
+                                _cnt = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_PAID_QNUM).eq("answer_value", f"rewarded:{ref_id}").execute().data)
+                                if _cnt < REFERRAL_MAX_REWARDS:
+                                    supabase.table("user_answers").insert({"user_id": uid, "question_num": REFERRAL_PAID_QNUM, "answer_value": f"rewarded:{ref_id}"}).execute()
+                                    if adjust_tickets(ref_id, REFERRAL_BONUS) is not None:
+                                        record_free_grant(ref_id, REFERRAL_BONUS)
+                                    if adjust_tickets(uid, REFERRAL_BONUS) is not None:
+                                        record_free_grant(uid, REFERRAL_BONUS)
+                                        ref_msg = f" 초대 선물로 티켓 {REFERRAL_BONUS}장을 더 드렸어요."
                         except Exception:
                             pass  # 추천 기록 실패가 가입을 막지 않도록 함
 
@@ -1895,7 +1907,8 @@ else:
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.write(f"📞 안심 연락처: **{only_digits(rcv['phone'])}** | 💼 경력: **{md_esc(rcv.get('job'))}**")
+                        st.caption("회원이 직접 적은 번호예요. 확인되지 않았을 수 있으니 이상하면 상담창에 알려 주세요.")
+                        st.write(f"📞 연락처: **{only_digits(rcv['phone'])}** | 💼 경력: **{md_esc(rcv.get('job'))}**")
                         st.markdown(f'<a href="tel:{only_digits(rcv["phone"])}">📞 바로 전화 걸기</a>', unsafe_allow_html=True)
                     elif req["status"] == "REJECTED":
                         st.write(f"• **{md_esc(rcv['name'][0])}*님**이 신청을 정중히 사양하여 **티켓 1장이 즉시 반환**되었습니다.")
@@ -1925,7 +1938,8 @@ else:
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.write(f"📞 안심 연락처: **{only_digits(snd['phone'])}**")
+                        st.caption("회원이 직접 적은 번호예요. 확인되지 않았을 수 있으니 이상하면 상담창에 알려 주세요.")
+                        st.write(f"📞 연락처: **{only_digits(snd['phone'])}**")
                     elif req["status"] == "PENDING":
                         col_ac, col_re = st.columns(2)
                         with col_ac:
@@ -1960,7 +1974,7 @@ else:
                     <div class="shop-title">🎟️ 1회 대화 신청권</div>
                     <div class="shop-desc">마음에 드는 동반자 1명에게 신청</div>
                 </div>
-                <div class="shop-price">{won(TICKET_PRICE_1)}</div>
+                <div class="shop-price">{won(TICKET_PRICE_1)}<span style="font-size:0.6em;font-weight:400;"> 부가세 포함</span></div>
             </div>
             
             <div class="shop-card featured">
@@ -1969,7 +1983,7 @@ else:
                     <div class="shop-title">🌟 3회 실속 패키지</div>
                     <div class="shop-desc">3회 신청 (회당 약 {won(round(TICKET_PRICE_3 / 3))} / {d3}% 할인)</div>
                 </div>
-                <div class="shop-price">{won(TICKET_PRICE_3)}</div>
+                <div class="shop-price">{won(TICKET_PRICE_3)}<span style="font-size:0.6em;font-weight:400;"> 부가세 포함</span></div>
             </div>
 
             <div class="shop-card">
@@ -1978,7 +1992,7 @@ else:
                     <div class="shop-title">👑 5회 VIP 전담 패키지</div>
                     <div class="shop-desc">5회 신청 (회당 약 {won(round(TICKET_PRICE_5 / 5))} / {d5}% 할인)</div>
                 </div>
-                <div class="shop-price">{won(TICKET_PRICE_5)}</div>
+                <div class="shop-price">{won(TICKET_PRICE_5)}<span style="font-size:0.6em;font-weight:400;"> 부가세 포함</span></div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -2006,7 +2020,7 @@ else:
         _my_reqs = supabase.table("payment_requests").select("id,qty,amount,depositor,deposit_date,status,created_at").eq("user_id", me["id"]).order("created_at", desc=True).limit(10).execute().data or []
         _open_cnt = sum(1 for r in _my_reqs if r["status"] == "REQUESTED")
         with st.form("pay_req_form", clear_on_submit=True):
-            pr_qty = st.selectbox("충전할 상품", [1, 3, 5], format_func=lambda q: f"{q}회 ({won(PRICE_BY_QTY[q])})", key="pr_qty")
+            pr_qty = st.selectbox("충전할 상품", [1, 3, 5], format_func=lambda q: f"{q}회 ({won(PRICE_BY_QTY[q])}, 부가세 포함)", key="pr_qty")
             pr_name = st.text_input("입금자명", value=me["name"], max_chars=20, key="pr_name")
             pr_date = st.date_input("입금하셨거나 입금하실 날짜", value=datetime.now(timezone(timedelta(hours=9))).date(), key="pr_date")
             if st.form_submit_button("입금 신청 남기기"):
@@ -2038,7 +2052,7 @@ else:
 
             **2. 사용한 티켓의 환불 제한**
             * 상대방 프로필에 대화 신청을 전송하여 **이미 사용(차감)된 티켓은 디지털 용역 제공이 완료된 것으로 간주되어 환불이 불가**합니다.
-            * 패키지 상품 중 일부만 사용한 경우, 미사용 잔여 티켓은 전체 결제액에서 사용한 횟수만큼 단품 정가(회당 {won(TICKET_PRICE_1)})를 차감한 후 잔여액을 반환합니다.
+            * 패키지 상품 중 일부만 사용한 경우, 미사용 잔여 티켓은 전체 결제액에서 사용한 유료 티켓 횟수(무료 선물 티켓이 먼저 사용된 것으로 봅니다)만큼 단품 정가(회당 {won(TICKET_PRICE_1)})를 차감한 후 잔여액을 반환합니다.
 
             **3. 대화 신청 거절 및 72시간 미응답 시 티켓 보호**
             * 신청을 받은 상대방이 정중히 '거절'하거나 72시간 이내 응답이 없을 경우, **차감된 티켓은 보유 수량으로 100% 반환**됩니다. (앱에 접속하시면 바로 반영됩니다)
@@ -2060,7 +2074,7 @@ else:
             invited = len(supabase.table("user_answers").select("user_id").eq("question_num", REFERRAL_QNUM).eq("answer_value", f"ref:{me['id']}").execute().data)
         except Exception:
             invited = 0
-        st.caption(f"아래 링크로 친구가 가입하고 첫 유료 티켓을 구매하면 두 분 모두 티켓 {REFERRAL_BONUS}장을 받습니다. (보상 최대 {REFERRAL_MAX_REWARDS}명 · 현재 {invited}명이 링크로 가입)")
+        st.caption(f"아래 링크로 친구가 가입하면 두 분 모두 티켓 {REFERRAL_BONUS}장을 받습니다. (보상 최대 {REFERRAL_MAX_REWARDS}명 · 현재 {invited}명이 링크로 가입)")
         st.code(f"{SHARE_URL}/?ref={me['id']}", language=None)
         st.markdown("---")
 
@@ -2178,7 +2192,26 @@ else:
                             st.error(friendly_error("withdraw", e, "탈퇴 처리 중") + " (일부 정보만 삭제되었을 수 있으니 고객센터에 알려 주세요.)")
 
     # 👑 [관리자 전용] 5060 서류 심사 및 즉시 파기 센터
-    if me.get("is_admin"):
+    _admin_ok = bool(me.get("is_admin"))
+    if _admin_ok:
+        try:
+            _pin = str(st.secrets.get("ADMIN_PIN", "") or "")
+        except Exception:
+            _pin = ""
+        if _pin and not st.session_state.get("admin_pin_ok"):
+            _admin_ok = False
+            st.markdown("---")
+            _p = st.text_input("🔐 관리자 2차 암호", type="password", key="admin_pin_input")
+            if st.button("관리자 화면 열기", key="admin_pin_btn"):
+                if rl_count("adminpin_" + str(me["id"]), 900) >= 5:
+                    st.error("시도 횟수를 넘었습니다. 15분 뒤에 다시 해 주세요.")
+                elif hmac.compare_digest(_p, _pin):
+                    st.session_state.admin_pin_ok = True
+                    st.rerun()
+                else:
+                    rl_hit("adminpin_" + str(me["id"]), 900)
+                    st.error("암호가 맞지 않습니다.")
+    if _admin_ok:
         st.markdown("---")
         st.caption(f"🔐 현재 앱이 쓰는 DB 키 종류: {detect_key_role()} (키 값은 표시하지 않습니다)")
         with st.expander("💳 [관리자 전용] 입금 신청 목록 — 확인 후 티켓 충전"):
@@ -2242,7 +2275,7 @@ else:
                         st.error(msg)
 
         with st.expander("↩️ [관리자 전용] 환불 처리 — 티켓 회수와 장부 기록"):
-            st.caption("환불은 대표님이 판단·이체합니다. 이체 후 여기서 회원의 티켓을 회수하고 환불 장부를 남기세요. (환불 금액 = 결제액 − 사용 횟수 × 10,000원)")
+            st.caption("환불은 대표님이 판단·이체합니다. 이체 후 여기서 회원의 티켓을 회수하고 환불 장부를 남기세요. (환불 금액 = 결제액 − 유료 티켓 사용 횟수 × 10,000원)")
             rf_phone = st.text_input("환불 회원 휴대폰 번호 (숫자만)", key="adm_rf_phone")
             rf_qty = st.number_input("회수할 티켓 수", min_value=1, max_value=5, value=1, step=1, key="adm_rf_qty")
             rf_amt = st.number_input("환불한 금액(원)", min_value=0, max_value=100000, value=0, step=1000, key="adm_rf_amt")
@@ -2283,7 +2316,7 @@ FAQ_ITEMS = [
     ("가입비가 있나요? 무료로 써 볼 수 있나요?",
      "가입은 무료입니다. 가입하시면 대화 신청 티켓 **1장**을 드립니다. 이 무료 티켓은 지급일부터 **90일 안에** 쓰셔야 하며, 기간이 지나면 사라집니다."),
     ("티켓은 무엇이고 얼마인가요?",
-     f"마음에 드는 분께 대화를 신청할 때 티켓 1장이 쓰입니다. 1회 {won(TICKET_PRICE_1)}, 3회 {won(TICKET_PRICE_3)}, 5회 {won(TICKET_PRICE_5)}입니다. 유료 티켓은 구매일부터 1년간 쓸 수 있습니다. 가입 선물 등 무료 티켓은 90일 안에 쓰셔야 하며, 쓰는 순서는 무료 티켓이 먼저입니다."),
+     f"마음에 드는 분께 대화를 신청할 때 티켓 1장이 쓰입니다. 1회 {won(TICKET_PRICE_1)}, 3회 {won(TICKET_PRICE_3)}, 5회 {won(TICKET_PRICE_5)}(모두 부가세 포함)입니다. 유료 티켓은 구매일부터 1년간 쓸 수 있습니다. 가입 선물 등 무료 티켓은 90일 안에 쓰셔야 하며, 쓰는 순서는 무료 티켓이 먼저입니다."),
     ("현금영수증이나 세금계산서를 받을 수 있나요?",
      "입금 확인 후 영업일 기준 3일 안에 현금영수증(소득공제용 또는 지출증빙용)을 발급해 드립니다. 카카오톡 1:1 상담창이나 대표전화로 **입금자명, 입금 날짜, 발급받으실 번호(휴대폰 번호 또는 사업자번호)**를 알려 주세요. 세금계산서가 필요한 사업자는 사업자등록증 사본을 함께 보내 주세요."),
     ("가족이 대신 입금했거나 금액이 달라요.",
@@ -2291,7 +2324,7 @@ FAQ_ITEMS = [
     ("입금했는데 티켓이 안 들어왔어요.",
      "입금 확인 후 티켓을 넣어 드립니다. 확인에 시간이 걸릴 수 있습니다. 카카오톡 1:1 상담창이나 대표전화로 **입금자명, 입금 날짜, 금액**을 알려 주시면 더 빨리 확인합니다. 안내된 법인 계좌 외에는 입금하지 마세요."),
     ("환불받고 싶어요.",
-     f"입금 확인일부터 **7일 안에** 티켓을 하나도 쓰지 않으셨다면 전액 환불해 드립니다. 일부 쓰셨다면 결제 금액에서 쓰신 횟수만큼 1회 정가({won(TICKET_PRICE_1)})를 뺀 금액을 돌려 드립니다. 환불은 카카오톡 1:1 상담창이나 대표전화로 요청해 주세요. 확인 후 3영업일 안에 처리합니다. 이미 쓴 티켓은 환불되지 않지만, 아래 거절·미응답 반환은 별도입니다."),
+     f"입금 확인일부터 **7일 안에** 티켓을 하나도 쓰지 않으셨다면 전액 환불해 드립니다. 일부 쓰셨다면 결제 금액에서 쓰신 유료 티켓 횟수만큼 1회 정가({won(TICKET_PRICE_1)})를 뺀 금액을 돌려 드립니다. (가입·추천 선물 티켓이 먼저 쓰인 것으로 계산해서, 선물 티켓만 쓰셨다면 전액 환불됩니다.) 환불은 카카오톡 1:1 상담창이나 대표전화로 요청해 주세요. 확인 후 3영업일 안에 처리합니다. 이미 쓴 티켓은 환불되지 않지만, 아래 거절·미응답 반환은 별도입니다."),
     ("상대가 거절하면 티켓은 어떻게 되나요?",
      "상대가 거절하거나 **72시간 안에 답이 없으면** 티켓 1장이 자동으로 돌아옵니다. [신청 보관함]에서 상태를 확인해 주세요. 화면에 안 보이면 새로고침해 주세요."),
     ("72시간이 지났는데 티켓이 안 돌아왔어요.",
@@ -2311,7 +2344,7 @@ FAQ_ITEMS = [
     ("신용점수나 서류를 내야 하나요?",
      "아니요. 노블레스 라온은 **신용점수와 신용 서류를 받지 않습니다.** 카카오 로그인 또는 이메일 인증번호 확인을 마친 회원에게는 프로필에 '✅ 가입 절차 완료' 표시가 붙습니다."),
     ("친구를 초대하면 어떤 혜택이 있나요?",
-     "[내 프로필]의 초대 링크로 친구가 가입하고 **첫 유료 티켓을 구매하면** 두 분 모두 티켓 1장을 받습니다. 한 분이 보상받을 수 있는 초대는 최대 5명입니다. 연락처를 모아서 보내는 것은 하지 말아 주세요."),
+     "[내 프로필]의 초대 링크로 친구가 **가입을 마치면** 두 분 모두 티켓 1장을 받습니다. 한 분이 보상받을 수 있는 초대는 최대 5명입니다. 연락처를 모아서 보내는 것은 하지 말아 주세요."),
     ("탈퇴하고 싶어요.",
      "[내 프로필] 맨 아래 **'회원 탈퇴'** 에서 비밀번호를 확인하면 탈퇴할 수 있습니다. 개인정보는 지체 없이 지우며, 결제·환불 기록은 법에 따라 일정 기간 별도로 보관합니다. 남은 티켓은 탈퇴 전에 환불 가능한지 상담해 주세요."),
     ("바탕화면에 바로가기를 만들고 싶어요.",
@@ -2413,7 +2446,7 @@ st.markdown("""
         <div><strong>사업장 주소:</strong> 서울특별시 금천구 벚꽃로 30, 206동 318호(독산동, 금천 롯데캐슬 골드파크 2차)</div>
         <div><strong>대표전화:</strong> 050-6798-3349 | <strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> equivisionai@gmail.com</div>
         <div style="margin-top: 8px; font-size: 0.85rem; color: #555555;">
-            © 2026 EQUIVISION AI Inc. All rights reserved. 호스팅 서비스 제공: Render Services, Inc. · Supabase Inc.
+            © 2026 EQUIVISION AI Inc. All rights reserved. <br>호스팅 서비스 제공자: Render Services, Inc.(서버) · Supabase Inc.(데이터 저장)
         </div>
     </div>
 """, unsafe_allow_html=True)
