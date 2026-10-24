@@ -105,6 +105,10 @@ EMAIL_QNUM = 95  # 가입 이메일 보관 (user_answers 한 줄, 탈퇴 시 함
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+try:
+    _COOKIE_SECRET = st.secrets.get("COOKIE_SECRET") or SUPABASE_KEY   # 별도 값을 넣으면 DB 키를 바꿔도 로그인이 풀리지 않습니다
+except Exception:
+    _COOKIE_SECRET = SUPABASE_KEY
 
 def flat_html(s: str) -> str:
     """HTML 안의 빈 줄·들여쓰기를 없애 마크다운이 코드 블록으로 오해하지 않게 합니다."""
@@ -1152,15 +1156,20 @@ if "ref_id" not in st.session_state:
 
 # 친구 추천 링크(?ref=...) 기억하기. 카카오 로그인을 거쳐 돌아올 때는 state 값으로 전달됩니다.
 _ref_raw = st.query_params.get("ref") or st.query_params.get("state")
-if _ref_raw and re.fullmatch(r"[A-Za-z0-9\-]{1,64}", str(_ref_raw)):
+_src_raw = st.query_params.get("src")
+if _ref_raw and "." in str(_ref_raw):   # 카카오 왕복용: "추천코드.유입표시"
+    _ref_raw, _src_from_state = str(_ref_raw).split(".", 1)[0], str(_ref_raw).split(".", 1)[1]
+    _src_raw = _src_raw or _src_from_state
+if _ref_raw and re.fullmatch(r"[A-Za-z0-9\-]{1,64}", str(_ref_raw)) and str(_ref_raw) != "x":
     st.session_state.ref_id = str(_ref_raw)
+if _src_raw and re.fullmatch(r"[A-Za-z0-9_\-]{1,20}", str(_src_raw)) and not st.session_state.get("src_code"):
+    st.session_state.src_code = str(_src_raw)
 
 # 방문 기록(개인정보 없음): 새 접속 1회당 1줄. 날짜·무작위 접속번호·유입 표시(?src=)만 저장합니다.
 if not st.session_state.get("visit_logged"):
     st.session_state.visit_logged = True
     try:
-        _src = str(st.query_params.get("src") or "")
-        _src = _src if re.fullmatch(r"[A-Za-z0-9_\-]{1,20}", _src) else "direct"
+        _src = str(st.session_state.get("src_code") or "direct")
         supabase.table("site_visits").insert({"session_id": uuid.uuid4().hex, "src": _src}).execute()
     except Exception:
         pass
@@ -1225,7 +1234,7 @@ LOGIN_DAYS = 7
 
 
 def _login_sig(uid: str, exp: int) -> str:
-    key = _hashlib.sha256(("nr-login|" + str(SUPABASE_KEY)).encode()).digest()
+    key = _hashlib.sha256(("nr-login|" + str(_COOKIE_SECRET)).encode()).digest()
     return _hmac.new(key, f"{uid}.{exp}".encode(), _hashlib.sha256).hexdigest()
 
 
@@ -1291,7 +1300,9 @@ if not st.session_state.user_id:
             <div class="hero-badge">👑 5060 NOBLESSE COMPANIONS</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
             <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
-            <strong style="color:#7A4A00;">카카오 로그인·이메일 확인으로 시작하는 5060 동반자·친구 만남</strong></div>
+            <strong style="color:#7A4A00;">카카오 로그인·이메일 확인으로 시작하는 5060 동반자·친구 만남</strong><br>
+            <span style="font-size:1.05rem;">가입 무료 · 약 2분 · 카카오로 바로 시작</span><br>
+            <span style="font-size:0.95rem;">① 카카오로 시작 → ② 질문 5개 답하기 → ③ 마음 맞는 분께 대화 신청</span></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1325,13 +1336,13 @@ if not st.session_state.user_id:
         st.success(f"🎉 **{md_esc(k_nick)}**님, 카카오 로그인이 완료되었습니다!\n\n아래에서 기본 정보를 입력하고 가입을 마무리해 주세요. ")
         tab_join, tab_login = st.tabs(["📝 신규 프로필 등록 (카카오 연동)", "🔑 기존 정회원 로그인"])
     else:
-        kakao_login_url = get_kakao_login_url(state=st.session_state.ref_id)
+        kakao_login_url = get_kakao_login_url(state=f"{st.session_state.ref_id or 'x'}.{st.session_state.get('src_code') or 'direct'}")
         st.link_button(
             "💬 카카오 계정으로 간편 시작",
             url=kakao_login_url,
             use_container_width=True
         )
-        tab_login, tab_join = st.tabs(["🔑 정회원 로그인", "📝 신규 프로필 등록"])
+        tab_join, tab_login = st.tabs(["📝 신규 프로필 등록", "🔑 이미 회원이세요? 로그인"])
 
     with tab_login:
         login_name = st.text_input("성명", key="l_name")
@@ -1520,8 +1531,8 @@ if not st.session_state.user_id:
                             st.error(msg_c)
 
         j_pwd = st.text_input("간편 비밀번호 (6자리 이상, 쉬운 번호 제외)", type="password", key="j_pwd")
-        j_gender = st.radio("성별", ["남", "여"], horizontal=True, key="j_gender")
-        j_age = st.number_input("나이 (만 나이)", 48, 75, 58, key="j_age")
+        j_gender = st.radio("성별", ["남", "여"], horizontal=True, index=None, key="j_gender")
+        j_age = st.number_input("나이 (만 나이, 48~75)", 48, 75, value=None, placeholder="숫자를 입력하세요", key="j_age")
 
         r_col1, r_col2 = st.columns(2)
         with r_col1:
@@ -1531,11 +1542,11 @@ if not st.session_state.user_id:
         j_region = f"{j_sido} {j_sigungu}"
 
         st.markdown("##### 🎯 나와 맞는 친구를 위한 5가지 질문")
-        a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], key="jq_1")
-        a2 = st.radio(CORE_QUESTIONS_5060[2]["text"], CORE_QUESTIONS_5060[2]["options"], key="jq_2")
-        a3 = st.radio(CORE_QUESTIONS_5060[3]["text"], CORE_QUESTIONS_5060[3]["options"], key="jq_3")
-        a4 = st.radio(CORE_QUESTIONS_5060[4]["text"], CORE_QUESTIONS_5060[4]["options"], key="jq_4")
-        a5 = st.radio(CORE_QUESTIONS_5060[5]["text"], CORE_QUESTIONS_5060[5]["options"], key="jq_5")
+        a1 = st.radio(CORE_QUESTIONS_5060[1]["text"], CORE_QUESTIONS_5060[1]["options"], index=None, key="jq_1")
+        a2 = st.radio(CORE_QUESTIONS_5060[2]["text"], CORE_QUESTIONS_5060[2]["options"], index=None, key="jq_2")
+        a3 = st.radio(CORE_QUESTIONS_5060[3]["text"], CORE_QUESTIONS_5060[3]["options"], index=None, key="jq_3")
+        a4 = st.radio(CORE_QUESTIONS_5060[4]["text"], CORE_QUESTIONS_5060[4]["options"], index=None, key="jq_4")
+        a5 = st.radio(CORE_QUESTIONS_5060[5]["text"], CORE_QUESTIONS_5060[5]["options"], index=None, key="jq_5")
 
         with st.expander("✏️ (선택) 직업·취미·소개 적기 — 비워 두셔도 되고, 가입 후 [내 프로필]에서 언제든 쓸 수 있어요"):
             j_job = st.text_input("직업 또는 이전 경력", placeholder="예: 사업체 운영 / 전문직 퇴직 / 프리랜서", key="j_job")
@@ -1573,6 +1584,10 @@ if not st.session_state.user_id:
                 st.error("필수 항목(이용약관, 개인정보 수집·이용, 국외 이전)에 동의해 주세요.")
             elif not j_name.strip() or len(j_name.strip()) > 30:
                 st.error("성명을 입력해 주세요. (30자 이내)")
+            elif j_gender not in ("남", "여") or j_age is None:
+                st.error("성별과 나이를 선택해 주세요.")
+            elif None in (a1, a2, a3, a4, a5):
+                st.error("가치관 질문 5개에 모두 답해 주세요.")
             elif not valid_phone(clean_jp):
                 st.error("올바른 휴대폰 번호(010 등으로 시작하는 숫자 10~11자리)를 입력해 주세요.")
             elif not is_kakao_join and (not st.session_state.sms_is_verified or st.session_state.sms_verified_phone != j_email_clean):
@@ -1665,6 +1680,10 @@ if not st.session_state.user_id:
                         except Exception:
                             pass  # 추천 기록 실패가 가입을 막지 않도록 함
 
+                    try:
+                        supabase.table("user_answers").insert({"user_id": uid, "question_num": 95, "answer_value": "src:" + str(st.session_state.get("src_code") or "direct")}).execute()
+                    except Exception:
+                        pass
                     record_free_grant(uid, WELCOME_TICKETS)
                     st.session_state.user_id = uid
                     st.session_state.user_info = new_u
@@ -1766,7 +1785,9 @@ else:
             candidates = [c for c in candidates if c["id"] not in _skip_ids]
 
             if not candidates:
-                st.info("아직 만나실 분이 많지 않아요. 곧 새로운 분들이 들어옵니다. 주변의 좋은 분께 노블레스 라온을 소개해 주시면 더 빨리 만나실 수 있어요. ([내 프로필]에서 초대 링크를 확인하세요)")
+                st.info("지금은 노블레스 라온이 문을 연 초기 단계라, 새로 가입하시는 분이 들어올 때마다 추천이 늘어납니다. 아는 분께 아래 초대 글을 카카오톡으로 보내 보세요. 친구가 가입을 마치면 두 분 모두 티켓 1장을 받아요.")
+                st.caption("아래 글을 길게 눌러 복사해서 카카오톡에 붙여 넣으세요.")
+                st.code(f"5060 동반자·친구 만남 '노블레스 라온' 같이 해보실래요? 가입 무료예요. {SHARE_URL}/?ref={me['id']}", language=None)
             else:
                 cand_scores = []
                 # 후보 전원의 답변을 한 번에 가져옵니다 (후보마다 따로 조회하면 느려집니다).
@@ -1869,6 +1890,7 @@ else:
             
         now_dt = datetime.now(timezone.utc)
         restored_count = 0
+        _expired_ids = []
         
         for req in pending_sent:
             created_str = req.get("created_at")
@@ -1880,11 +1902,16 @@ else:
                         # 아직 '대기중'인 것만 바꾸고, 실제로 바뀐 건수만 티켓을 돌려줍니다 (두 화면에서 동시에 열어도 이중 반환 방지)
                         if supabase.table("match_requests").update({"status": "EXPIRED"}).eq("id", req["id"]).eq("status", "PENDING").execute().data:
                             restored_count += 1
+                            _expired_ids.append(req["id"])
                 except Exception:
                     continue
 
         if restored_count > 0:
             new_ticket_val = adjust_tickets(me["id"], restored_count)
+            if new_ticket_val is None:   # 반환 실패: 다음 접속 때 다시 처리하도록 '대기중'으로 되돌립니다
+                for _eid in _expired_ids:
+                    supabase.table("match_requests").update({"status": "PENDING"}).eq("id", _eid).eq("status", "EXPIRED").execute()
+                restored_count = 0
             if new_ticket_val is not None:
                 me["ticket_count"] = new_ticket_val
                 st.session_state.user_info = me
@@ -1957,7 +1984,10 @@ else:
                             if st.button("거절", key=f"re_{req['id']}"):
                                 _u = supabase.table("match_requests").update({"status": "REJECTED"}).eq("id", req["id"]).eq("status", "PENDING").execute().data
                                 if _u:  # 아직 대기중일 때만 거절 처리 + 티켓 1장 반환 (중복 반환 방지)
-                                    adjust_tickets(snd["id"], 1)
+                                    if adjust_tickets(snd["id"], 1) is None:   # 반환 실패 시 '대기중'으로 되돌려 나중에 다시 처리
+                                        supabase.table("match_requests").update({"status": "PENDING"}).eq("id", req["id"]).eq("status", "REJECTED").execute()
+                                        st.error("티켓 반환에 실패해 거절을 취소했습니다. 잠시 뒤 다시 눌러 주세요.")
+                                        st.stop()
                                     send_aligo_notice_sms(snd["phone"], "보내신 대화 신청이 정중히 사양되었으며, 사용하신 티켓 1장이 정상 복구되었습니다.")
                                 st.rerun()
                     st.divider()
@@ -2226,8 +2256,12 @@ else:
                 if not _u:
                     continue
                 st.markdown(f"**{md_esc(_u['name'])}** ({only_digits(_u['phone'])}) | {rq['qty']}회 {won(rq['amount'])} | 입금자명 **{md_esc(rq['depositor'])}** | 입금일 {rq.get('deposit_date') or '-'} | 현재 티켓 {_u.get('ticket_count', 0)}장")
+                _real = st.number_input("은행에서 확인한 실제 입금액(원)", min_value=0, max_value=1000000, value=0, step=1000, key=f"pr_real_{rq['id']}")
                 c_ok, c_no = st.columns(2)
                 if c_ok.button("입금 확인·충전", key=f"pr_ok_{rq['id']}"):
+                  if int(_real) != int(rq["amount"]):
+                    st.error(f"실제 입금액이 신청 금액({won(rq['amount'])})과 다릅니다. 부분입금·오입금은 충전하지 말고 대표님이 확인해 주세요.")
+                  else:
                     # 아직 '확인 대기'인 건만 잡아서(한 번만 처리) 충전합니다. 충전에 실패하면 되돌립니다.
                     got = supabase.table("payment_requests").update({"status": "CHARGED", "processed_at": datetime.now(timezone.utc).isoformat()}).eq("id", rq["id"]).eq("status", "REQUESTED").execute().data
                     if not got:
