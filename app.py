@@ -53,6 +53,11 @@ manifest_5060 = {
         }
     ]
 }
+try:
+    import og_patch
+    og_patch.patch()   # 공유 미리보기(카카오톡) 메타 태그를 한 번만 넣습니다
+except Exception:
+    pass
 manifest_5060_json = json.dumps(manifest_5060)
 
 st.markdown(f"""
