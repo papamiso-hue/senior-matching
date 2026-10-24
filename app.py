@@ -532,11 +532,13 @@ PLATFORM_TYPO_RULES = {
 }
 
 _BANNED_WORDS = ["결혼", "혼인", "배우자", "재혼", "맞선", "신랑", "신부", "결혼정보"]
-_CONTACT_HINTS = ["카톡", "카카오톡", "카카오id", "카카오아이디", "kakao.com", "kakaotalk", "오픈채팅", "오픈톡", "라인id", "라인아이디", "line.me", "텔레그램", "telegram", "t.me", "인스타그램", "인스타id", "instagram.com", "http", "www.", ".com", ".kr", ".net", ".co.", "@"]
+_CONTACT_HINTS = ["카톡", "카카오톡", "카카오id", "카카오아이디", "kakao.com", "kakaotalk", "오픈채팅", "오픈톡", "라인id", "라인아이디", "line.me", "텔레그램", "telegram", "t.me", "인스타그램", "인스타id", "instagram.com", "http", "www.", "bit.ly", "youtu", "band.us", "까똑", "케이톡", "골뱅이", "인스타", "insta", ".com", ".kr", ".net", ".co.", "@"]
 def text_policy_error(text: str) -> str:
     """소개글·직업·취미에 쓰면 안 되는 말(결혼 관련 말, 연락처)이 있으면 안내 문구를 돌려줍니다. 없으면 빈 문자열."""
-    t = (text or "")
-    flat = re.sub(r"[\s\-\.\_\(\)]", "", t).lower()
+    import unicodedata
+    t = unicodedata.normalize("NFKC", text or "")
+    flat = re.sub(r"[^0-9a-z가-힣]", "", t.lower())
+    flat = re.sub(r"신부(님|전|동)", "", flat)   # 신부님(성직자)·신부전증·신부동산은 허용
     for w in _BANNED_WORDS:
         if w in flat:
             return "노블레스 라온은 동반자·친구 만남만 돕는 곳입니다. 이 목적과 맞지 않는 말은 쓰실 수 없어요. '동반자', '친구', '대화' 같은 말로 바꿔 써 주세요."
@@ -1282,7 +1284,7 @@ if not st.session_state.user_id:
             <div class="hero-badge">👑 5060 NOBLESSE COMPANIONS</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
             <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
-            <strong style="color:#7A4A00;">카카오 로그인·이메일 확인으로 안심하는 5060 동반자·친구 만남</strong></div>
+            <strong style="color:#7A4A00;">카카오 로그인·이메일 확인으로 시작하는 5060 동반자·친구 만남</strong></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1290,17 +1292,17 @@ if not st.session_state.user_id:
         <div class="promise-grid">
             <div class="promise-card">
                 <div class="promise-icon">🛡️</div>
-                <div class="promise-title">안심 가입</div>
+                <div class="promise-title">간편 가입</div>
                 <div class="promise-desc">카카오 로그인 · 이메일 인증</div>
             </div>
             <div class="promise-card">
                 <div class="promise-icon">🚫</div>
-                <div class="promise-title">지인 번호 완벽차단</div>
-                <div class="promise-desc">가족/지인 안심 미노출</div>
+                <div class="promise-title">아는 분 번호 차단</div>
+                <div class="promise-desc">입력한 번호의 분께는 서로 안 보여요</div>
             </div>
             <div class="promise-card">
                 <div class="promise-icon">🔒</div>
-                <div class="promise-title">안심 비공개 프로필</div>
+                <div class="promise-title">수락 전 사진 흐림</div>
                 <div class="promise-desc">상호 수락 시 연락처 공개</div>
             </div>
         </div>
@@ -1713,129 +1715,132 @@ else:
         # 이성만 추천합니다(대표님 결정). 본인·관리자·정지 계정은 제외하고 최근 접속순으로 나옵니다.
         # 비밀번호 등 불필요한 정보는 가져오지 않고, 최근 접속자 위주로 최대 300명만 불러옵니다.
         if (me.get("gender") or "") not in ("남", "여"):
-            st.warning("추천을 보시려면 [내 프로필]에서 성별을 먼저 입력해 주세요.")
-            st.stop()
-        st.caption("✅ 가입 절차 완료 표시는 가입 절차를 마쳤다는 뜻이며, 신분·재산·신용을 보증하지 않습니다.")
-        raw_candidates = supabase.table("users")\
-            .select("id,name,phone,gender,age,region,job,intro,photo_url,is_verified,blocked_phones,is_admin")\
-            .neq("id", me["id"])\
-            .eq("gender", "여" if me["gender"] == "남" else "남")\
-            .gte("age", 48)\
-            .lte("age", 75)\
-            .eq("is_suspended", False)\
-            .order("last_login_at", desc=True)\
-            .limit(300)\
-            .execute().data
-
-        my_blocked_set = set(me.get("blocked_phones") or [])
-        my_phone = me.get("phone", "")
-
-        candidates = []
-        for cand in raw_candidates:
-            if cand.get("is_admin"):
-                continue
-            c_phone = cand.get("phone", "")
-            c_blocked = set(cand.get("blocked_phones") or [])
-            if c_phone in my_blocked_set or my_phone in c_blocked:
-                continue
-            candidates.append(cand)
-
-        sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
-        sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
-
-        if not candidates:
-            st.info("아직 만나실 분이 많지 않아요. 곧 새로운 분들이 들어옵니다. 주변의 좋은 분께 노블레스 라온을 소개해 주시면 더 빨리 만나실 수 있어요. ([내 프로필]에서 초대 링크를 확인하세요)")
+            st.warning("성별 정보가 없어 추천을 보여 드릴 수 없어요. 하단 카카오톡 상담창으로 알려 주시면 바로 채워 드립니다.")
         else:
-            cand_scores = []
-            # 후보 전원의 답변을 한 번에 가져옵니다 (후보마다 따로 조회하면 느려집니다).
-            all_ans = supabase.table("user_answers").select("user_id, question_num, answer_value")\
-                .in_("user_id", [c["id"] for c in candidates]).execute().data
-            ans_by_user = {}
-            for item in all_ans:
-                if 1 <= item["question_num"] <= 5:  # 장부용 행(90~92번)은 궁합 계산에서 제외
-                    ans_by_user.setdefault(item["user_id"], {})[item["question_num"]] = item["answer_value"]
-            for cand in candidates:
-                c_answers = ans_by_user.get(cand["id"], {})
+            st.caption("✅ 가입 절차 완료 표시는 가입 절차를 마쳤다는 뜻이며, 신분·재산·신용을 보증하지 않습니다.")
+            raw_candidates = supabase.table("users")\
+                .select("id,name,phone,gender,age,region,job,intro,photo_url,is_verified,blocked_phones,is_admin")\
+                .neq("id", me["id"])\
+                .eq("gender", "여" if me["gender"] == "남" else "남")\
+                .gte("age", 48)\
+                .lte("age", 75)\
+                .eq("is_suspended", False)\
+                .order("last_login_at", desc=True, nullsfirst=False)\
+                .limit(300)\
+                .execute().data
+
+            my_blocked_set = set(me.get("blocked_phones") or [])
+            my_phone = me.get("phone", "")
+
+            candidates = []
+            for cand in raw_candidates:
+                if cand.get("is_admin"):
+                    continue
+                c_phone = cand.get("phone", "")
+                c_blocked = set(cand.get("blocked_phones") or [])
+                if c_phone in my_blocked_set or my_phone in c_blocked:
+                    continue
+                candidates.append(cand)
+
+            sent_reqs = supabase.table("match_requests").select("receiver_id, status").eq("sender_id", me["id"]).execute().data
+            sent_dict = {req["receiver_id"]: req["status"] for req in sent_reqs}
+            # 이미 신청했거나(대기·수락) 거절당한 분은 추천에서 뺍니다. 수락된 분은 보관함에서 봅니다.
+            _skip_ids = {req["receiver_id"] for req in sent_reqs if req["status"] in ("PENDING", "ACCEPTED", "REJECTED")}
+            candidates = [c for c in candidates if c["id"] not in _skip_ids]
+
+            if not candidates:
+                st.info("아직 만나실 분이 많지 않아요. 곧 새로운 분들이 들어옵니다. 주변의 좋은 분께 노블레스 라온을 소개해 주시면 더 빨리 만나실 수 있어요. ([내 프로필]에서 초대 링크를 확인하세요)")
+            else:
+                cand_scores = []
+                # 후보 전원의 답변을 한 번에 가져옵니다 (후보마다 따로 조회하면 느려집니다).
+                all_ans = supabase.table("user_answers").select("user_id, question_num, answer_value")\
+                    .in_("user_id", [c["id"] for c in candidates]).execute().data
+                ans_by_user = {}
+                for item in all_ans:
+                    if 1 <= item["question_num"] <= 5:  # 장부용 행(90~92번)은 궁합 계산에서 제외
+                        ans_by_user.setdefault(item["user_id"], {})[item["question_num"]] = item["answer_value"]
+                for cand in candidates:
+                    c_answers = ans_by_user.get(cand["id"], {})
                 
-                common_keys = set(my_answers.keys()).intersection(set(c_answers.keys()))
-                score = int((sum(1 for k in common_keys if my_answers[k] == c_answers[k]) / len(common_keys)) * 100) if common_keys else 0
-                cand_scores.append((cand, c_answers, common_keys, score))
+                    common_keys = set(my_answers.keys()).intersection(set(c_answers.keys()))
+                    score = int((sum(1 for k in common_keys if my_answers[k] == c_answers[k]) / len(common_keys)) * 100) if common_keys else 0
+                    cand_scores.append((cand, c_answers, common_keys, score))
 
-            # 점수 순 정렬을 하지 않습니다(최근 접속순 유지). 비교 점수는 참고용 표시입니다.
+                # 점수 순 정렬을 하지 않습니다(최근 접속순 유지). 비교 점수는 참고용 표시입니다.
 
-            for cand, c_answers, common_keys, score in cand_scores:
-                c_img = esc(blur_photo_url(cand.get("photo_url"), cand["gender"]))
-                intro_txt = esc(cand.get("intro") or "서로를 존중하며 함께 시간을 나눌 좋은 친구를 기다립니다.")
+                for cand, c_answers, common_keys, score in cand_scores:
+                    c_img = esc(blur_photo_url(cand.get("photo_url"), cand["gender"]))
+                    intro_txt = esc(cand.get("intro") or "서로를 존중하며 함께 시간을 나눌 좋은 친구를 기다립니다.")
 
-                st.markdown(flat_html(f"""
-                    <div class="senior-card">
-                        <div class="senior-img-box">
-                            <img src="{c_img}" class="senior-img-blur">
-                            <div class="senior-overlay"></div>
-                            <div class="senior-blind-tag">🔒 안심 비공개 보호</div>
-                            <div class="senior-match-badge">관심사 {score}% 비슷</div>
-                        </div>
-                        <div class="senior-content">
-                            <div class="senior-name-row">
-                                <span class="senior-name">{esc(cand['name'][0])}*님</span>
-                                <span class="senior-age">{esc(cand['age'])}세 · {esc(cand['region'].split()[0])}</span>
+                    st.markdown(flat_html(f"""
+                        <div class="senior-card">
+                            <div class="senior-img-box">
+                                <img src="{c_img}" class="senior-img-blur">
+                                <div class="senior-overlay"></div>
+                                <div class="senior-blind-tag">🔒 수락 전 사진 흐림</div>
+                                <div class="senior-match-badge">관심사 {score}% 비슷</div>
                             </div>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-                                <span class="badge-pill-gold">💼 {esc(cand.get('job') or '경력 인증')}</span>
-                                {'<span class="badge-pill-credit">✅ 가입 절차 완료</span>' if cand.get('is_verified') else ''}
+                            <div class="senior-content">
+                                <div class="senior-name-row">
+                                    <span class="senior-name">{esc((cand.get('name') or '?')[0])}*님</span>
+                                    <span class="senior-age">{esc(cand['age'])}세 · {esc((cand.get('region') or '-').split()[0])}</span>
+                                </div>
+                                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                                    <span class="badge-pill-gold">💼 {esc(cand.get('job') or '직업 미입력')}</span>
+                                    {'<span class="badge-pill-credit">✅ 가입 절차 완료</span>' if cand.get('is_verified') else ''}
+                                </div>
+                                <div class="senior-intro">"{intro_txt}"</div>
                             </div>
-                            <div class="senior-intro">"{intro_txt}"</div>
                         </div>
-                    </div>
-                """), unsafe_allow_html=True)
+                    """), unsafe_allow_html=True)
 
-                with st.expander("🔍 5가지 질문 상세 비교"):
-                    for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
-                        q_text = CORE_QUESTIONS_5060[q_num]["text"]
-                        m_val = my_answers.get(q_num, "미응답")
-                        c_val = c_answers.get(q_num, "미응답")
-                        is_match = (m_val == c_val)
-                        match_label = "🟢 일치" if is_match else "⚪ 상이"
-                        st.markdown(f"**[{match_label}] {q_text}**")
-                        st.caption(f"• 내 답변: {m_val} | 상대방: {c_val}")
+                    with st.expander("🔍 5가지 질문 상세 비교"):
+                        for q_num in sorted(list(CORE_QUESTIONS_5060.keys())):
+                            q_text = CORE_QUESTIONS_5060[q_num]["text"]
+                            m_val = my_answers.get(q_num, "미응답")
+                            c_val = c_answers.get(q_num, "미응답")
+                            is_match = (m_val == c_val)
+                            match_label = "🟢 일치" if is_match else "⚪ 상이"
+                            st.markdown(f"**[{match_label}] {q_text}**")
+                            st.caption(f"• 내 답변: {m_val} | 상대방: {c_val}")
 
-                req_status = sent_dict.get(cand["id"])
-                if req_status == "PENDING":
-                    st.button(f"⏳ 수락 대기중 ({md_esc(cand['name'][0])}*님)", key=f"feed_btn_{cand['id']}", disabled=True)
-                elif req_status == "ACCEPTED":
-                    st.success("🎉 서로 수락했어요! 보관함에서 선명한 사진과 연락처를 확인하세요.")
-                else:
-                    if st.button(f"💌 대화 신청하기 (티켓 1장)", key=f"feed_btn_{cand['id']}"):
-                        if my_tickets <= 0:
-                            st.error("🚨 보유 티켓이 부족합니다. 상단의 [💳 티켓 충전] 탭에서 충전 후 이용해 주세요.")
-                        elif supabase.table("match_requests").select("id").eq("sender_id", me["id"]).eq("receiver_id", cand["id"]).in_("status", ["PENDING", "ACCEPTED"]).execute().data:
-                            st.warning("이미 대화를 신청한 분입니다.")
-                        else:
-                            new_bal = adjust_tickets(me["id"], -1)  # 최신 잔액 기준으로 안전하게 차감
-                            if new_bal is None:
-                                st.error("티켓이 부족하거나 처리 중 문제가 생겼습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.")
+                    req_status = sent_dict.get(cand["id"])
+                    if req_status == "PENDING":
+                        st.button(f"⏳ 수락 대기중 ({md_esc((cand.get('name') or '?')[0])}*님)", key=f"feed_btn_{cand['id']}", disabled=True)
+                    elif req_status == "ACCEPTED":
+                        st.success("🎉 서로 수락했어요! 보관함에서 선명한 사진과 연락처를 확인하세요.")
+                    else:
+                        if st.button(f"💌 대화 신청하기 (티켓 1장)", key=f"feed_btn_{cand['id']}"):
+                            if my_tickets <= 0:
+                                st.error("🚨 보유 티켓이 부족합니다. 상단의 [💳 티켓 충전] 탭에서 충전 후 이용해 주세요.")
+                            elif supabase.table("match_requests").select("id").eq("sender_id", me["id"]).eq("receiver_id", cand["id"]).in_("status", ["PENDING", "ACCEPTED"]).execute().data:
+                                st.warning("이미 대화를 신청한 분입니다.")
                             else:
-                                me["ticket_count"] = new_bal
-                                st.session_state.user_info = me
-                                try:
-                                    supabase.table("match_requests").insert({
-                                        "sender_id": me["id"],
-                                        "receiver_id": cand["id"],
-                                        "status": "PENDING",
-                                        "payment_status": "PAID"
-                                    }).execute()
-                                except Exception as e:
-                                    back = adjust_tickets(me["id"], 1)  # 신청 기록이 실패하면 티켓을 되돌림
-                                    if back is not None:
-                                        me["ticket_count"] = back
-                                        st.session_state.user_info = me
-                                    st.error(friendly_error("send_request", e, "신청 처리 중"))
+                                new_bal = adjust_tickets(me["id"], -1)  # 최신 잔액 기준으로 안전하게 차감
+                                if new_bal is None:
+                                    st.error("티켓이 부족하거나 처리 중 문제가 생겼습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.")
                                 else:
-                                    send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 대화 신청이 도착했습니다.")
-                                    st.rerun()
+                                    me["ticket_count"] = new_bal
+                                    st.session_state.user_info = me
+                                    try:
+                                        supabase.table("match_requests").insert({
+                                            "sender_id": me["id"],
+                                            "receiver_id": cand["id"],
+                                            "status": "PENDING",
+                                            "payment_status": "PAID"
+                                        }).execute()
+                                    except Exception as e:
+                                        back = adjust_tickets(me["id"], 1)  # 신청 기록이 실패하면 티켓을 되돌림
+                                        if back is not None:
+                                            me["ticket_count"] = back
+                                            st.session_state.user_info = me
+                                        st.error(friendly_error("send_request", e, "신청 처리 중"))
+                                    else:
+                                        send_aligo_notice_sms(cand["phone"], f"{me['name'][0]}* 님으로부터 대화 신청이 도착했습니다.")
+                                        st.rerun()
 
-                st.caption(f"ℹ️ 대화 신청 시 티켓 1장이 사용되며, 상대방 거절/72시간 미응답 시 티켓이 반환됩니다(앱에 접속하시면 바로 반영됩니다). (미사용 티켓 7일 이내 100% 환불) · 가입·추천 선물 티켓은 지급일부터 {FREE_TICKET_DAYS}일 후 소멸합니다.")
-                st.write("")
+                    st.caption(f"ℹ️ 대화 신청 시 티켓 1장이 사용되며, 상대방 거절/72시간 미응답 시 티켓이 반환됩니다(앱에 접속하시면 바로 반영됩니다). (미사용 티켓 7일 이내 100% 환불) · 가입·추천 선물 티켓은 지급일부터 {FREE_TICKET_DAYS}일 후 소멸합니다.")
+                    st.write("")
 
     # --- TAB 2: 신청 보관함 ---
     with tabs_main[1]:
@@ -1985,7 +1990,7 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면, 담당 매니저가 즉시 확인 후 티켓을 충전해 드립니다.")
+        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면, 평일 하루 안에 확인 후 티켓을 충전해 드립니다.")
         
         st.markdown(f"""
             <a href="{KAKAO_CHAT_URL}" target="_blank" style="text-decoration:none;">
@@ -2197,7 +2202,10 @@ else:
                     if not got:
                         st.warning("이미 처리된 신청입니다.")
                     else:
-                        ok, msg = charge_tickets(_u, int(rq["qty"]))
+                        try:
+                            ok, msg = charge_tickets(_u, int(rq["qty"]))
+                        except Exception:
+                            ok, msg = False, "충전 중 오류가 났습니다. 다시 눌러 주세요."
                         if not ok:
                             supabase.table("payment_requests").update({"status": "REQUESTED", "processed_at": None}).eq("id", rq["id"]).execute()
                             st.error(msg)
