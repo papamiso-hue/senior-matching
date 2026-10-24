@@ -1366,7 +1366,7 @@ if not st.session_state.user_id:
                     st.error("성명, 휴대폰 번호 또는 비밀번호가 일치하지 않습니다.")
 
         with st.expander("🔑 비밀번호를 잊으셨나요? (간편 재설정)"):
-            st.caption("가입 때 등록한 성명과 이메일로 인증번호를 받아 새 비밀번호를 정할 수 있습니다. 이메일을 등록하지 않으신 분은 카카오톡 상담창으로 문의해 주세요.")
+            st.caption("가입 때 등록한 성명과 이메일로 인증번호를 받아 새 비밀번호를 정할 수 있습니다. 이메일을 등록하지 않으신 분은 화면 맨 아래 [문의 남기기]로 문의해 주세요.")
             f_name = st.text_input("가입 성명", key="f_name_5060")
             col_fp1, col_fp2 = st.columns([2.5, 1.2])
             with col_fp1:
@@ -1727,7 +1727,7 @@ else:
         # 이성만 추천합니다(대표님 결정). 본인·관리자·정지 계정은 제외하고 최근 접속순으로 나옵니다.
         # 비밀번호 등 불필요한 정보는 가져오지 않고, 최근 접속자 위주로 최대 300명만 불러옵니다.
         if (me.get("gender") or "") not in ("남", "여"):
-            st.warning("성별 정보가 없어 추천을 보여 드릴 수 없어요. 하단 카카오톡 상담창으로 알려 주시면 바로 채워 드립니다.")
+            st.warning("성별 정보가 없어 추천을 보여 드릴 수 없어요. 화면 맨 아래 [문의 남기기]로 알려 주시면 채워 드립니다.")
         else:
             st.caption("✅ 가입 절차 완료 표시는 가입 절차를 마쳤다는 뜻이며, 신분·재산·신용을 보증하지 않습니다.")
             raw_candidates = supabase.table("users")\
@@ -1907,7 +1907,7 @@ else:
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.caption("회원이 직접 적은 번호예요. 확인되지 않았을 수 있으니 이상하면 상담창에 알려 주세요.")
+                        st.caption("회원이 직접 적은 번호예요. 확인되지 않았을 수 있으니 이상하면 화면 맨 아래 [문의 남기기]로 알려 주세요.")
                         st.write(f"📞 연락처: **{only_digits(rcv['phone'])}** | 💼 경력: **{md_esc(rcv.get('job'))}**")
                         st.markdown(f'<a href="tel:{only_digits(rcv["phone"])}">📞 바로 전화 걸기</a>', unsafe_allow_html=True)
                     elif req["status"] == "REJECTED":
@@ -1938,7 +1938,7 @@ else:
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.caption("회원이 직접 적은 번호예요. 확인되지 않았을 수 있으니 이상하면 상담창에 알려 주세요.")
+                        st.caption("회원이 직접 적은 번호예요. 확인되지 않았을 수 있으니 이상하면 화면 맨 아래 [문의 남기기]로 알려 주세요.")
                         st.write(f"📞 연락처: **{only_digits(snd['phone'])}**")
                     elif req["status"] == "PENDING":
                         col_ac, col_re = st.columns(2)
@@ -2004,19 +2004,12 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-        st.info("💡 입금 후 아래 **[카카오톡 1:1 입금 확인]** 버튼을 누르시고 성함을 남겨주시면, 평일 하루 안에 확인 후 티켓을 충전해 드립니다.")
+        st.info("💡 입금 후 아래 **[입금 신청]** 에 입금 내용을 남겨 주시면, 영업일 기준 1~2일 안에 확인 후 티켓을 충전해 드립니다.")
         
-        st.markdown(f"""
-            <a href="{KAKAO_CHAT_URL}" target="_blank" style="text-decoration:none;">
-                <div style="background:#FEE500; color:#191919; text-align:center; padding:15px; border-radius:12px; font-weight:900; font-size:1.05rem; box-shadow:0 4px 14px rgba(254, 229, 0, 0.3); margin-bottom:18px;">
-                    💬 카카오톡 1:1 입금 확인 및 환불 문의
-                </div>
-            </a>
-        """, unsafe_allow_html=True)
 
         # ---- 입금 신청 (회원) ----
         st.markdown("##### 📝 입금 신청하기")
-        st.caption("입금하신 뒤 아래에 입금 내용을 남겨 주세요. 평일 하루 안에 확인하고 티켓을 충전해 드립니다. (현금영수증이 필요하시면 카카오톡 상담창으로 알려 주세요)")
+        st.caption("입금하신 뒤 아래에 입금 내용을 남겨 주세요. 영업일 기준 1~2일 안에 확인하고 티켓을 충전해 드립니다. (현금영수증이 필요하시면 화면 맨 아래 [문의 남기기]로 알려 주세요)")
         _my_reqs = supabase.table("payment_requests").select("id,qty,amount,depositor,deposit_date,status,created_at").eq("user_id", me["id"]).order("created_at", desc=True).limit(10).execute().data or []
         _open_cnt = sum(1 for r in _my_reqs if r["status"] == "REQUESTED")
         with st.form("pay_req_form", clear_on_submit=True):
@@ -2155,7 +2148,7 @@ else:
 
                 **보관되는 정보**: 유료 티켓을 충전하신 적이 있다면, 전자상거래법에 따라 **결제 기록(충전 날짜·수량·금액)만 5년간** 따로 보관한 뒤 파기합니다. 이름·연락처는 남기지 않습니다.
 
-                현재 보유 티켓은 **{my_tickets}장**이며, 탈퇴하면 소멸합니다. 환불이 필요하시면 탈퇴 전에 카카오톡 1:1 상담으로 먼저 문의해 주세요. (미사용 티켓은 7일 이내 100% 환불)
+                현재 보유 티켓은 **{my_tickets}장**이며, 탈퇴하면 소멸합니다. 환불이 필요하시면 탈퇴 전에 화면 맨 아래 [문의 남기기]로 먼저 문의해 주세요. (미사용 티켓은 7일 이내 100% 환불)
                 """)
                 w_pwd = st.text_input("비밀번호 재확인", type="password", key="w_pwd_5060")
                 w_ok1 = st.checkbox("위 내용을 모두 확인했으며, 탈퇴에 동의합니다.", key="w_ok1_5060")
@@ -2274,6 +2267,16 @@ else:
                     else:
                         st.error(msg)
 
+        with st.expander("✉️ [관리자 전용] 문의 목록 — 답변 후 처리 완료"):
+            _inq = supabase.table("inquiries").select("*").eq("status", "NEW").order("created_at").limit(30).execute().data or []
+            if not _inq:
+                st.info("새 문의가 없습니다.")
+            for _q in _inq:
+                st.markdown(f"**[{md_esc(_q['kind'])}]** {str(_q['created_at'])[:16]} | 답변 이메일: {md_esc(_q['reply_email'])}")
+                st.text(_q["body"])
+                if st.button("처리 완료", key=f"inq_done_{_q['id']}"):
+                    supabase.table("inquiries").update({"status": "DONE", "handled_at": datetime.now(timezone.utc).isoformat()}).eq("id", _q["id"]).execute()
+                    st.rerun()
         with st.expander("↩️ [관리자 전용] 환불 처리 — 티켓 회수와 장부 기록"):
             st.caption("환불은 대표님이 판단·이체합니다. 이체 후 여기서 회원의 티켓을 회수하고 환불 장부를 남기세요. (환불 금액 = 결제액 − 유료 티켓 사용 횟수 × 10,000원)")
             rf_phone = st.text_input("환불 회원 휴대폰 번호 (숫자만)", key="adm_rf_phone")
@@ -2318,13 +2321,13 @@ FAQ_ITEMS = [
     ("티켓은 무엇이고 얼마인가요?",
      f"마음에 드는 분께 대화를 신청할 때 티켓 1장이 쓰입니다. 1회 {won(TICKET_PRICE_1)}, 3회 {won(TICKET_PRICE_3)}, 5회 {won(TICKET_PRICE_5)}(모두 부가세 포함)입니다. 유료 티켓은 구매일부터 1년간 쓸 수 있습니다. 가입 선물 등 무료 티켓은 90일 안에 쓰셔야 하며, 쓰는 순서는 무료 티켓이 먼저입니다."),
     ("현금영수증이나 세금계산서를 받을 수 있나요?",
-     "입금 확인 후 영업일 기준 3일 안에 현금영수증(소득공제용 또는 지출증빙용)을 발급해 드립니다. 카카오톡 1:1 상담창이나 대표전화로 **입금자명, 입금 날짜, 발급받으실 번호(휴대폰 번호 또는 사업자번호)**를 알려 주세요. 세금계산서가 필요한 사업자는 사업자등록증 사본을 함께 보내 주세요."),
+     "입금 확인 후 영업일 기준 3일 안에 현금영수증(소득공제용 또는 지출증빙용)을 발급해 드립니다. [문의 남기기]나 이메일로 **입금자명, 입금 날짜, 발급받으실 번호(휴대폰 번호 또는 사업자번호)**를 알려 주세요. 세금계산서가 필요한 사업자는 사업자등록증 사본을 함께 보내 주세요."),
     ("가족이 대신 입금했거나 금액이 달라요.",
-     "입금자명이 가입 이름과 달라도 괜찮습니다. 카카오톡 1:1 상담창이나 대표전화로 **입금자명, 입금 날짜, 금액, 충전받을 분의 성함**을 알려 주시면 확인해 드립니다. 금액이 상품 가격과 다르면 안내드린 뒤 차액을 정리해 드립니다."),
+     "입금자명이 가입 이름과 달라도 괜찮습니다. [문의 남기기]나 이메일로 **입금자명, 입금 날짜, 금액, 충전받을 분의 성함**을 알려 주시면 확인해 드립니다. 금액이 상품 가격과 다르면 안내드린 뒤 차액을 정리해 드립니다."),
     ("입금했는데 티켓이 안 들어왔어요.",
-     "입금 확인 후 티켓을 넣어 드립니다. 확인에 시간이 걸릴 수 있습니다. 카카오톡 1:1 상담창이나 대표전화로 **입금자명, 입금 날짜, 금액**을 알려 주시면 더 빨리 확인합니다. 안내된 법인 계좌 외에는 입금하지 마세요."),
+     "입금 확인 후 티켓을 넣어 드립니다. 확인에 시간이 걸릴 수 있습니다. [문의 남기기]나 이메일로 **입금자명, 입금 날짜, 금액**을 알려 주시면 더 빨리 확인합니다. 안내된 법인 계좌 외에는 입금하지 마세요."),
     ("환불받고 싶어요.",
-     f"입금 확인일부터 **7일 안에** 티켓을 하나도 쓰지 않으셨다면 전액 환불해 드립니다. 일부 쓰셨다면 결제 금액에서 쓰신 유료 티켓 횟수만큼 1회 정가({won(TICKET_PRICE_1)})를 뺀 금액을 돌려 드립니다. (가입·추천 선물 티켓이 먼저 쓰인 것으로 계산해서, 선물 티켓만 쓰셨다면 전액 환불됩니다.) 환불은 카카오톡 1:1 상담창이나 대표전화로 요청해 주세요. 확인 후 3영업일 안에 처리합니다. 이미 쓴 티켓은 환불되지 않지만, 아래 거절·미응답 반환은 별도입니다."),
+     f"입금 확인일부터 **7일 안에** 티켓을 하나도 쓰지 않으셨다면 전액 환불해 드립니다. 일부 쓰셨다면 결제 금액에서 쓰신 유료 티켓 횟수만큼 1회 정가({won(TICKET_PRICE_1)})를 뺀 금액을 돌려 드립니다. (가입·추천 선물 티켓이 먼저 쓰인 것으로 계산해서, 선물 티켓만 쓰셨다면 전액 환불됩니다.) 환불은 [문의 남기기]나 이메일로 요청해 주세요. 확인 후 3영업일 안에 처리합니다. 이미 쓴 티켓은 환불되지 않지만, 아래 거절·미응답 반환은 별도입니다."),
     ("상대가 거절하면 티켓은 어떻게 되나요?",
      "상대가 거절하거나 **72시간 안에 답이 없으면** 티켓 1장이 자동으로 돌아옵니다. [신청 보관함]에서 상태를 확인해 주세요. 화면에 안 보이면 새로고침해 주세요."),
     ("72시간이 지났는데 티켓이 안 돌아왔어요.",
@@ -2338,7 +2341,7 @@ FAQ_ITEMS = [
     ("카카오로 들어왔는데 가입이 안 돼요.",
      "이미 같은 휴대폰 번호로 가입하셨다면 카카오로 새로 가입되지 않습니다. 로그인 화면의 **'정회원 로그인'** 탭에서 이름, 휴대폰 번호, 비밀번호로 들어와 주세요."),
     ("이상한 사람(돈 요구 등)이 있어요. 신고는 어떻게 하나요?",
-     "불편을 드려 죄송합니다. 상대방의 보이는 정보(이름 첫 글자, 나이, 지역, 신청 시기)를 **카카오톡 1:1 상담창이나 이메일**로 알려 주세요. 확인 후 조치합니다. **돈을 보내셨다면 먼저 경찰(112)과 은행에 알려 주세요.** 돈, 계좌번호, 투자를 요구하는 분은 응하지 않으시는 것이 안전합니다."),
+     "불편을 드려 죄송합니다. 상대방의 보이는 정보(이름 첫 글자, 나이, 지역, 신청 시기)를 **[문의 남기기]나 이메일**로 알려 주세요. 확인 후 조치합니다. **돈을 보내셨다면 먼저 경찰(112)과 은행에 알려 주세요.** 돈, 계좌번호, 투자를 요구하는 분은 응하지 않으시는 것이 안전합니다."),
     ("특정 사람에게 내 정보가 안 보이게 하고 싶어요.",
      "프로필 화면의 **아는 분 번호 차단**에 그분 휴대폰 번호를 넣으시면 서로 보이지 않습니다. (차단 번호는 목록을 거른 용도로만 쓰입니다.)"),
     ("신용점수나 서류를 내야 하나요?",
@@ -2350,7 +2353,7 @@ FAQ_ITEMS = [
     ("바탕화면에 바로가기를 만들고 싶어요.",
      "이 화면 위쪽의 **'바탕화면에 노블레스 라온 바로가기 만들기'** 에서 갤럭시·아이폰별로 그림 없이도 따라 하실 수 있게 순서대로 적어 두었습니다."),
     ("문의는 어디로 하나요?",
-     "카카오톡 1:1 상담창, 대표전화 050-6798-3349, 이메일 equivisionai@gmail.com 으로 문의해 주세요. 상담 내용에 비밀번호나 주민등록번호는 적지 마세요."),
+     "화면 맨 아래 [문의 남기기] 또는 이메일 equivisionai@gmail.com 으로 문의해 주세요. (전화 상담은 하지 않습니다.) 상담 내용에 비밀번호나 주민등록번호는 적지 마세요."),
 ]
 
 def render_home_guide():
@@ -2406,7 +2409,7 @@ def render_home_guide():
 2. **'다른 브라우저로 열기'**(또는 '사파리로 열기' / '크롬으로 열기')를 누릅니다.
 3. 새로 열린 화면에서 왼쪽의 **갤럭시 / 아이폰** 안내대로 따라 해 주세요.
 
-그래도 어려우시면 카카오톡 1:1 상담창이나 **050-6798-3349** 로 연락 주세요. 천천히 도와드립니다.
+그래도 어려우시면 화면 맨 아래 [문의 남기기]나 이메일(equivisionai@gmail.com)로 알려 주세요.
 """
     _imgs = {0: [], 1: [], 2: []}
     _base = _os.path.dirname(_os.path.abspath(__file__))
@@ -2427,8 +2430,46 @@ def render_faq():
         with st.expander(f"Q{_i}. {_q}"):
             st.markdown(_a)
 
+def render_inquiry():
+    st.markdown("---")
+    st.markdown("### ✉️ 문의 남기기")
+    st.caption("전화·채팅 상담은 하지 않고, 이곳과 이메일(equivisionai@gmail.com)로만 받습니다. 영업일 기준 2일 안에 적어 주신 이메일로 답해 드립니다. 비밀번호·주민등록번호·카드번호는 적지 마세요.")
+    with st.form("inquiry_form", clear_on_submit=True):
+        _k = st.selectbox("문의 종류", ["입금·충전", "환불 요청", "계정·로그인", "신고", "기타"])
+        _e = st.text_input("답변 받을 이메일")
+        _b = st.text_area("문의 내용 (1,000자 이내)", max_chars=1000)
+        _ok = st.form_submit_button("문의 보내기")
+    if _ok:
+        _e = (_e or "").strip().lower()
+        _uid = st.session_state.get("user_id")
+        if not valid_email(_e) or len((_b or "").strip()) < 5:
+            st.error("이메일 주소와 문의 내용(5자 이상)을 확인해 주세요.")
+        elif rl_count("inq_" + _h(_e), 86400) >= 5 or rl_count("inq_all", 86400) >= 300:
+            st.error("오늘 보낼 수 있는 문의 횟수를 넘었습니다. 내일 다시 보내 주세요.")
+        else:
+            try:
+                supabase.table("inquiries").insert({"kind": _k, "reply_email": _e, "body": _b.strip(), "user_id": _uid}).execute()
+                rl_hit("inq_" + _h(_e)); rl_hit("inq_all")
+                if SMTP_USER and SMTP_APP_PASSWORD:
+                    try:
+                        _m = EmailMessage()
+                        _m["Subject"] = f"[{BRAND_NAME_KR}] 새 문의 도착 ({_k})"
+                        _m["From"] = f"{BRAND_NAME_KR} <{SMTP_USER}>"
+                        _m["To"] = SMTP_USER
+                        _m.set_content("새 문의가 접수되었습니다. 관리자 화면의 '문의 목록'에서 확인해 주세요. (내용은 메일에 담지 않습니다)")
+                        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10, context=ssl.create_default_context()) as sv:
+                            sv.login(SMTP_USER, SMTP_APP_PASSWORD)
+                            sv.send_message(_m)
+                    except Exception as e:
+                        log_error("inquiry_notice", e)
+                st.success("문의가 접수되었습니다. 영업일 기준 2일 안에 이메일로 답해 드립니다.")
+            except Exception as e:
+                log_error("inquiry_save", e)
+                st.error("접수 중 문제가 생겼습니다. 잠시 뒤 다시 보내 주시거나 이메일로 보내 주세요.")
+
 render_home_guide()
 render_faq()
+render_inquiry()
 
 # --- 이용약관·개인정보 처리방침 (누구나 로그인 없이 읽을 수 있음) ---
 from legal_text import TERMS_MD, PRIVACY_MD
@@ -2444,7 +2485,7 @@ st.markdown("""
         <div><strong>상호명:</strong> 이퀴비젼에이아이 주식회사 | <strong>대표자:</strong> 오성수</div>
         <div><strong>사업자등록번호:</strong> 302-88-04351 | <strong>통신판매업신고번호:</strong> 제2026-서울금천-2071호 (2026.10.15 신고)</div>
         <div><strong>사업장 주소:</strong> 서울특별시 금천구 벚꽃로 30, 206동 318호(독산동, 금천 롯데캐슬 골드파크 2차)</div>
-        <div><strong>대표전화:</strong> 050-6798-3349 | <strong>고객센터:</strong> 카카오톡 1:1 상담창 | <strong>이메일:</strong> equivisionai@gmail.com</div>
+        <div><strong>대표전화:</strong> 050-6798-3349 | <strong>고객센터:</strong> 이메일·웹 문의(전화 상담 없음) | <strong>이메일:</strong> equivisionai@gmail.com</div>
         <div style="margin-top: 8px; font-size: 0.85rem; color: #555555;">
             © 2026 EQUIVISION AI Inc. All rights reserved. <br>호스팅 서비스 제공자: Render Services, Inc.(서버) · Supabase Inc.(데이터 저장)
         </div>
