@@ -32,58 +32,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. PWA 모바일 전용 앱 아이콘 & 브랜드명 주입
-manifest_5060 = {
-    "name": "노블레스 라온",
-    "short_name": "노블레스라온",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#0A0A0C",
-    "theme_color": "#1F190B",
-    "icons": [
-        {
-            "src": "https://noblesseraon.com/app/static/icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "https://noblesseraon.com/app/static/icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        }
-    ]
-}
+# 2. 홈 화면 설치(PWA) 설정은 og_patch.py 가 Streamlit 머리말(head)에 넣습니다. (설치 정보 파일: static/manifest.json)
+#    (예전의 화면 안 스크립트 방식은 스트림릿이 실행하지 않아 제거했습니다)
 try:
     import og_patch
-    og_patch.patch()   # 공유 미리보기(카카오톡) 메타 태그를 한 번만 넣습니다
+    og_patch.patch()   # 공유 미리보기(카카오톡)·홈 화면 설치 태그를 한 번만 넣습니다
 except Exception:
     pass
-manifest_5060_json = json.dumps(manifest_5060)
-
-st.markdown(f"""
-    <head>
-        <title>노블레스 라온</title>
-        <meta name="apple-mobile-web-app-title" content="노블레스 라온">
-        <meta name="application-name" content="노블레스 라온">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="theme-color" content="#1F190B">
-        <link rel="apple-touch-icon" href="https://noblesseraon.com/app/static/icon-192.png">
-        <link rel="icon" type="image/png" href="https://noblesseraon.com/app/static/icon-192.png">
-    </head>
-    <script>
-        const manifestBlob = new Blob([`{manifest_5060_json}`], {{type: 'application/json'}});
-        const manifestURL = URL.createObjectURL(manifestBlob);
-        let manifestLink = document.querySelector("link[rel='manifest']");
-        if (!manifestLink) {{
-            manifestLink = document.createElement('link');
-            manifestLink.rel = 'manifest';
-            document.head.appendChild(manifestLink);
-        }}
-        manifestLink.href = manifestURL;
-        document.title = "노블레스 라온";
-    </script>
-""", unsafe_allow_html=True)
+from install_widget import render_install_button
 
 # 3. 서비스 기본 상수 및 보안 Secrets 연동
 BRAND_NAME_KR = "노블레스 라온"
@@ -1326,6 +1282,8 @@ if not st.session_state.user_id:
         </div>
     """, unsafe_allow_html=True)
 
+    render_install_button()   # 📲 홈 화면 설치 버튼
+
     _wm = st.session_state.pop("withdrawn_msg_5060", None)
     if _wm:
         st.success(_wm)
@@ -1727,6 +1685,8 @@ else:
                 <span style="font-size:1.05rem; font-weight:900; color:#7A4A00;">🎟️ {my_tickets}장</span>
             </div>
         """, unsafe_allow_html=True)
+
+    render_install_button()   # 📲 홈 화면 설치 버튼 (이미 설치된 앱 화면에서는 숨김)
 
     with st.expander("🚫 아는 사람 / 지인 번호 차단 관리"):
         curr_blocks = me.get("blocked_phones") or []
