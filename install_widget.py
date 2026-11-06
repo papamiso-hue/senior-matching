@@ -20,16 +20,12 @@ _HTML = """
   #btn:active{transform:scale(.99);}
   #icon{width:34px;height:34px;border-radius:9px;flex:0 0 34px;}
   #sub{margin:8px 2px 0 2px;font-size:15px;line-height:1.5;color:#5C4A1E;text-align:center;}
-  #steps{display:none;margin:10px 0 0 0;padding:14px 16px;border:2px solid #D9C48F;border-radius:14px;background:#FFF9E8;color:#2B2B2B;font-size:17px;line-height:1.7;}
-  #steps b{color:#7A4A00;}
-  #steps ol{margin:6px 0 0 0;padding-left:22px;}
   #done{display:none;margin-top:8px;padding:12px 14px;border-radius:12px;background:#E7F6EC;color:#14532D;font-size:17px;font-weight:700;text-align:center;line-height:1.5;}
 </style></head>
 <body>
 <div id="wrap">
   <button id="btn" type="button"><img id="icon" alt="" src="/app/static/icon-192.png"><span id="label">앱 설치하기</span></button>
   <div id="sub"></div>
-  <div id="steps"></div>
   <div id="done"></div>
 </div>
 <script>
@@ -40,16 +36,10 @@ _HTML = """
   var isKakao = /KAKAOTALK/i.test(ua);
   var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1);
   var $ = function (id) { return document.getElementById(id); };
-  var btn = $("btn"), label = $("label"), sub = $("sub"), steps = $("steps"), done = $("done");
+  var btn = $("btn"), label = $("label"), sub = $("sub"), done = $("done");
   var mode = "";
 
-  function resize() {
-    try {
-      var h = Math.ceil(document.getElementById("wrap").getBoundingClientRect().height) + 8;
-      window.frameElement.style.height = h + "px";
-      window.frameElement.setAttribute("height", h);
-    } catch (e) {}
-  }
+  function resize() { /* 칸 높이는 고정입니다. 안내는 팝업으로 띄웁니다. */ }
   function hideAll() {
     try { window.frameElement.style.display = "none"; } catch (e) {}
     document.body.style.display = "none";
@@ -72,14 +62,39 @@ _HTML = """
       d.body.appendChild(a); a.click(); d.body.removeChild(a);
     } catch (e) { window.location.href = target; }
   }
-  function showSteps(html) { steps.innerHTML = html; steps.style.display = "block"; resize(); }
+  function showSteps(html) {
+    // 화면 위에 뜨는 안내 창 (아래 내용과 겹치지 않고, 닫기 버튼으로 닫습니다)
+    try {
+      var d = (P && P.document) || document;
+      var old = d.getElementById("pwa-help-overlay");
+      if (old) old.remove();
+      var ov = d.createElement("div");
+      ov.id = "pwa-help-overlay";
+      ov.setAttribute("style", "position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;");
+      var card = d.createElement("div");
+      card.setAttribute("style", "background:#FFF9E8;border:3px solid #D9C48F;border-radius:18px;max-width:460px;width:100%;max-height:86vh;overflow:auto;padding:20px 20px 16px;box-sizing:border-box;color:#2B2B2B;font-size:18px;line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;");
+      card.innerHTML = "<div style='font-size:21px;font-weight:900;color:#7A4A00;margin-bottom:6px;'>👑 홈 화면에 앱 아이콘 만들기</div>" + html +
+        "<button id='pwa-help-close' type='button' style='margin-top:14px;width:100%;min-height:52px;border:0;border-radius:14px;background:#7A4A00;color:#fff;font-size:19px;font-weight:800;cursor:pointer;'>닫기</button>";
+      ov.appendChild(card);
+      d.body.appendChild(ov);
+      var close = function () { var o = d.getElementById("pwa-help-overlay"); if (o) o.remove(); };
+      d.getElementById("pwa-help-close").addEventListener("click", close);
+      ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    } catch (e) {}
+  }
 
-  var ANDROID_STEPS = "<b>크롬에서 이렇게 하세요 (약 10초)</b><ol>" +
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || isIOS;
+  var ANDROID_STEPS = "<b>크롬에서 이렇게 하세요 (약 10초)</b><ol style='margin:6px 0 0;padding-left:22px;'>" +
     "<li>화면 <b>오른쪽 위 점 세 개 ⋮</b> 를 누릅니다.</li>" +
     "<li><b>'홈 화면에 추가'</b> 또는 <b>'앱 설치'</b> 를 누릅니다.</li>" +
     "<li>이름이 <b>노블레스 라온</b> 인지 보고 <b>'추가'</b> 를 누릅니다.</li>" +
     "<li>폰 홈 화면의 <b>👑 아이콘</b> 을 누르시면 됩니다.</li></ol>";
-  var IOS_STEPS = "<b>사파리에서 이렇게 하세요 (약 10초)</b><ol>" +
+  var PC_STEPS = "<b>컴퓨터 크롬·엣지에서 이렇게 하세요</b><ol style='margin:6px 0 0;padding-left:22px;'>" +
+    "<li>주소창 <b>오른쪽 끝</b>의 <b>설치 아이콘(⊕ 또는 모니터 모양)</b> 을 누릅니다.</li>" +
+    "<li>안 보이면 오른쪽 위 <b>점 세 개 ⋮</b> → <b>'노블레스 라온 설치'</b>(또는 '앱 설치')를 누릅니다.</li>" +
+    "<li><b>'설치'</b> 를 누르면 바탕화면에 아이콘이 생깁니다.</li></ol>" +
+    "<div style='margin-top:6px;font-size:15px;color:#6B5A2A;'>※ 휴대폰에서 설치하시는 것을 권합니다.</div>";
+  var IOS_STEPS = "<b>사파리에서 이렇게 하세요 (약 10초)</b><ol style='margin:6px 0 0;padding-left:22px;'>" +
     "<li>화면 <b>맨 아래(또는 위) 공유 버튼 ⬆️</b> 을 누릅니다.</li>" +
     "<li>메뉴를 위로 밀어 <b>'홈 화면에 추가'</b> 를 누릅니다.</li>" +
     "<li>오른쪽 위 <b>'추가'</b> 를 누릅니다.</li>" +
@@ -98,7 +113,7 @@ _HTML = """
     } else {
       mode = "howto";
       label.textContent = "홈 화면에 앱 아이콘 만들기";
-      sub.textContent = "누르시면 따라 하기 쉬운 순서가 나옵니다. 비용은 없습니다.";
+      sub.textContent = "누르시면 따라 하기 쉬운 순서가 화면에 나옵니다. 비용은 없습니다.";
     }
     resize();
   }
@@ -112,7 +127,7 @@ _HTML = """
         ev.prompt();
         ev.userChoice.then(function (r) {
           if (r && r.outcome === "accepted") {
-            btn.style.display = "none"; sub.style.display = "none"; steps.style.display = "none";
+            btn.style.display = "none"; sub.style.display = "none";
             done.textContent = "✅ 설치 중입니다. 잠시 뒤 폰 홈 화면의 👑 아이콘을 눌러 주세요.";
             done.style.display = "block";
           } else {
@@ -121,24 +136,24 @@ _HTML = """
           }
           resize();
         });
-      } catch (e) { mode = "howto"; showSteps(isIOS ? IOS_STEPS : ANDROID_STEPS); }
+      } catch (e) { mode = "howto"; showSteps(isIOS ? IOS_STEPS : (isMobile ? ANDROID_STEPS : PC_STEPS)); }
       return;
     }
     // howto
-    showSteps(isIOS ? IOS_STEPS : ANDROID_STEPS);
+    showSteps(isIOS ? IOS_STEPS : (isMobile ? ANDROID_STEPS : PC_STEPS));
   });
 
   if (isStandalone()) { hideAll(); return; }
   setMode();
   if (P) {
-    P.addEventListener("pwaready", function () { if (mode === "howto" && steps.style.display !== "block") setMode(); });
+    P.addEventListener("pwaready", function () { if (mode === "howto") setMode(); });
     P.addEventListener("pwainstalled", function () {
-      btn.style.display = "none"; sub.style.display = "none"; steps.style.display = "none";
+      btn.style.display = "none"; sub.style.display = "none";
       done.textContent = "✅ 설치되었습니다. 폰 홈 화면의 👑 아이콘을 눌러 주세요.";
       done.style.display = "block"; resize();
     });
   }
-  setTimeout(function () { if (mode === "howto" && steps.style.display !== "block") setMode(); }, 1500);
+  setTimeout(function () { if (mode === "howto") setMode(); }, 1500);
   window.addEventListener("load", resize);
 })();
 </script>
@@ -149,6 +164,6 @@ _HTML = """
 def render_install_button():
     """큰 설치 버튼 한 줄을 화면에 그립니다. 실패해도 서비스에는 영향이 없습니다."""
     try:
-        components.html(_HTML, height=110)
+        components.html(_HTML, height=124)
     except Exception:
         pass
