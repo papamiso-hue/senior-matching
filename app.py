@@ -593,16 +593,16 @@ st.markdown("""
         color: #1A1A1A !important;
         line-height: 1.65 !important;
     }
-    [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #4A4A4A !important; font-size: 0.92rem !important; }
+    [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #4A4A4A !important; font-size: 1.02rem !important; }
     .stApp a { color: #8A4B00 !important; text-decoration: underline; font-weight: 700; }
 
     .stLinkButton > a {
         background-color: #FEE500 !important;
         color: #191919 !important;
         font-weight: 900 !important;
-        font-size: 1.15rem !important;
-        border-radius: 14px !important;
-        height: 3.8rem !important;
+        font-size: 1.4rem !important;
+        border-radius: 16px !important;
+        height: 5rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -664,7 +664,7 @@ st.markdown("""
         margin-bottom: 8px;
     }
     .hero-subtitle {
-        font-size: 1.05rem;
+        font-size: 1.25rem;
         font-weight: 600;
         color: #2B2B2B !important;
         line-height: 1.65;
@@ -826,12 +826,12 @@ st.markdown("""
     }
     div[data-baseweb="tab"] {
         flex: 1;
-        height: 52px;
+        height: 60px;
         border-radius: 10px !important;
         background-color: transparent !important;
         color: #1A1A1A !important;
         font-weight: 800 !important;
-        font-size: 1rem !important;
+        font-size: 1.15rem !important;
         border: none !important;
     }
     div[data-baseweb="tab"][aria-selected="true"] {
@@ -841,9 +841,9 @@ st.markdown("""
     }
     div[data-baseweb="tab-border"] { display: none !important; }
     div[data-baseweb="tab-highlight"] { display: none !important; }
-    button[data-baseweb="tab"] p, button[data-baseweb="tab"] span, div[data-baseweb="tab"] p { color: #1A1A1A !important; font-weight: 800 !important; font-size: 1rem !important; }
+    button[data-baseweb="tab"] p, button[data-baseweb="tab"] span, div[data-baseweb="tab"] p { color: #1A1A1A !important; font-weight: 800 !important; font-size: 1.15rem !important; }
     button[data-baseweb="tab"][aria-selected="true"] p, div[data-baseweb="tab"][aria-selected="true"] p { color: #FFFFFF !important; }
-    label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { color: #1A1A1A !important; font-size: 1.05rem !important; font-weight: 700 !important; }
+    label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { color: #1A1A1A !important; font-size: 1.2rem !important; font-weight: 700 !important; }
 
     div[data-baseweb="input"], div[data-baseweb="textarea"], div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
@@ -857,7 +857,7 @@ st.markdown("""
     div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea, div[data-baseweb="select"] div {
         color: #111111 !important;
         -webkit-text-fill-color: #111111 !important;
-        font-size: 1.05rem !important;
+        font-size: 1.2rem !important;
         background-color: transparent !important;
     }
     div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder {
@@ -877,8 +877,8 @@ st.markdown("""
         width: 100%;
         border-radius: 12px;
         font-weight: 800;
-        min-height: 3.6rem;
-        font-size: 1.15rem;
+        min-height: 4.2rem;
+        font-size: 1.3rem;
         letter-spacing: -0.3px;
         border: 2px solid #8A5A00 !important;
         background: #F2B705 !important;
@@ -886,7 +886,7 @@ st.markdown("""
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
         transition: transform 0.1s ease;
     }
-    .stButton>button p, .stButton>button span { color: #111111 !important; font-size: 1.15rem !important; font-weight: 800 !important; }
+    .stButton>button p, .stButton>button span { color: #111111 !important; font-size: 1.3rem !important; font-weight: 800 !important; }
     .stButton>button:hover { background: #FFC81F !important; }
     .stButton>button:active { transform: scale(0.98); }
     .stButton>button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #1A5FB4 !important; outline-offset: 2px; }
@@ -1255,14 +1255,16 @@ if not st.session_state.user_id:
         <div class="hero-box">
             <div class="hero-badge">👑 5060 NOBLESSE COMPANIONS</div>
             <div class="hero-title">🌟 {BRAND_NAME_KR}</div>
-            <div class="hero-subtitle">품격 있는 인생 2막을 함께할 동반자·친구를 위한<br>
-            <strong style="color:#7A4A00;">카카오 로그인·이메일 확인으로 시작하는 5060 동반자·친구 만남</strong><br>
-            <span style="font-size:1.05rem;">가입 무료 · 약 2분 · 카카오로 바로 시작</span><br>
-            <span style="font-size:0.95rem;">① 카카오로 시작 → ② 질문 5개 답하기 → ③ 마음 맞는 분께 대화 신청</span></div>
+            <div class="hero-subtitle">5060 동반자·친구 만남<br>
+            <strong style="color:#7A4A00; font-size:1.35rem;">가입 무료 · 약 2분 · 카카오로 바로 시작</strong></div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
+    _intro_html = """
+        <div style="font-size:1.05rem; line-height:1.7; margin-bottom:10px;">
+            <strong style="color:#7A4A00;">카카오 로그인·이메일 확인으로 시작하는 5060 동반자·친구 만남</strong><br>
+            ① 카카오로 시작 → ② 질문 5개 답하기 → ③ 마음 맞는 분께 대화 신청
+        </div>
         <div class="promise-grid">
             <div class="promise-card">
                 <div class="promise-icon">🛡️</div>
@@ -1280,9 +1282,7 @@ if not st.session_state.user_id:
                 <div class="promise-desc">상호 수락 시 연락처 공개</div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
-
-    render_install_button()   # 📲 홈 화면 설치 버튼
+    """
 
     _wm = st.session_state.pop("withdrawn_msg_5060", None)
     if _wm:
@@ -1300,6 +1300,9 @@ if not st.session_state.user_id:
             url=kakao_login_url,
             use_container_width=True
         )
+        render_install_button()   # 📲 홈 화면 설치 버튼 (시작 버튼 바로 아래)
+        with st.expander("🛡️ 시작 방법과 안심 약속 (눌러서 보기)"):
+            st.markdown(_intro_html, unsafe_allow_html=True)
         tab_join, tab_login = st.tabs(["📝 신규 프로필 등록", "🔑 이미 회원이세요? 로그인"])
 
     with tab_login:
@@ -1533,9 +1536,19 @@ if not st.session_state.user_id:
             **국외 이전**: 서비스 서버는 싱가포르(Render Services, Inc.)에 있고, 이메일 인증번호는 미국 Google 서버를 거칩니다(이메일 가입자). 이전 항목은 위 수집 항목, 목적은 서비스 운영·인증번호 발송, 보유는 이용 종료 시까지입니다. 이전을 원하지 않으시면 가입하지 않으실 수 있으며, 이 경우 서비스 이용이 어렵습니다.
             동의를 거부할 수 있으나, 필수 항목은 거부하면 가입이 어렵습니다.
             """)
-        agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관에 동의합니다.", key="agree_terms")
-        agree_privacy = st.checkbox("[필수] 개인정보 수집·이용에 동의합니다. (위 안내 참고)", key="agree_privacy")
-        agree_overseas = st.checkbox("[필수] 개인정보 국외 이전(싱가포르·미국)에 동의합니다. (위 안내 참고)", key="agree_overseas")
+        def _agree_all_changed():
+            _v = bool(st.session_state.get("agree_all"))
+            for _k in ("agree_terms", "agree_privacy", "agree_overseas"):
+                st.session_state[_k] = _v
+
+        def _agree_one_changed():
+            st.session_state["agree_all"] = all(
+                bool(st.session_state.get(_k)) for _k in ("agree_terms", "agree_privacy", "agree_overseas"))
+
+        st.checkbox("✅ 아래 필수 3가지에 모두 동의합니다 (한 번에 선택)", key="agree_all", on_change=_agree_all_changed)
+        agree_terms = st.checkbox("[필수] 노블레스 라온 이용약관에 동의합니다.", key="agree_terms", on_change=_agree_one_changed)
+        agree_privacy = st.checkbox("[필수] 개인정보 수집·이용에 동의합니다. (위 안내 참고)", key="agree_privacy", on_change=_agree_one_changed)
+        agree_overseas = st.checkbox("[필수] 개인정보 국외 이전(싱가포르·미국)에 동의합니다. (위 안내 참고)", key="agree_overseas", on_change=_agree_one_changed)
 
         if st.button("가입 완료", key="btn_submit_join"):
             if not agree_terms or not agree_privacy or not agree_overseas:
